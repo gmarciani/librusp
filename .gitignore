@@ -1,8 +1,20 @@
+# Bin Folders
+bin/
+
+# Old Folders
+old/
+
 # Object files
 *.o
 *.ko
 *.obj
 *.elf
+
+# Temp files
+*~
+
+# Lyx Files
+*.lyx
 
 # Precompiled Headers
 *.gch
