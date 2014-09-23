@@ -1,243 +1,212 @@
 #include "_rudp.h"
 
-
-/* SETTINGS */
-
-static int DTG_RESOLUTION = 0;
-
+static int _RUDP_DEBUG = 1;
 
 /* PACKET */
 
-void _rudpPacketDeserialization(const char *serializedPacket, packet_t *packet) {
-	char **args = NULL;
-	int expectedArgs = 4;
-	int i;
+rudpsgm_t _rudpDeserializeSegment(const char *ssgm) {
+	rudpsgm_t sgm;
+	size_t pldsize;
+	char **fields;
+	int efields, i;
 
-	args = splitStringNByDelimiter(serializedPacket, PACKET_FIELDS_DELIMITER, expectedArgs);
+	efields = 7;
 
-	_rudpParsePacket(args[0], args[1], args[2], args[3], packet);	
+	fields = splitStringNByDelimiter(spkt, _RUDP_SGM_DEL, efields);
 
-	for (i = 0; i < expectedArgs; i++)
-		free(args[i]);
+	sgm.hdr.vers = (unsigned short int) atoi(fiels[0]);
+	sgm.hdr.ctrl = (unsigned short int) atoi(fiels[1]);
+	sgm.hdr.plds = (unsigned short int) atoi(fiels[2]);
+	sgm.hdr.sqnno = strtoul(fiels[3], NULL, 10);
+	sgm.hdr.ackno = strtoul(fiels[4], NULL, 10);
+	sgm.hdr.wndno = strtoul(fiels[5], NULL, 10);
 
-	free(args);
+	pldsize = (sgm.hdr.plds < _RUDP_MAX_PLD) ? sgm.hdr.plds : _RUDP_MAX_PLD;
+
+	for (i = 0; i < pldsize; i++)
+		sgm.pld[i] = fields[6][i];
+
+	sgm.pld[i] = '\0';	
+
+	for (i = 0; i < efields; i++)
+		free(fields[i]);
+	free(fields);
+
+	return sgm;
 }
 
-char *_rudpPacketSerialization(const packet_t packet) {
-	char *serializedPacket = NULL;
+char *_rudpSerializeSegment(const rudpsgm_t sgm) {
+	char *ssgm;
 
-	if (!(serializedPacket = malloc(sizeof(char) * (PACKET_SERIALIZATION_SIZE + 1)))) {
-		fprintf(stderr, "Error in serialized packet allocation.\n");
+	if (!(ssgm = malloc(sizeof(char) * (_RUDP_MAX_SGM + 1)))) {
+		fprintf(stderr, "Error in serialized segment allocation.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	sprintf(serializedPacket, "%d%s%d%s%d%s%s", packet.header.control, PACKET_FIELDS_DELIMITER, packet.header.sequenceNumber, PACKET_FIELDS_DELIMITER, packet.header.streamEnd, PACKET_FIELDS_DELIMITER, packet.payload);
+	sprintf(ssgm, "%02d%s%d%s%d%s%d%s%d%s%d%s%d%s%s", sgm.hdr.vers, _RUDP_SGM_DEL, sgm.hdr.hdrs, _RUDP_SGM_DEL, sgm.hdr.ctrl, _RUDP_SGM_DEL, sgm.hdr.plds, _RUDP_SGM_DEL, sgm.hdr.seqno, _RUDP_SGM_DEL, sgm.hdr.ackno, _RUDP_SGM_DEL, sgm.hdr.wndno, _RUDP_SGM_DEL, sgm.pld);
 
-	return serializedPacket;
+	return ssgm;
 }
 
-void _rudpParsePacket(const char *control, const char *sequenceNumber, const char *streamEnd, const char *payload, packet_t *packet) {
-	int pktControl;
-	int pktSequenceNumber;
-	int pktStreamEnd;
+rudpsgm_t _rudpCreateSegment(const unsigned short int ctrl, unsigned long int seqno, unsigned long int ackno, unsigned long int wndno, const char *pld) {
+	rudpsgm_t sgm;
+	int i = 0;
 
-	pktControl = atoi(control);
-	pktSequenceNumber = atoi(sequenceNumber);
-	pktStreamEnd = atoi(streamEnd);
+	sgm.vers = _RUDP_VERSION;
+	sgm.ctrl = ctrl;
+	sgm.sqnno = sqnno;
+	sgm.ackno = ackno;
+	sgm.wndno = wndno;
 
-	_rudpCreatePacket(pktControl, pktSequenceNumber, pktStreamEnd, payload, packet);
-}
-
-void _rudpCreatePacket(const int control, const int sequenceNumber, const int streamEnd, const char *payload, packet_t *packet) {
-	size_t payloadSize = 0;
-	int i;
-
-	packet->header.control = control;
-	packet->header.sequenceNumber = sequenceNumber;	
-	packet->header.streamEnd = streamEnd;
-
-	if (payload) {
-		payloadSize = (strlen(payload) < PACKET_PAYLOAD_SIZE) ? strlen(payload) : PACKET_PAYLOAD_SIZE;
-		for (i = 0; i < payloadSize; i++)
-			packet->payload[i] = payload[i];
+	if (pld) {
+		pldsize = (strlen(pld) < _RUDP_MAX_PLD) ? strlen(pld) : _RUDP_MAX_PLD;
+		for (i = 0; i < pldsize; i++)
+			sgm.pld[i] = pld[i];
 	}
 
-	packet->payload[payloadSize] = '\0';
-	
+	sgm.pld[i] = '\0';
+
+	return sgm;	
 }
 
-packet_t *_rudpPacketStream(const char *message, int *numPackets) {
-	packet_t *packets = NULL;
-	char **chunks = NULL;
-	size_t chunkSize;
-	int sequenceNumber;
-	int i, j;
+/* COMMUNICATION */
 
-	chunks = splitStringBySize(message, PACKET_PAYLOAD_SIZE, numPackets);
+void _rudpSendSegment(const rudpconn_t conn, const rudpsgm_t sgm) {
+	char *ssgm;
 
-	if (!(packets = malloc(sizeof(packet_t) * *numPackets))) {
-		fprintf(stderr, "Error in packet stream allocation: %s.\n", message);
+	ssgm = _rudpSerializeSegment(sgm);
+
+	if (write(conn.sock, ssgm, _RUDP_MAX_SGM) == -1) {
+		fprintf(stderr, "Error in socket write.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	sequenceNumber = 0;
-	for (i = 0; i < *numPackets; i++) {
-		packets[i].header.control = DAT;
-		chunkSize = strlen(chunks[i]);		
-		packets[i].header.sequenceNumber = sequenceNumber;
-		packets[i].header.streamEnd = 0;
-		for (j = 0; j < chunkSize; j++) {
-			packets[i].payload[j] = chunks[i][j];
-		}			
-		packets[i].payload[chunkSize] = '\0';
-		sequenceNumber += chunkSize;
-	}
+	if (_RUDP_DEBUG)
+		_rudpPrintOutDatagram(conn.peer, ssgm);
 
-	packets[*numPackets - 1].header.streamEnd = 1;
-
-	for (i = 0; i < *numPackets; i++)
-		free(chunks[i]);
-	
-	free(chunks);
-
-	return packets;
+	free(ssgm);
 }
 
+rudpsgm_t _rudpReceiveSegment(const rudpconn_t conn) {	
+	rudpsgm_t sgm;
+	char *ssgm;
+	ssize_t rcvd;
+
+	if (!(ssgm = malloc(sizeof(char) * (_RUDP_MAX_SGM + 1)))) {
+		fprintf(stderr, "Error in serialized segment allocation for packet receive.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	rcvd = 0;
+	if ((rcvd = read(conn.sock, ssgm, _RUDP_MAX_SGM)) == -1) {
+		fprintf(stderr, "Error in socket read.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	ssgm[rcvd] = '\0';
+
+	if (_RUDP_DEBUG)
+		_rudpPrintInDatagram(conn.peer, ssgm);
+
+	sgm = _rudpDeserializeSegment(ssgm);
+
+	free(ssgm);
+
+	return sgm;
+}
+
+void __rudpSendSegment(const int sock, const struct sockaddr_in rcvaddr, const rudpsgm_t sgm) {
+	char *ssgm;
+
+	ssgm = _rudpSerializeSegment(sgm);
+
+	if (sendto(sock, ssgm, _RUDP_MAX_SGM, 0, (struct sockaddr *)&rcvaddr, sizeof(struct sockaddr_in)) == -1) {
+		fprintf(stderr, "Error in segment send: %s.\n", ssgm);
+		exit(EXIT_FAILURE);
+	}
+
+	if (_RUDP_DEBUG)
+		_rudpPrintOutDatagram(rcvaddr, ssgm);
+
+	free(ssgm);
+}
+
+rudpsgm_t __rudpReceiveSegment(const int sock, struct sockaddr_in *sndaddr) {
+	socklen_t socksize = sizeof(struct sockaddr_in);
+	rudpsgm_t sgm;	
+	char *ssgm;
+	ssize_t rcvd;
+
+	if (!(ssgm = malloc(sizeof(char) * (_RUDP_MAX_SGM + 1)))) {
+		fprintf(stderr, "Error in serialized segment allocation.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	rcvd = 0;
+	if ((rcvd = recvfrom(sock, ssgm, _RUDP_MAX_SGM, 0 ,(struct sockaddr *)sndaddr, &socksize)) == -1) {
+		fprintf(stderr, "Error in segment receive.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	ssgm[rcvd] = '\0';
+
+	if (_RUDP_DEBUG)
+		_rudpPrintInDatagram(*sndaddr, ssgm);
+
+	smg = _rudpDeserializeSegment(ssgm);
+
+	free(ssgm);
+
+	return sgm;
+}
 
 /* SOCKET */
 
 int _rudpOpenSocket() {
-	int sockfd;
+	int sock;
 
 	errno = 0;
-	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		fprintf(stderr, "Error in socket creation: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	return sockfd;
+	return sock;
 }
 
-void _rudpCloseSocket(const int sockfd) {
+void _rudpCloseSocket(const int sock) {
 	errno = 0;
-	if (close(sockfd) == -1) {
+	if (close(sock) == -1) {
 		fprintf(stderr, "Error in closing socket: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-void _rudpBindSocket(const int sockfd, struct sockaddr_in *addr) {
+void _rudpBindSocket(const int sock, struct sockaddr_in *addr) {
 	errno = 0;
-	if (bind(sockfd, (struct sockaddr *)addr, sizeof(struct sockaddr_in)) == -1) {
+	if (bind(sock, (struct sockaddr *)addr, sizeof(struct sockaddr_in)) == -1) {
 		fprintf(stderr, "Error in socket binding: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-void _rudpConnectSocket(const int sockfd, const struct sockaddr_in addr) {
+void _rudpConnectSocket(const int sock, const struct sockaddr_in addr) {
 	errno = 0;
-	if (connect(sockfd, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in)) == -1) {
+	if (connect(sock, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in)) == -1) {
 		fprintf(stderr, "Error in connecting socket: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-void _rudpReusableSocket(const int sockfd) {
+void _rudpReusableSocket(const int sock) {
 	int optval = 1;
 
 	errno = 0;
-  	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int)) == -1) {
+  	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int)) == -1) {
 		fprintf(stderr, "Error in setsockopt: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
-
-
-/* COMMUNICATION */
-
-void _rudpSendPacket(const rudpConnection_t conn, const packet_t packet) {
-	char *serializedPacket = NULL;
-
-	serializedPacket = _rudpPacketSerialization(packet);
-
-	if (write(conn.sockfd, serializedPacket, PACKET_SERIALIZATION_SIZE) == -1) {
-		fprintf(stderr, "Error in socket write.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (DTG_RESOLUTION)
-		_rudpPrintOutDatagram(conn.peer, serializedPacket);
-
-	free(serializedPacket);
-}
-
-void _rudpReceivePacket(const rudpConnection_t conn, packet_t *packet) {	
-	char *serializedPacket = NULL;
-	ssize_t received;
-
-	if (!(serializedPacket = malloc(sizeof(char) * (PACKET_SERIALIZATION_SIZE + 1)))) {
-		fprintf(stderr, "Error in serialized packet allocation for packet receive.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	received = 0;
-	if ((received = read(conn.sockfd, serializedPacket, PACKET_SERIALIZATION_SIZE)) == -1) {
-		fprintf(stderr, "Error in socket read.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	serializedPacket[received] = '\0';
-
-	if (DTG_RESOLUTION)
-		_rudpPrintInDatagram(conn.peer, serializedPacket);
-
-	_rudpPacketDeserialization(serializedPacket, packet);
-
-	free(serializedPacket);
-}
-
-void __rudpSendPacket(const int sockfd, const struct sockaddr_in dest, const packet_t packet) {
-	char *serializedPacket = NULL;
-
-	serializedPacket = _rudpPacketSerialization(packet);
-
-	if (sendto(sockfd, serializedPacket, PACKET_SERIALIZATION_SIZE, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr_in)) == -1) {
-		fprintf(stderr, "Error in packet send: %s.\n", serializedPacket);
-		exit(EXIT_FAILURE);
-	}
-
-	if (DTG_RESOLUTION)
-		_rudpPrintOutDatagram(dest, serializedPacket);
-
-	free(serializedPacket);
-}
-
-void __rudpReceivePacket(const int sockfd, struct sockaddr_in *source, packet_t *packet) {
-	socklen_t socksize = sizeof(struct sockaddr_in);	
-	char *serializedPacket = NULL;
-	ssize_t received;
-
-	if (!(serializedPacket = malloc(sizeof(char) * (PACKET_SERIALIZATION_SIZE + 1)))) {
-		fprintf(stderr, "Error in serialized packet allocation for packet receive.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	received = 0;
-	if ((received = recvfrom(sockfd, serializedPacket, PACKET_SERIALIZATION_SIZE, 0 ,(struct sockaddr *)source, &socksize)) == -1) {
-		fprintf(stderr, "Error in packet receive.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	serializedPacket[received] = '\0';
-
-	if (DTG_RESOLUTION)
-		_rudpPrintInDatagram(*source, serializedPacket);
-
-	_rudpPacketDeserialization(serializedPacket, packet);
-
-	free(serializedPacket);
-}
-
 
 /* ADDRESS */
 
@@ -266,12 +235,12 @@ int _rudpIsEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_
 			(addrOne.sin_addr.s_addr == addrTwo.sin_addr.s_addr));
 }
 
-struct sockaddr_in _rudpSocketLocal(const int sockfd) {
+struct sockaddr_in _rudpSocketLocal(const int sock) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 	struct sockaddr_in addr;
 
 	errno = 0;
-	if (getsockname(sockfd, (struct sockaddr *)&addr, &socksize) == -1) {
+	if (getsockname(sock, (struct sockaddr *)&addr, &socksize) == -1) {
 		fprintf(stderr, "Error in getsockname: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -279,12 +248,12 @@ struct sockaddr_in _rudpSocketLocal(const int sockfd) {
 	return addr;
 }
 
-struct sockaddr_in _rudpSocketPeer(const int sockfd) {
+struct sockaddr_in _rudpSocketPeer(const int sock) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 	struct sockaddr_in addr;
 
 	errno = 0;
-	if (getpeername(sockfd, (struct sockaddr *)&addr, &socksize) == -1) {
+	if (getpeername(sock, (struct sockaddr *)&addr, &socksize) == -1) {
 		fprintf(stderr, "Error in getpeername: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -292,15 +261,15 @@ struct sockaddr_in _rudpSocketPeer(const int sockfd) {
 	return addr;
 }
 
-char *_rudpGetAddress(const struct sockaddr_in address) {
-	char *str = NULL;
+char *_rudpGetAddress(const struct sockaddr_in addr) {
+	char *str;
 
 	if (!(str = malloc(INET_ADDRSTRLEN))) {
 		fprintf(stderr, "Error in serialized address allocation.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (!inet_ntop(AF_INET, &(address.sin_addr), str, INET_ADDRSTRLEN)) {
+	if (!inet_ntop(AF_INET, &(addr.sin_addr), str, INET_ADDRSTRLEN)) {
 		fprintf(stderr, "Error in address to-presentation translation.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -312,72 +281,60 @@ int _rudpGetPort(const struct sockaddr_in address) {
 	return (int) ntohs(address.sin_port);
 }
 
-
 /* OUTPUT */
 
-void _rudpPrintInPacket(const struct sockaddr_in sender, const packet_t packet) {
-	char *time = NULL;
-	char *address = NULL;
+void _rudpPrintInSegment(const struct sockaddr_in sndaddr, const rudpsgm_t sgm) {
+	char *time, *addr;
 	int port;
 
 	time = getTime();
-	address = _rudpGetAddress(sender);
-	port = _rudpGetPort(sender);
+	addr = _rudpGetAddress(sndaddr);
+	port = _rudpGetPort(sndaddr);
 
-	printf("[<- PKT] (%d) %s src: %s:%d ctl: %d sqn: %d sen: %d pld: %s\n", getpid(), time, address, port, packet.header.control, packet.header.sequenceNumber, packet.header.streamEnd, packet.payload);
+	printf("[<- SGM] (%d) %s src: %s:%d vers:%hu hdrs:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu wndno:%lu pld:%s\n", getpid(), time, addr, port, sgm.hdr.vers, sgm.hdr.hdrs, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno, sgm.pld);
 
 	free(time);
-	free(address);
+	free(addr);
 }
 
-void _rudpPrintOutPacket(const struct sockaddr_in receiver, const packet_t packet) {
-	char *time = NULL;
-	char *address = NULL;
+void _rudpPrintOutSegment(const struct sockaddr_in rcvaddr, const rudpsgm_t sgm) {
+	char *time, *addr;
 	int port;
 
 	time = getTime();
-	address = _rudpGetAddress(receiver);
-	port = _rudpGetPort(receiver);
+	addr = _rudpGetAddress(rcvaddr);
+	port = _rudpGetPort(rcvaddr);
 	
-	printf("[PKT ->] (%d) %s dst: %s:%d ctl: %d sqn: %d sen: %d pld: %s\n", getpid(), time, address, port, packet.header.control, packet.header.sequenceNumber, packet.header.streamEnd, packet.payload);
+	printf("[SGM ->] (%d) %s dst: %s:%d vers:%hu hdrs:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu wndno:%lu pld:%s\n", getpid(), time, addr, port, sgm.hdr.vers, sgm.hdr.hdrs, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno, sgm.pld);
 
 	free(time);
-	free(address);
+	free(addr);
 }
 
-void _rudpPrintInDatagram(const struct sockaddr_in sender, const char *datagram) {
-	char *time = NULL;
-	char *address = NULL;
+void _rudpPrintInDatagram(const struct sockaddr_in sndaddr, const char *dtg) {
+	char *time, *addr;
 	int port;
 
 	time = getTime();
-	address = _rudpGetAddress(sender);
-	port = _rudpGetPort(sender);
+	addr = _rudpGetAddress(sndaddr);
+	port = _rudpGetPort(sndaddr);
 
-	printf("[<- DTG] (%d) %s src: %s:%d pld: %s\n", getpid(), time, address, port, datagram);
+	printf("[<- DTG] (%d) %s src: %s:%d pld: %s\n", getpid(), time, addr, port, dtg);
 
 	free(time);
-	free(address);
+	free(addr);
 }
 
-void _rudpPrintOutDatagram(const struct sockaddr_in receiver, const char *datagram) {
-	char *time = NULL;
-	char *address = NULL;
+void _rudpPrintOutDatagram(const struct sockaddr_in rcvaddr, const char *dtg) {
+	char *time, *addr;
 	int port;
 
 	time = getTime();
-	address = _rudpGetAddress(receiver);
-	port = _rudpGetPort(receiver);
+	addr = _rudpGetAddress(rcvaddr);
+	port = _rudpGetPort(rcvaddr);
 	
-	printf("[DTG ->] (%d) %s dst: %s:%d pld: %s\n", getpid(), time, address, port, datagram);
+	printf("[DTG ->] (%d) %s dst: %s:%d pld: %s\n", getpid(), time, addr, port, dtg);
 
 	free(time);
-	free(address);
-}
-
-
-/* SETTING */
-
-void _rudpDatagramResolution(const int resolution) {
-	DTG_RESOLUTION = resolution;
+	free(addr);
 }

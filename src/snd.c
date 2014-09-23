@@ -1,20 +1,18 @@
 #include "protocol/rudp.h"
 
+#define RCV_SIZE 20
+
 int main(int argc, char **argv) {
-	struct sockaddr_in saddr;
-	rudpConnection_t conn;
+	rudpConn_t conn;
 	char *sndData, *rcvData;
-	size_t rcvSize = 10;
 
-	saddr = rudpAddress(argv[1], atoi(argv[2]));
-
-	conn = rudpConnect(saddr);
+	conn = rudpConnect(argv[1], atoi(argv[2]));
 
 	sndData = getUserInput("[To Send]>");
 
 	rudpSend(&conn, data);
 
-	rcvData = rudpReceive(&conn, rcvSize);
+	rcvData = rudpReceive(&conn, RCV_SIZE);
 
 	printf("[Received]> %s\n", rcvData);
 

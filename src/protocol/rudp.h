@@ -3,40 +3,18 @@
 
 #include "_rudp.h"
 
-
 int rudpListen(const int lport);
 
-rudpConnection_t rudpConnect(const struct sockaddr_in saddr);
+rudpconn_t rudpConnect(const char *ip, const int port);
 
-rudpConnection_t rudpAccept(const int lsock);
+rudpconn_t rudpAccept(const int lport);
 
-void rudpDisconnect(rudpConnection_t *conn, int mode);
-
-void rudpCloseSocket(const int sockfd);
-
+void rudpDisconnect(rudpconn_t *conn);
 
 /* COMMUNICATIONS */
 
-void rudpSend(const rudpConnection_t conn, const char *message);
+void rudpSend(rudpconn_t *conn, const char *msg);
 
-char *rudpReceive(const rudpConnection_t conn);
-
-
-/* ADDRESS */
-
-struct sockaddr_in rudpAddress(const char *ip, const int port);
-
-int rudpIsEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_in addrTwo);
-
-struct sockaddr_in rudpSocketAddress(const int sockfd);
-
-char *rudpGetAddress(const struct sockaddr_in address);
-
-int rudpGetPort(const struct sockaddr_in address);
-
-
-/* SETTING */
-
-void rudpPacketResolution(const int resolution);
+char *rudpReceive(rudpconn_t *conn, size_t rcvsize);
 
 #endif /* RUDP_H_ */

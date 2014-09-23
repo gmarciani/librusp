@@ -1,15 +1,17 @@
 #include "protocol/rudp.h"
 
+#define RCV_SIZE 10
+
 int main(int argc, char **argv) {
-	rudpConnection_t conn;
+	rudpConn_t conn;
+	int lsock;
 	char *sndData, *rcvData;
-	size_t rcvSize = 10;
 
-	conn = rudpListen(atoi(argv[1]));	
+	lsock = rudpListen(atoi(argv[1]));	
 
-	rudpAccept(&conn);
+	conn = rudpAccept(lsock);
 
-	rcvData = rudpReceive(&conn, rcvSize);
+	rcvData = rudpReceive(&conn, RCV_SIZE);
 
 	printf("[Received] %s\n", rcvData);
 

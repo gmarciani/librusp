@@ -1,17 +1,16 @@
 #include "rudp.h"
 
-static int PKT_RESOLUTION = 0;
-
+static int RUDP_DEBUG = 1;
 
 /* CONNECTION */
 
 int rudpListen(const int lport) {
-	int lsock;
 	struct sockaddr_in laddr;
-
-	lsock = _rudpOpenSocket();
+	int lsock;	
 
 	laddr = _rudpAddress("127.0.0.1", lport);
+
+	lsock = _rudpOpenSocket();	
 
 	_rudpReusableSocket(lsock);
 
@@ -20,38 +19,37 @@ int rudpListen(const int lport) {
 	return lsock;
 }
 
-rudpConnection_t rudpConnect(const struct sockaddr_in saddr) {
-	rudpConnection_t conn;
-	struct sockaddr_in asaddr;
-	int sock;
-	packet_t pktSYN;
-	packet_t pktSYNACK;
-	packet_t pktACKSYNACK;
+rudpconn_t rudpConnect(const char *ip, const int port) {
+	struct sockaddr_in lsaddr, asaddr;
+	rudpconn_t conn;
+	rudpsgm_t sgmSYN, sgmSYNACK, sgmACKSYNACK;
 
-	sock = _rudpOpenSocket();
+	lsaddr = _rudpAddress(ip, port);
 
-	_rudpCreatePacket(SYN, 0, 0, NULL, &pktSYN);
+	conn.sock = _rudpOpenSocket();
 
-	__rudpSendPacket(sock, saddr, pktSYN);
+	sgmSYN _rudpCreateSegment(_RUDP_VERSION, unsigned short int hdrs, unsigned short int ctrl, unsigned short int plds, const char *seqno, const char *ackno, const char *wndno, const char *pld);
+
+	__rudpSendPacket(conn.sock, lsaddr, pktSYN);
 
 	do {
 		__rudpReceivePacket(sock, &asaddr, &pktSYNACK);
 	} while (pktSYNACK.header.control != ACK);
 
-	_rudpConnectSocket(sock, asaddr);
+	_rudpConnectSocket(conn.sock, asaddr);
 
 	conn.sockfd = sock;
 	conn.local  = _rudpSocketLocal(conn.sockfd);
 	conn.peer   = _rudpSocketPeer(conn.sockfd);
 
-	_rudpCreatePacket(ACK, 0, 0, NULL, &pktACKSYNACK);
+	pktACKSYNACK = _rudpCreatePacket(ACK, 0, 0, NULL);
 
 	_rudpSendPacket(conn, pktACKSYNACK);
 
 	return conn;
 }
 
-rudpConnection_t rudpAccept(const int lsock) {
+void rudpAccept(rudpConn_t *conn) {
 	rudpConnection_t conn;
 	int sock;
 	struct sockaddr_in caddr;
@@ -83,7 +81,7 @@ rudpConnection_t rudpAccept(const int lsock) {
 	return conn;
 }
 
-void rudpDisconnect(rudpConnection_t *conn, int mode) {
+void rudpDisconnect(rudpConn_t *conn) {
 	switch (mode) {
 		case DCONN_SOFT:
 			_rudpCloseSocket(conn->sockfd);
@@ -94,30 +92,25 @@ void rudpDisconnect(rudpConnection_t *conn, int mode) {
 	}
 }
 
-void rudpCloseSocket(const int sockfd) {
-	_rudpCloseSocket(sockfd);
-}
-
-
 /* COMMUNICATION */
 
-void rudpSend(const rudpConnection_t conn, const char *message) {
+void rudpSend(const rudpConn_t *conn, const char *msg) {
 	packet_t *packets = NULL;
 	int numPackets;
 	int i;	
 
-	packets = _rudpPacketStream(message, &numPackets);
+	packets = _rudpPacketStream(msg, &numPackets);
 
 	for (i = 0; i < numPackets; i++) {
 		_rudpSendPacket(conn, packets[i]);
-		if (PKT_RESOLUTION)
+		if (RUDP_DEBUG)
 			_rudpPrintOutPacket(conn.peer, packets[i]);
 	}
 
 	free(packets);
 }
 
-char *rudpReceive(const rudpConnection_t conn) {
+char *rudpReceive(const rudpConn_t *conn, const size_t rcvSize) {
 	packet_t packet;
 	char *message = NULL;
 	char *buffer = NULL;
@@ -137,7 +130,7 @@ char *rudpReceive(const rudpConnection_t conn) {
 	do {
 		_rudpReceivePacket(conn, &packet);
 
-		if (PKT_RESOLUTION)
+		if (DEBUG)
 			_rudpPrintInPacket(conn.peer, packet);
 
 		buffer = strcat(buffer, packet.payload);
@@ -162,34 +155,4 @@ char *rudpReceive(const rudpConnection_t conn) {
 	free(buffer);
 
 	return message;
-}
-
-
-/* ADDRESS */
-
-struct sockaddr_in rudpAddress(const char *ip, const int port) {
-	return _rudpAddress(ip, port);
-}
-
-int rudpIsEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_in addrTwo) {
-	return _rudpIsEqualAddress(addrOne, addrTwo);
-}
-
-struct sockaddr_in rudpSocketAddress(const int sockfd) {
-	return _rudpSocketLocal(sockfd);
-}
-
-char *rudpGetAddress(const struct sockaddr_in addr) {
-	return _rudpGetAddress(addr);
-}
-
-int rudpGetPort(const struct sockaddr_in addr) {
-	return _rudpGetPort(addr);
-}
-
-
-/* SETTING */
-
-void rudpPacketResolution(const int resolution) {
-	PKT_RESOLUTION = resolution;
 }
