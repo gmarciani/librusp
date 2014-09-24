@@ -1,7 +1,5 @@
 #include "protocol/rudp.h"
 
-#define RCV_SIZE 10
-
 int main(int argc, char **argv) {
 	rudpConn_t conn;
 	int lsock;
@@ -11,7 +9,7 @@ int main(int argc, char **argv) {
 
 	conn = rudpAccept(lsock);
 
-	rcvData = rudpReceive(&conn, RCV_SIZE);
+	rcvData = rudpReceive(&conn);
 
 	printf("[Received] %s\n", rcvData);
 

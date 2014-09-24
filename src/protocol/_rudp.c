@@ -2,35 +2,130 @@
 
 static int _RUDP_DEBUG = 1;
 
-/* PACKET */
+/* CONNECTION */
+
+rudpconn_t _rudpConnInit() {
+	rudpconnt_t conn;
+
+	conn.version = _RUDP_VERSION;
+	conn.status = _RUDP_CONN_CLOSED;
+	conn.sock = _rudpOpenSocket();	
+	conn.seqno = _rudpGetISN();
+	conn.ackno = 0;
+	conn.wndn = _RUDP_WND;
+
+	return conn;
+}
+
+rudpconn_t _rudpASYNHandshake(const struct sockaddr_in laddr) {
+	rudpconn_t conn;
+	struct sockaddr_in aaddr;
+	rudpsgm_t syn, synack, acksynack;
+
+	conn = _rudpConnInit();
+
+	syn = _rudpCreateSegment(_RUDP_SYN, conn.lseqno, conn.lackno, conn.lwndno, NULL);
+
+	__rudpSendSegment(conn.sock, laddr, syn);
+
+	_rudpSocketTimeout(_RUP_ACK_TIMEOUT);
+
+	conn.lseqno = (conn.lseqno + 1) % ULONG_MAX;	
+
+	do {
+		synack = __rudpReceiveSegment(conn.sock, &aaddr);
+	while ((synack.hdr.ctrl != _RDUP_ACK) | (synack.ackno != conn.lseqno))
+
+	conn.status = _RUDP_CONN_SYN_SENT;
+
+	_rudpConnectSocket(conn.sock, aaddr);
+	conn.laddr = _rudpSocketLocal(conn.sock);
+	conn.paddr = _rudpSocketPeer(conn.sock);
+	conn.lackno = synack.hdr.seqno + 1;
+	conn.pwndno = synack.hdr.wndno;		
+
+	acksynack = _rudpCreateSegment(_RUDP_ACK, conn.lseqno, conn.lackno, conn.lwndno, NULL);
+	
+	_rudpSendSegment(&conn, acksynack);
+
+	conn.status = _RUDP_CONN_ESTABLISHED;
+
+	return conn;
+}
+
+rudpconn_t _rudpPSYNHandshake(const int lsock) {
+	rudpconn_t conn;
+	struct sockaddr_in caddr;
+	rudpsgm_t syn, synack, acksynack;
+
+	conn = _rudpConnInit();
+
+	do {
+		syn = __rudpReceiveSegment(lsock, &caddr);
+	} while (syn.hdr.ctrl != _RUDP_SYN);
+
+	conn.lackno = (syn.hdr.seqno + 1) % ULONG_MAX;
+	conn.pwndno = syn.hdr.wndno;
+
+	conn.status = _RUDP_CONN_SYN_RCVD;
+
+	synack = _rudpCreateSegment(_RUDP_ACK, conn.lseqno, conn.lackno, conn.lwndno, NULL);
+
+	__rudpSendSegment(conn.sock, caddr, synack);
+
+	do {
+		acksynack = __
+	} while (acksynack.hdr.ctrl != ACK) | );
+
+	conn.status = _RUDP_CONN_ESTABLISHED;
+
+	return conn;
+}
+
+void _rudpFINHanshake(rudpconn_t *conn) {
+
+}
+
+unsigned long int _rudpGetISN() {
+	unsigned long int isn;
+	struct timeval time;
+
+	gettimeofday(&time, NULL);
+	isn = (1000000 * time.tv_sec + time.tv_usec) % 4;
+
+	return isn;
+}
+
+/* SEGMENT */
 
 rudpsgm_t _rudpDeserializeSegment(const char *ssgm) {
 	rudpsgm_t sgm;
+	char *hdr, **hdrfields;
+	size_t hdrfieldssize[_RUDP_HDR_FIELDS] = {2, 2, 5, 10, 10, 10};
 	size_t pldsize;
-	char **fields;
-	int efields, i;
+	int i;
 
-	efields = 7;
+	hdr = stringNDuplication(ssgm, _RUDP_MAX_HDR);
 
-	fields = splitStringNByDelimiter(spkt, _RUDP_SGM_DEL, efields);
+	hdrfields = splitStringBySection(hdr, hdrfieldssize, _RUDP_HDR_FIELDS);
 
-	sgm.hdr.vers = (unsigned short int) atoi(fiels[0]);
-	sgm.hdr.ctrl = (unsigned short int) atoi(fiels[1]);
-	sgm.hdr.plds = (unsigned short int) atoi(fiels[2]);
-	sgm.hdr.sqnno = strtoul(fiels[3], NULL, 10);
-	sgm.hdr.ackno = strtoul(fiels[4], NULL, 10);
-	sgm.hdr.wndno = strtoul(fiels[5], NULL, 10);
+	sgm.hdr.vers = (unsigned short int) atoi(hdrfields[0]);
+	sgm.hdr.ctrl = (unsigned short int) atoi(hdrfields[1]);
+	sgm.hdr.plds = (unsigned short int) atoi(hdrfields[2]);
+	sgm.hdr.seqno = strtoul(hdrfields[3], NULL, 10);
+	sgm.hdr.ackno = strtoul(hdrfields[4], NULL, 10);
+	sgm.hdr.wndno = strtoul(hdrfields[5], NULL, 10);
 
 	pldsize = (sgm.hdr.plds < _RUDP_MAX_PLD) ? sgm.hdr.plds : _RUDP_MAX_PLD;
 
 	for (i = 0; i < pldsize; i++)
-		sgm.pld[i] = fields[6][i];
+		sgm.pld[i] = *(ssgm + _RUDP_MAX_HDR + i);
 
 	sgm.pld[i] = '\0';	
 
-	for (i = 0; i < efields; i++)
-		free(fields[i]);
-	free(fields);
+	for (i = 0; i < _RUDP_HDR_FIELDS; i++)
+		free(hdrfields[i]);
+	free(hdrfields);
 
 	return sgm;
 }
@@ -43,20 +138,21 @@ char *_rudpSerializeSegment(const rudpsgm_t sgm) {
 		exit(EXIT_FAILURE);
 	}
 
-	sprintf(ssgm, "%02d%s%d%s%d%s%d%s%d%s%d%s%d%s%s", sgm.hdr.vers, _RUDP_SGM_DEL, sgm.hdr.hdrs, _RUDP_SGM_DEL, sgm.hdr.ctrl, _RUDP_SGM_DEL, sgm.hdr.plds, _RUDP_SGM_DEL, sgm.hdr.seqno, _RUDP_SGM_DEL, sgm.hdr.ackno, _RUDP_SGM_DEL, sgm.hdr.wndno, _RUDP_SGM_DEL, sgm.pld);
+	sprintf(ssgm, "%02hu%02hu%05hu%010lu%010lu%010lu%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno,  sgm.pld);
 
 	return ssgm;
 }
 
 rudpsgm_t _rudpCreateSegment(const unsigned short int ctrl, unsigned long int seqno, unsigned long int ackno, unsigned long int wndno, const char *pld) {
 	rudpsgm_t sgm;
-	int i = 0;
+	size_t pldsize = 0;
+	int i;
 
-	sgm.vers = _RUDP_VERSION;
-	sgm.ctrl = ctrl;
-	sgm.sqnno = sqnno;
-	sgm.ackno = ackno;
-	sgm.wndno = wndno;
+	sgm.hdr.vers = _RUDP_VERSION;
+	sgm.hdr.ctrl = ctrl;
+	sgm.hdr.seqno = seqno;
+	sgm.hdr.ackno = ackno;
+	sgm.hdr.wndno = wndno;
 
 	if (pld) {
 		pldsize = (strlen(pld) < _RUDP_MAX_PLD) ? strlen(pld) : _RUDP_MAX_PLD;
@@ -64,9 +160,53 @@ rudpsgm_t _rudpCreateSegment(const unsigned short int ctrl, unsigned long int se
 			sgm.pld[i] = pld[i];
 	}
 
-	sgm.pld[i] = '\0';
+	sgm.pld[pldsize] = '\0';
+
+	sgm.hdr.plds = pldsize;
 
 	return sgm;	
+}
+
+/* STREAM */
+
+rupdstream_t _rudpSegmentStream(const char *msg) {
+	rudpstream_t stream;
+	char *chunks;
+	size_t chunksize;
+	int numchunks, i, j;
+
+	chunks = splitStringBySize(msg, _RUDP_MAX_PLD, &numchunks);
+
+	if (stream.segments = malloc(sizeof(rudpsgm_t) * numchunks)) {
+		fprintf(stderr, "Error in segment stream allocation.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for (i = 0; i < numchunks; i++) {
+		stream.segments[i].version = _RUDP_VERSION;
+		stream.segments[i].ctrl = _RUDP_DAT;
+		chunksize = strlen(chunks[i]);
+		for (j = 0; j < chunksize; j++) {
+			stream.segments[i].plds++;
+			stream.segments[i][j] = chunks[i][j];
+			stream.streamsize++;
+		}
+		stream.numsegments++;
+	}
+
+	for (i = 0; i < numchunks; i++) 
+		free(chunks[i]);
+	free(chunks);
+
+	return stream;
+}
+
+void _rudpSendStream(const rudpstream_t stream) {
+	
+}
+
+rudpstream_t _rudpReceiveStream(rudpconn_t *conn) {
+
 }
 
 /* COMMUNICATION */
@@ -109,51 +249,6 @@ rudpsgm_t _rudpReceiveSegment(const rudpconn_t conn) {
 		_rudpPrintInDatagram(conn.peer, ssgm);
 
 	sgm = _rudpDeserializeSegment(ssgm);
-
-	free(ssgm);
-
-	return sgm;
-}
-
-void __rudpSendSegment(const int sock, const struct sockaddr_in rcvaddr, const rudpsgm_t sgm) {
-	char *ssgm;
-
-	ssgm = _rudpSerializeSegment(sgm);
-
-	if (sendto(sock, ssgm, _RUDP_MAX_SGM, 0, (struct sockaddr *)&rcvaddr, sizeof(struct sockaddr_in)) == -1) {
-		fprintf(stderr, "Error in segment send: %s.\n", ssgm);
-		exit(EXIT_FAILURE);
-	}
-
-	if (_RUDP_DEBUG)
-		_rudpPrintOutDatagram(rcvaddr, ssgm);
-
-	free(ssgm);
-}
-
-rudpsgm_t __rudpReceiveSegment(const int sock, struct sockaddr_in *sndaddr) {
-	socklen_t socksize = sizeof(struct sockaddr_in);
-	rudpsgm_t sgm;	
-	char *ssgm;
-	ssize_t rcvd;
-
-	if (!(ssgm = malloc(sizeof(char) * (_RUDP_MAX_SGM + 1)))) {
-		fprintf(stderr, "Error in serialized segment allocation.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	rcvd = 0;
-	if ((rcvd = recvfrom(sock, ssgm, _RUDP_MAX_SGM, 0 ,(struct sockaddr *)sndaddr, &socksize)) == -1) {
-		fprintf(stderr, "Error in segment receive.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	ssgm[rcvd] = '\0';
-
-	if (_RUDP_DEBUG)
-		_rudpPrintInDatagram(*sndaddr, ssgm);
-
-	smg = _rudpDeserializeSegment(ssgm);
 
 	free(ssgm);
 
@@ -206,6 +301,19 @@ void _rudpReusableSocket(const int sock) {
 		fprintf(stderr, "Error in setsockopt: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+}
+
+void _rudpTimeoutSocket(const int sock, const long int timeout) {
+	struct timeval timer;
+
+	timer.tv_sec = 0;
+  	timer.tv_usec = timeout;
+
+	errno = 0;  
+  	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,&timer,sizeof(timer)) < 0) {
+      	fprintf(stderr, "Error in setsockopt: %s.\n", strerror(errno));
+		exit(EXIT_FAILURE);
+  	}
 }
 
 /* ADDRESS */
@@ -291,7 +399,7 @@ void _rudpPrintInSegment(const struct sockaddr_in sndaddr, const rudpsgm_t sgm) 
 	addr = _rudpGetAddress(sndaddr);
 	port = _rudpGetPort(sndaddr);
 
-	printf("[<- SGM] (%d) %s src: %s:%d vers:%hu hdrs:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu wndno:%lu pld:%s\n", getpid(), time, addr, port, sgm.hdr.vers, sgm.hdr.hdrs, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno, sgm.pld);
+	printf("[<- SGM] (%d) %s src: %s:%d vers:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu wndno:%lu pld:%s\n", getpid(), time, addr, port, sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno, sgm.pld);
 
 	free(time);
 	free(addr);
@@ -305,7 +413,7 @@ void _rudpPrintOutSegment(const struct sockaddr_in rcvaddr, const rudpsgm_t sgm)
 	addr = _rudpGetAddress(rcvaddr);
 	port = _rudpGetPort(rcvaddr);
 	
-	printf("[SGM ->] (%d) %s dst: %s:%d vers:%hu hdrs:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu wndno:%lu pld:%s\n", getpid(), time, addr, port, sgm.hdr.vers, sgm.hdr.hdrs, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno, sgm.pld);
+	printf("[SGM ->] (%d) %s dst: %s:%d vers:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu wndno:%lu pld:%s\n", getpid(), time, addr, port, sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.hdr.wndno, sgm.pld);
 
 	free(time);
 	free(addr);

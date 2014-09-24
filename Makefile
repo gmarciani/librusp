@@ -48,10 +48,10 @@ uninstall:
 
 # Tests
 
-test: setup util	
+test: setup padding
 
-util: $(TESTDIR)/util.c
-	$(CC) $(CFLAGS) $(TESTDIR)/util.c $(COMMON) -o $(BINDIR)/$(TESTPREFIX)$@
+padding: $(TESTDIR)/padding.c
+	$(CC) $(CFLAGS) $(TESTDIR)/padding.c $(PROTOCOL) $(COMMON) -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*

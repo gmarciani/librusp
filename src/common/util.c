@@ -166,20 +166,35 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 }
 
 char **splitStringBySize(const char *src, const size_t size, int *numSubstr) {
-	char **substr = NULL;
-	size_t srcSize;
+	char **substr;
+	size_t srcsize;
+	int i;
 
-	srcSize = strlen(src);
-	*numSubstr = (srcSize % size == 0) ? (srcSize / size) : ((srcSize / size) + 1);
+	srcsize = strlen(src);
+	*numSubstr = (srcsize % size == 0) ? (srcsize / size) : ((srcsize / size) + 1);
 
 	if (!(substr = malloc(sizeof(char *) * *numSubstr))) {
 		fprintf(stderr, "Error in substrings allocation for split: src=%s size=%zu.\n", src, size);
 		exit(EXIT_FAILURE);
 	}
-
-	int i;
+	
 	for (i = 0; i < *numSubstr; i++)
 		substr[i] = stringNDuplication(src + (i * size), size);
+
+	return substr;
+}
+
+char **splitStringBySection(const char *src, const size_t *ssize, const int numsubstr) {
+	char **substr;
+	int processed, i;
+
+	if (!(substr = malloc(sizeof(char *) * numsubstr))) {
+		fprintf(stderr, "Error in substrings allocation for split by section\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for (i = 0, processed = 0; i < numsubstr; i++, processed += ssize[i-1])
+		substr[i] = stringNDuplication(src + processed, ssize[i]);
 
 	return substr;
 }

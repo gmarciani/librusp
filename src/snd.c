@@ -1,7 +1,5 @@
 #include "protocol/rudp.h"
 
-#define RCV_SIZE 20
-
 int main(int argc, char **argv) {
 	rudpConn_t conn;
 	char *sndData, *rcvData;
@@ -12,7 +10,7 @@ int main(int argc, char **argv) {
 
 	rudpSend(&conn, data);
 
-	rcvData = rudpReceive(&conn, RCV_SIZE);
+	rcvData = rudpReceive(&conn);
 
 	printf("[Received]> %s\n", rcvData);
 

@@ -24,6 +24,8 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 
 char **splitStringBySize(const char *src, const size_t size, int *numSubstr);
 
+char **splitStringBySection(const char *src, const size_t *ssize, const int numsubstr);
+
 char *arraySerialization(char **array, const int numItems, const char *delim);
 
 char **arrayDeserialization(const char *sarray, const char *delim, int *numItems);
