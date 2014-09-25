@@ -1,5 +1,5 @@
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef STRING_UTIL_H_
+#define STRING_UTIL_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,4 +30,4 @@ char *arraySerialization(char **array, const int numItems, const char *delim);
 
 char **arrayDeserialization(const char *sarray, const char *delim, int *numItems);
 
-#endif /* UTIL_H_ */
+#endif /* STRING_UTIL_H_ */

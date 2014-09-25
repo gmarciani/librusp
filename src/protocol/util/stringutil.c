@@ -1,4 +1,4 @@
-#include "util.h"
+#include "stringutil.h"
 
 char *getTime(void) {
 	char *str = NULL;

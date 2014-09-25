@@ -1,57 +1,61 @@
 #include "rudp.h"
 
-static int RUDP_DEBUG = 1;
-
 /* CONNECTION */
 
 int rudpListen(const int lport) {
 	struct sockaddr_in laddr;
 	int lsock;	
 
-	laddr = _rudpAddress("127.0.0.1", lport);
+	laddr = createAddress("127.0.0.1", lport);
 
-	lsock = _rudpOpenSocket();	
+	lsock = openSocket();	
 
-	_rudpReusableSocket(lsock);
+	setSocketReusable(lsock);
 
-	_rudpBindSocket(lsock, &laddr);
+	bindSocket(lsock, &laddr);
 
 	return lsock;
 }
 
-rudpconn_t rudpConnect(const char *ip, const int port) {
+Connection rudpConnect(const char *ip, const int port) {
 	struct sockaddr_in lsaddr;
-	rudpconn_t conn;
+	Connection conn;
 
-	lsaddr = _rudpAddress(ip, port);
+	lsaddr = createAddress(ip, port);
 
-	conn = _rudpASYNHandshake(lsaddr);
+	conn = synchronizeConnection(lsaddr);
 
 	return conn;
 }
 
-rudpconn_t rudpAccept(const int lsock) {
-	rudpconn_t conn;
+Connection rudpAccept(const int lsock) {
+	Connection conn;
+
+	conn = acceptSynchonization(lsock);
+
+	return conn;
+}
+
+void rudpDisconnect(Connection *conn) {
+	desynchronizeConnection(conn);
 	
-	conn = _rudpPSYNHandshake(lsock)
-
-	return conn;
-}
-
-void rudpDisconnect(rudpConn_t *conn) {
-	_rudpFINHanshake(conn);
+	destroyConnection(conn);
 }
 
 /* COMMUNICATION */
 
-void rudpSend(const rudpConn_t *conn, const char *msg) {
-	rudpstream_t stream;
+void rudpSend(Connection *conn, const char *msg) {
+	Stream stream;
 
-	stream = _rudpSegmentStream(msg);
+	stream = createStream(msg);
 
-	_rudpSendStream(conn, stream);
+	sendStream(conn, stream);
 }
 
-char *rudpReceive(const rudpConn_t *conn) {
-	_rudpReceiveStream(conn);
+char *rudpReceive(Connection *conn, const size_t size) {
+	char *msg;
+
+	msg = receiveStream(conn, size);
+
+	return msg;
 }

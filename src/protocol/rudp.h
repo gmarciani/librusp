@@ -1,20 +1,22 @@
-#ifndef RUDP_H_
-#define RUDP_H_
+#ifndef _RUDP_H_
+#define _RUDP_H_
 
-#include "_rudp.h"
+#include "core/rudpcore.h"
+
+/* CONNECTION */
 
 int rudpListen(const int lport);
 
-rudpconn_t rudpConnect(const char *ip, const int port);
+Connection rudpConnect(const char *ip, const int port);
 
-rudpconn_t rudpAccept(const int lsock);
+Connection rudpAccept(const int lsock);
 
-void rudpDisconnect(rudpconn_t *conn);
+void rudpDisconnect(Connection *conn);
 
 /* COMMUNICATIONS */
 
-void rudpSend(rudpconn_t *conn, const char *msg);
+void rudpSend(Connection *conn, const char *msg);
 
-char *rudpReceive(rudpconn_t *conn);
+char *rudpReceive(Connection *conn, const size_t size);
 
-#endif /* RUDP_H_ */
+#endif /* _RUDP_H_ */

@@ -6,14 +6,12 @@ CC = gcc
 
 CFLAGS = -g -Wall -O3
 
-PROGCAP = sudo setcap "cap_sys_chroot=+pe"
-
-ACCESSMODE = sudo chmod 0775
-
 
 # Sources
 
 SRCDIR = src
+
+PROTOCOLDIR = $(SRCDIR)/protocol
 
 BINDIR = bin
 
@@ -24,9 +22,13 @@ TESTPREFIX = test_
 
 # Dependencies
 
-PROTOCOL = $(addprefix $(SRCDIR)/, protocol/rudp.h protocol/rudp.c protocol/_rudp.h protocol/_rudp.c)
+PROTOCOL_LIBS = -lpthread
 
-COMMON = $(addprefix $(SRCDIR)/, common/util.h common/util.c)
+PROTOCOL_UTILS = $(addprefix $(PROTOCOLDIR)/util/, sockmng.h sockmng.c addrutil.h addrutil.c stringutil.h stringutil.c)
+
+PROTOCOL_CORE = $(addprefix $(PROTOCOLDIR)/core/, rudpcore.h rudpcore.c rudpqueue.h rudpqueue.c rudpsegment.h rudpsegment.c)
+
+PROTOCOL =  $(addprefix $(PROTOCOLDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) $(PROTOCOL_UTILS) $(PROTOCOL_LIBS)
 
 
 # RUDP Installation
@@ -34,10 +36,10 @@ COMMON = $(addprefix $(SRCDIR)/, common/util.h common/util.c)
 install: setup rcv snd
 
 rcv: $(SRCDIR)/rcv.c
-	$(CC) $(CFLAGS) $(SRCDIR)/rcv.c $(SERVICE) $(PROTOCOL) $(COMMON) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $(SRCDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$@
 
 snd: $(SRCDIR)/snd.c
-	$(CC) $(CFLAGS) $(SRCDIR)/snd.c $(SERVICE) $(PROTOCOL) $(COMMON) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $(SRCDIR)/snd.c $(PROTOCOL) -o $(BINDIR)/$@
 
 
 # RUDP Uninstallation
@@ -48,10 +50,13 @@ uninstall:
 
 # Tests
 
-test: setup padding
+test: setup sgm thread
 
-padding: $(TESTDIR)/padding.c
-	$(CC) $(CFLAGS) $(TESTDIR)/padding.c $(PROTOCOL) $(COMMON) -o $(BINDIR)/$(TESTPREFIX)$@
+sgm: $(TESTDIR)/sgm.c
+	$(CC) $(CFLAGS) $(TESTDIR)/sgm.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+
+thread: $(TESTDIR)/thread.c
+	$(CC) $(CFLAGS) $(TESTDIR)/thread.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*
@@ -61,4 +66,3 @@ clean-test:
 
 setup: 
 	mkdir -pv $(BINDIR)
-	$(ACCESSMODE) $(BINDIR)
