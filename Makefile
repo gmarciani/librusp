@@ -11,8 +11,6 @@ CFLAGS = -g -Wall -O3
 
 SRCDIR = src
 
-PROTOCOLDIR = $(SRCDIR)/protocol
-
 BINDIR = bin
 
 TESTDIR = src/test
@@ -22,24 +20,27 @@ TESTPREFIX = test_
 
 # Dependencies
 
-PROTOCOL_LIBS = -lpthread
+PROTOCOL_LIBS = -lpthread -lm
 
-PROTOCOL_UTILS = $(addprefix $(PROTOCOLDIR)/util/, sockmng.h sockmng.c addrutil.h addrutil.c stringutil.h stringutil.c)
+PROTOCOL_UTILS = $(addprefix $(SRCDIR)/util/, sockmng.h sockmng.c addrutil.h addrutil.c timerutil.h timerutil.c stringutil.h stringutil.c)
 
-PROTOCOL_CORE = $(addprefix $(PROTOCOLDIR)/core/, rudpcore.h rudpcore.c rudpqueue.h rudpqueue.c rudpsegment.h rudpsegment.c)
+PROTOCOL_CORE = $(addprefix $(SRCDIR)/core/, rudpcore.h rudpcore.c rudpqueue.h rudpqueue.c rudpsegment.h rudpsegment.c)
 
-PROTOCOL =  $(addprefix $(PROTOCOLDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) $(PROTOCOL_UTILS) $(PROTOCOL_LIBS)
+PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) $(PROTOCOL_UTILS) $(PROTOCOL_LIBS)
 
 
 # Tests
 
-test: setup snd rcv sgm thread
+test: setup snd rcv timer sgm thread
 
 rcv: $(TESTDIR)/rcv.c
 	$(CC) $(CFLAGS) $(TESTDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 snd: $(TESTDIR)/snd.c
 	$(CC) $(CFLAGS) $(TESTDIR)/snd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+
+timer: $(TESTDIR)/timer.c
+	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 sgm: $(TESTDIR)/sgm.c
 	$(CC) $(CFLAGS) $(TESTDIR)/sgm.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@

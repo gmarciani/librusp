@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h> 
-#include "../protocol/util/stringutil.h"
+#include "../util/stringutil.h"
 
 #define MAX_INPIPE 2;
 

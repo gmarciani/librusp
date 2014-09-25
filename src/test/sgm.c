@@ -1,4 +1,4 @@
-#include "../protocol/core/rudpsegment.h"
+#include "../core/rudpsegment.h"
 
 int main(void) {
 	Segment sgm;

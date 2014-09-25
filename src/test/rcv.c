@@ -1,4 +1,4 @@
-#include "../protocol/rudp.h"
+#include "../rudp.h"
 
 int main(int argc, char **argv) {
 	Connection conn;
