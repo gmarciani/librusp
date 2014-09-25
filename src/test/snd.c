@@ -1,16 +1,16 @@
-#include "protocol/rudp.h"
+#include "../protocol/rudp.h"
 
 int main(int argc, char **argv) {
-	rudpConn_t conn;
+	Connection conn;
 	char *sndData, *rcvData;
 
 	conn = rudpConnect(argv[1], atoi(argv[2]));
 
 	sndData = getUserInput("[To Send]>");
 
-	rudpSend(&conn, data);
+	rudpSend(&conn, sndData);
 
-	rcvData = rudpReceive(&conn);
+	rcvData = rudpReceive(&conn, 5);
 
 	printf("[Received]> %s\n", rcvData);
 

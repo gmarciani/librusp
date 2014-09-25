@@ -1,21 +1,23 @@
-#include "protocol/rudp.h"
+#include "../protocol/rudp.h"
 
 int main(int argc, char **argv) {
-	rudpConn_t conn;
+	Connection conn;
 	int lsock;
-	char *sndData, *rcvData;
+	char *data;
 
 	lsock = rudpListen(atoi(argv[1]));	
 
 	conn = rudpAccept(lsock);
 
-	rcvData = rudpReceive(&conn);
+	data = rudpReceive(&conn, 10);
 
-	printf("[Received] %s\n", rcvData);
+	printf("[Received] %s\n", data);
 
-	rudpSend(&conn, rcvData);
+	rudpSend(&conn, data);
 
 	rudpDisconnect(&conn);
+
+	free(data);
 
 	return(EXIT_SUCCESS);
 }

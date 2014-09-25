@@ -31,26 +31,15 @@ PROTOCOL_CORE = $(addprefix $(PROTOCOLDIR)/core/, rudpcore.h rudpcore.c rudpqueu
 PROTOCOL =  $(addprefix $(PROTOCOLDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) $(PROTOCOL_UTILS) $(PROTOCOL_LIBS)
 
 
-# RUDP Installation
-
-install: setup rcv snd
-
-rcv: $(SRCDIR)/rcv.c
-	$(CC) $(CFLAGS) $(SRCDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$@
-
-snd: $(SRCDIR)/snd.c
-	$(CC) $(CFLAGS) $(SRCDIR)/snd.c $(PROTOCOL) -o $(BINDIR)/$@
-
-
-# RUDP Uninstallation
-	
-uninstall: 
-	rm -fv $(BINDIR)/*
-
-
 # Tests
 
-test: setup sgm thread
+test: setup snd rcv sgm thread
+
+rcv: $(TESTDIR)/rcv.c
+	$(CC) $(CFLAGS) $(TESTDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+
+snd: $(TESTDIR)/snd.c
+	$(CC) $(CFLAGS) $(TESTDIR)/snd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 sgm: $(TESTDIR)/sgm.c
 	$(CC) $(CFLAGS) $(TESTDIR)/sgm.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@

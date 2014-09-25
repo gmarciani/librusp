@@ -2,16 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h> 
-#include "../common/util.h"
+#include "../protocol/util/stringutil.h"
 
 #define MAX_INPIPE 2;
 
 typedef struct mailbox_t {
 	char *outbox;
 	size_t outboxs;
-	char *
-	char *inbox;
-	size_t inboxs;
 } mailbox_t;
 
 void send(mailbox_t *mail, const char *str);
@@ -21,8 +18,7 @@ static void *processOutbox(void *arg);
 int main(void) {
 	mailbox_t mail;
 
-	send(&mail, "12345678910");
-	free(input);
+	send(&mail, "0123456789");
 	
 	return(EXIT_SUCCESS);	
 }
@@ -54,15 +50,13 @@ void send(mailbox_t *mail, const char *str) {
 static void *processOutbox(void *arg) {
 	mailbox_t *mail = (mailbox_t *) arg;
 	long int sent = 0;
-	int i = 0
+	int i;
 
-	while (mail->outboxs >= 0) {
-		for (i = 0; i < mail->outboxs && i < ; i++) {
-			mail->outbox[i] = '\0';
-			mail->outboxs--;
-			sent++;
-		}
-	}	
+	for (i = mail->outboxs - 1; i >= 0; i--) {
+		mail->outbox[i] = '\0';
+		mail->outboxs--;
+		sent++;
+	}
 
 	return (void *) sent;
 }
