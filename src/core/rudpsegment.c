@@ -266,12 +266,9 @@ void submitAck(SegmentList *list, const unsigned long ackno) {
 
 	curr = list->wndbase;
 	while (curr) {
-		if (list->wndend) {
-			if (curr == list->wndend->next) {
-				puts("current segment outside wnd");
-				break;
-			}
-		}			
+		if (list->wndend)
+			if (curr == list->wndend->next)
+				break;		
 		if (ackno == (curr->segment->hdr.seqno + ((curr->segment->hdr.plds == 0) ? 1 : curr->segment->hdr.plds))) {
 			curr->status = _RUDP_ACKED;
 			_slideWindow(list);
@@ -282,35 +279,26 @@ void submitAck(SegmentList *list, const unsigned long ackno) {
 }
 
 void _slideWindow(SegmentList *list) {
-	puts("sliding wnd");
 	while (list->wndbase) {
 		if (list->wndbase->status != _RUDP_ACKED)
 			break;
-		puts("increementing wndbase");
 		list->wndbase = list->wndbase->next;
 		if (list->wndend == list->tail) {
-			puts("minus _awndsize wndend=tail");
 			list->wndend = NULL;
 			list->_awndsize--;
 		} else if (list->wndend == NULL) {
-			puts("minus _awndsize");
 			list->_awndsize--;
 		} else {
-			puts("increementing wndend");
 			list->wndend = list->wndend->next;
 		}
-		if (list->wndbase != NULL) {
-			puts("removing prev wndbase");
+		if (list->wndbase != NULL)
 			_removeElement(list, list->wndbase->prev);
-		} else {
-			puts("removing head");
-			_removeElement(list, list->head);
-		}		
+		else
+			_removeElement(list, list->head);	
 	}
 }
 
 void _removeElement(SegmentList *list, Element *elem) {
-	puts("removing element");
 	if (!elem)
 		return;
 
@@ -330,7 +318,6 @@ void _removeElement(SegmentList *list, Element *elem) {
 	free(elem->segment);
 	free(elem);
 	list->size--;
-	puts("element removed");
 }
 
 char *listToString(const SegmentList list) {
