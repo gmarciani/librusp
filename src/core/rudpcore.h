@@ -14,7 +14,6 @@
 #include <limits.h>
 
 #include "rudpsegment.h"
-#include "rudpqueue.h"
 #include "../util/stringutil.h"
 #include "../util/addrutil.h"
 #include "../util/sockmng.h"
@@ -36,7 +35,7 @@ typedef struct Connection {
 	int sock;
 	struct sockaddr_in laddr;
 	struct sockaddr_in paddr;
-	sgmqueue_t unacksgm;
+	SegmentList unacksgm;
 	unsigned long int seqno;	// fin dove ho inviato
 	unsigned long int lastack;	// fin dove ho correttamente inviato
 	unsigned long int ackno;	// fin dove ho ricevuto

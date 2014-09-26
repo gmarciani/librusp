@@ -1,5 +1,7 @@
 #include "rudpsegment.h"
 
+/* SEGMENT */
+
 const static size_t _RUDP_HDR_FIELDS_SIZE[_RUDP_HDR_FIELDS] = {2, 2, 5, 10, 10};
 
 Segment createSegment(const unsigned short ctrl, unsigned long seqno, unsigned long ackno, const char *pld) {
@@ -27,7 +29,8 @@ Segment createSegment(const unsigned short ctrl, unsigned long seqno, unsigned l
 
 Segment deserializeSegment(const char *ssgm) {
 	Segment sgm;
-	char *hdr, **hdrf;
+	char *hdr = NULL;
+	char **hdrf = NULL;
 	size_t pldsize;
 	int i;
 
@@ -56,7 +59,7 @@ Segment deserializeSegment(const char *ssgm) {
 }
 
 char *serializeSegment(const Segment sgm) {
-	char *ssgm;
+	char *ssgm = NULL;
 
 	if (!(ssgm = malloc(sizeof(char) * (_RUDP_MAX_SGM + 1)))) {
 		fprintf(stderr, "Error in serialized segment allocation.\n");
@@ -68,57 +71,88 @@ char *serializeSegment(const Segment sgm) {
 	return ssgm;
 }
 
+char *segmentToString(const Segment sgm) {
+	char *str = NULL;
+
+	if (!(str = malloc(sizeof(char) * (_RUDP_MAX_SGM_OUTPUT + 1)))) {
+		fprintf(stderr, "Error in segment to string allocation.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	sprintf(str, "vers:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu pld:%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.pld);
+
+	return str;
+}
+
 void printInSegment(const struct sockaddr_in sndaddr, const Segment sgm) {
-	char *time, *addr;
+	char *time;
+	char *addr = NULL;
+	char *strsgm = NULL;
 	int port;
 
 	time = getTime();
 	addr = getIp(sndaddr);
 	port = getPort(sndaddr);
+	strsgm = segmentToString(sgm);
 
-	printf("[<- SGM] %s src: %s:%d vers:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu pld:%s\n", time, addr, port, sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.pld);
+	printf("[<- SGM] %s src: %s:%d %s\n", time, addr, port, strsgm);
 
 	free(time);
 	free(addr);
+	free(strsgm);
 }
 
 void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm) {
-	char *time, *addr;
+	char *time;
+	char *addr = NULL;
+	char *strsgm = NULL;
 	int port;
 
 	time = getTime();
 	addr = getIp(rcvaddr);
 	port = getPort(rcvaddr);
+	strsgm = segmentToString(sgm);
 	
-	printf("[SGM ->] %s dst: %s:%d vers:%hu ctrl:%hu plds:%hu seqno:%lu ackno:%lu pld:%s\n", time, addr, port, sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.plds, sgm.hdr.seqno, sgm.hdr.ackno, sgm.pld);
+	printf("[SGM ->] %s dst: %s:%d %s\n", time, addr, port, strsgm);
 
 	free(time);
 	free(addr);
+	free(strsgm);
 }
+
+/* STREAM */
 
 Stream createStream(const char *msg) {
 	Stream stream;
-	char **chunks;
+	char **chunks = NULL;
 	size_t chunksize;
-	int numchunks, i, j;
+	int numchunks = 0;
+	int i, j;
+
+	stream.segments = NULL;
+	stream.size = 0;
+	stream.len = 0;
 
 	chunks = splitStringBySize(msg, _RUDP_MAX_PLD, &numchunks);
 
 	if (!(stream.segments = malloc(sizeof(Segment) * numchunks))) {
 		fprintf(stderr, "Error in segment stream allocation.\n");
 		exit(EXIT_FAILURE);
-	}
+	}	
 
 	for (i = 0; i < numchunks; i++) {
 		stream.segments[i].hdr.vers = _RUDP_VERSION;
 		stream.segments[i].hdr.ctrl = _RUDP_DAT;
+		stream.segments[i].hdr.seqno = 0;
+		stream.segments[i].hdr.ackno = 0;
 		chunksize = strlen(chunks[i]);
 		for (j = 0; j < chunksize; j++) {
 			stream.segments[i].hdr.plds++;
 			stream.segments[i].pld[j] = chunks[i][j];
-			stream.streamsize++;
+			stream.len++;
 		}
-		stream.numsegments++;
+		stream.segments[i].pld[j] = '\0';
+		stream.size++;
 	}
 
 	stream.segments[i - 1].hdr.ctrl = _RUDP_EOS;
@@ -128,4 +162,207 @@ Stream createStream(const char *msg) {
 	free(chunks);
 
 	return stream;
+}
+
+void freeStream(Stream *stream) {
+	if (stream->segments)
+		free(stream->segments);		
+	stream->size = 0;
+	stream->len = 0;
+}
+
+/* LIST OF SEGMENTS */
+
+SegmentList createSegmentList(const unsigned long isn, const unsigned long wndsize) {
+	SegmentList list;
+
+	if (wndsize == 0) {
+		fprintf(stderr, "Cannot create segment list with window size to zero.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	list.head = NULL;
+	list.tail = NULL;
+	list.wndbase = NULL;
+	list.wndend = NULL;
+	list.size = 0;
+	list.nextseqno = isn;
+	list.wndsize = wndsize;	
+	list._awndsize = 0;
+
+	return list;
+}
+
+void freeSegmentList(SegmentList *list) {
+	Element *curr = NULL;
+
+	curr = list->head;
+	while (curr) {
+		if (curr->prev) {
+			free(curr->prev->segment);
+			free(curr->prev);
+		}
+		if (curr == list->tail) {
+			free(curr->segment);
+			free(curr);
+			break;
+		}
+		curr = curr->next;
+	}
+
+	list->head = NULL;
+	list->tail = NULL;
+	list->wndbase = NULL;
+	list->wndend = NULL;
+	list->size = 0;
+	list->nextseqno = 0;
+	list->wndsize = 0;
+	list->_awndsize = 0;	
+}
+
+void submitSegment(SegmentList *list, const Segment sgm) {
+	Element *new = NULL;
+
+	if (!(new = malloc(sizeof(Element)))) {
+		fprintf(stderr, "Cannot allocate memory for element insertion.\n");
+		exit(EXIT_FAILURE);
+	}	
+
+	if (!(new->segment = malloc(sizeof(Segment)))) {
+		fprintf(stderr, "Cannot allocate memory for segment insertion.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	new->status = _RUDP_UNACKED;	
+
+	new->segment = memcpy(new->segment, &sgm, sizeof(Segment));
+	new->segment->hdr.seqno = list->nextseqno;
+	list->nextseqno += (new->segment->hdr.plds == 0) ? 1 : new->segment->hdr.plds;
+
+	if (list->size == 0) {
+		new->prev = NULL;
+		new->next = NULL;
+		list->head = new;
+		list->tail = new;
+		list->wndbase = new;
+		list->wndend = new;
+		list->_awndsize++;
+	} else {
+		new->prev = list->tail;
+		new->next = NULL;
+		list->tail->next = new;
+		list->tail = new;
+		if (list->_awndsize < list->wndsize) {
+			list->wndend = new;
+			list->_awndsize++;
+		}			
+	}	
+	
+	list->size++;	
+}
+
+void submitAck(SegmentList *list, const unsigned long ackno) {
+	Element *curr;
+
+	curr = list->wndbase;
+	while (curr) {
+		if (list->wndend) {
+			if (curr == list->wndend->next) {
+				puts("current segment outside wnd");
+				break;
+			}
+		}			
+		if (ackno == (curr->segment->hdr.seqno + ((curr->segment->hdr.plds == 0) ? 1 : curr->segment->hdr.plds))) {
+			curr->status = _RUDP_ACKED;
+			_slideWindow(list);
+			break;
+		}
+		curr = curr->next;
+	}
+}
+
+void _slideWindow(SegmentList *list) {
+	puts("sliding wnd");
+	while (list->wndbase) {
+		if (list->wndbase->status != _RUDP_ACKED)
+			break;
+		puts("increementing wndbase");
+		list->wndbase = list->wndbase->next;
+		if (list->wndend == list->tail) {
+			puts("minus _awndsize wndend=tail");
+			list->wndend = NULL;
+			list->_awndsize--;
+		} else if (list->wndend == NULL) {
+			puts("minus _awndsize");
+			list->_awndsize--;
+		} else {
+			puts("increementing wndend");
+			list->wndend = list->wndend->next;
+		}
+		if (list->wndbase != NULL) {
+			puts("removing prev wndbase");
+			_removeElement(list, list->wndbase->prev);
+		} else {
+			puts("removing head");
+			_removeElement(list, list->head);
+		}		
+	}
+}
+
+void _removeElement(SegmentList *list, Element *elem) {
+	puts("removing element");
+	if (!elem)
+		return;
+
+	if ((list->head == elem) && (list->tail == elem)) {
+		list->head = NULL;
+		list->tail = NULL;				
+	} else if (list->head == elem) {
+		list->head = elem->next;
+		list->head->prev = NULL;
+	} else if (list->tail == elem) {
+		list->tail = elem->prev;
+		list->tail->next = NULL;
+	} else {
+		elem->prev->next = elem->next;
+		elem->next->prev = elem->prev;		
+	}
+	free(elem->segment);
+	free(elem);
+	list->size--;
+	puts("element removed");
+}
+
+char *listToString(const SegmentList list) {
+	Element *curr = NULL;
+	char *strlist = NULL;
+	char *strsgm = NULL;
+
+	if (!(strlist = malloc(sizeof(char) * (1 + list.size * (_RUDP_MAX_SGM_OUTPUT + 5 + 1))))) {
+		fprintf(stderr, "Cannot allocate string for list to string.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	strlist[0] = '\0';
+
+	curr = list.head;
+	while (curr) {
+		if (curr == list.wndbase)
+			strcat(strlist, "<\t");
+		else if (curr == list.wndend)
+			strcat(strlist, ">\t");
+		else
+			strcat(strlist, " \t");
+		if (curr->status == _RUDP_ACKED)
+			strcat(strlist, "A ");
+		else
+			strcat(strlist, "U ");
+		strsgm = segmentToString(*(curr->segment));
+		strcat(strlist, strsgm);
+		strcat(strlist, "\n");
+		curr = curr->next;
+		free(strsgm);
+	}
+
+	return strlist;
 }
