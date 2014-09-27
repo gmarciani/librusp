@@ -31,7 +31,7 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) $(PROTOCOL_U
 
 # Tests
 
-test: setup snd rcv list stream sgm thread timer
+test: setup snd rcv list stream sgm thread timer struct
 
 rcv: $(TESTDIR)/rcv.c
 	$(CC) $(CFLAGS) $(TESTDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -53,6 +53,9 @@ thread: $(TESTDIR)/thread.c
 
 timer: $(TESTDIR)/timer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+
+struct: $(TESTDIR)/struct.c
+	$(CC) $(CFLAGS) $(TESTDIR)/struct.c -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*

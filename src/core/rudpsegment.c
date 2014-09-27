@@ -54,6 +54,7 @@ Segment deserializeSegment(const char *ssgm) {
 	for (i = 0; i < _RUDP_HDR_FIELDS; i++)
 		free(hdrf[i]);
 	free(hdrf);
+	free(hdr);
 
 	return sgm;
 }
@@ -183,12 +184,12 @@ SegmentList createSegmentList(const unsigned long isn, const unsigned long wndsi
 
 	list.head = NULL;
 	list.tail = NULL;
+	list.size = 0;
 	list.wndbase = NULL;
 	list.wndend = NULL;
-	list.size = 0;
-	list.nextseqno = isn;
 	list.wndsize = wndsize;	
-	list._awndsize = 0;
+	list.awndsize = 0;	
+	list.nextseqno = isn;	
 
 	return list;
 }
@@ -211,13 +212,13 @@ void freeSegmentList(SegmentList *list) {
 	}
 
 	list->head = NULL;
-	list->tail = NULL;
-	list->wndbase = NULL;
-	list->wndend = NULL;
+	list->tail = NULL;	
 	list->size = 0;
-	list->nextseqno = 0;
+	list->wndbase = NULL;
+	list->wndend = NULL;	
 	list->wndsize = 0;
-	list->_awndsize = 0;	
+	list->awndsize = 0;	
+	list->nextseqno = 0;
 }
 
 void submitSegment(SegmentList *list, const Segment sgm) {
@@ -246,15 +247,15 @@ void submitSegment(SegmentList *list, const Segment sgm) {
 		list->tail = new;
 		list->wndbase = new;
 		list->wndend = new;
-		list->_awndsize++;
+		list->awndsize++;
 	} else {
 		new->prev = list->tail;
 		new->next = NULL;
 		list->tail->next = new;
 		list->tail = new;
-		if (list->_awndsize < list->wndsize) {
+		if (list->awndsize < list->wndsize) {
 			list->wndend = new;
-			list->_awndsize++;
+			list->awndsize++;
 		}			
 	}	
 	
@@ -285,9 +286,9 @@ void _slideWindow(SegmentList *list) {
 		list->wndbase = list->wndbase->next;
 		if (list->wndend == list->tail) {
 			list->wndend = NULL;
-			list->_awndsize--;
+			list->awndsize--;
 		} else if (list->wndend == NULL) {
-			list->_awndsize--;
+			list->awndsize--;
 		} else {
 			list->wndend = list->wndend->next;
 		}

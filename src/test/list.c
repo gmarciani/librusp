@@ -10,6 +10,7 @@ int main(void) {
 	SegmentList list;
 	char *input = NULL;
 	char *strlist = NULL;
+	char *strsgm = NULL;
 	int i;
 
 	list = createSegmentList(ISN, WNDSIZE);
@@ -22,7 +23,7 @@ int main(void) {
 		submitSegment(&list, stream.segments[i]);
 
 	strlist = listToString(list);
-	printf("%s\nList size: %lu Actual Window Size: %lu\n", strlist, list.size, list._awndsize);
+	printf("%s\nList size: %lu Max Window Size: %lu Actual Window Size: %lu\n", strlist, list.size, list.wndsize, list.awndsize);
 
 	free(strlist);
 	free(input);
@@ -35,7 +36,19 @@ int main(void) {
 		}			
 		submitAck(&list, strtoul(input, NULL, 10));
 		strlist = listToString(list);
-		printf("%s\nList size: %lu Actual Window Size: %lu\n", strlist, list.size, list._awndsize);
+		printf("%s\nList size: %lu Max Window Size: %lu Actual Window Size: %lu\n", strlist, list.size, list.wndsize, list.awndsize);	
+		Element *curr = list.wndbase;
+		while (curr) {
+			if (list.wndend)
+				if (curr == list.wndend->next)
+					break;
+			if (curr->status == _RUDP_UNACKED) {
+				strsgm = segmentToString(*(curr->segment));
+				printf("To retransmit: %s\n", strsgm);
+				free(strsgm);
+			}
+			curr = curr->next;
+		}
 		free(strlist);
 		free(input);
 	}	

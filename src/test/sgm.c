@@ -12,6 +12,8 @@ int main(void) {
 
 	sgm = deserializeSegment(ssgm);
 
+	free(ssgm);
+
 	ssgm = serializeSegment(sgm);
 
 	printf("Serialized: %s\n", ssgm);

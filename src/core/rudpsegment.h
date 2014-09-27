@@ -11,11 +11,11 @@
 #define _RUDP_VERSION 1
 
 #define _RUDP_HDR_FIELDS	5
-#define _RUDP_MAX_HDR 		(2 * 2) + (1 * 5) + (2 * 10)
+#define _RUDP_MAX_HDR 		29
 #define _RUDP_MAX_PLD 		5
-#define _RUDP_MAX_SGM		(2 * 2) + (1 * 5) + (2 * 10) + 5	
+#define _RUDP_MAX_SGM		34	
 
-#define _RUDP_MAX_SGM_OUTPUT (2 * 2) + (1 * 5) + (2 * 10) + 5 + 35
+#define _RUDP_MAX_SGM_OUTPUT 79
 
 #define _RUDP_SYN 	0
 #define _RUDP_FIN	1
@@ -59,9 +59,9 @@ typedef struct SegmentList {
 	Element *wndbase;
 	Element *wndend;	
 	unsigned long size;
-	unsigned long nextseqno;
 	unsigned long wndsize;	
-	unsigned long _awndsize;
+	unsigned long awndsize;
+	unsigned long nextseqno;
 } SegmentList;
 
 /* SEGMENT */
