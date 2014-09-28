@@ -36,6 +36,8 @@ void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm);
 
 void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn);
 
+Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno);
+
 void _slideOutboxWindow(SegmentOutbox *outbox);
 
 void _removeOutboxElement(SegmentOutbox *outbox, OutboxElement *elem);

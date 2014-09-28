@@ -103,6 +103,34 @@ void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn) {
 	}
 }
 
+Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno) {
+	Segment *retrans = NULL;
+	OutboxElement *curr = NULL;
+
+	if (!(retrans = malloc(sizeof(Segment) * outbox->awnds))) {
+		fprintf(stderr, "Cannot allocate memory for array of retransmittable segments from outbox.\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	curr = outbox->wndb;
+	*retransno = 0;
+	while (curr) {
+		if (outbox->wnde)
+			if (curr == outbox->wnde->next)
+				break;
+		if (curr->status == RUDP_UNACKED) {
+			if (!memcpy(retrans + *retransno, curr->segment, sizeof(Segment))) {
+				fprintf(stderr, "Cannot copy segment from outbox to retransmittable segments.\n");
+				exit(EXIT_FAILURE);
+			}
+			*retransno += 1;
+		}
+		curr = curr->next;
+	}
+
+	return retrans;
+}
+
 void _slideOutboxWindow(SegmentOutbox *outbox) {
 	while (outbox->wndb) {
 		if (outbox->wndb->status != RUDP_ACKED)
