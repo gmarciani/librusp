@@ -17,6 +17,8 @@
 
 #define RUDP_MAX_SGM_OUTPUT 46 + (2 * 3) + (3 * 5) + (2 * 10) + 5 //output context + RUDP_MAX_SGM
 
+#define RUDP_MAX_SEQN		4294967296
+
 #define RUDP_NULL	0b00000000
 #define RUDP_SYN 	0b00000001
 #define RUDP_FIN	0b00000010
@@ -64,8 +66,10 @@ void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm);
 
 /* STREAM */
 
-Stream createStream(const char *msg);
+Stream *createStream(const char *msg);
 
 void freeStream(Stream *stream);
+
+char *streamToString(Stream *stream);
 
 #endif /* _RUDPSEGMENT_H_ */

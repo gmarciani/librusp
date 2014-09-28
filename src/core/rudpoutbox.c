@@ -1,21 +1,26 @@
 #include "rudpoutbox.h"
 
-SegmentOutbox createOutbox(const unsigned long isn, const unsigned long wndsize) {
-	SegmentOutbox outbox;
+SegmentOutbox *createOutbox(const uint32_t isn, const uint32_t wnds) {
+	SegmentOutbox *outbox;
 
-	if (wndsize == 0) {
-		fprintf(stderr, "Cannot create outbox with window size to zero.\n");
+	if (wnds == 0) {
+		fprintf(stderr, "Cannot create outbox with window size set to zero.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	outbox.head = NULL;
-	outbox.tail = NULL;
-	outbox.size = 0;
-	outbox.wndbase = NULL;
-	outbox.wndend = NULL;
-	outbox.wndsize = wndsize;	
-	outbox.awndsize = 0;	
-	outbox.nextseqno = isn;	
+	if (!(outbox = malloc(sizeof(SegmentOutbox)))) {
+		fprintf(stderr, "Cannot allocate memory for outbox.\n");
+		exit(EXIT_FAILURE);	
+	}
+
+	outbox->head = NULL;
+	outbox->tail = NULL;
+	outbox->size = 0;
+	outbox->wndb = NULL;
+	outbox->wnde = NULL;
+	outbox->wnds = wnds;	
+	outbox->awnds = 0;	
+	outbox->nextseqn = isn;	
 
 	return outbox;
 }
@@ -37,14 +42,7 @@ void freeOutbox(SegmentOutbox *outbox) {
 		curr = curr->next;
 	}
 
-	outbox->head = NULL;
-	outbox->tail = NULL;	
-	outbox->size = 0;
-	outbox->wndbase = NULL;
-	outbox->wndend = NULL;	
-	outbox->wndsize = 0;
-	outbox->awndsize = 0;	
-	outbox->nextseqno = 0;
+	free(outbox);
 }
 
 void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm) {
@@ -60,44 +58,44 @@ void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm) {
 		exit(EXIT_FAILURE);
 	}
 
-	new->status = _RUDP_UNACKED;	
+	new->status = RUDP_UNACKED;	
 
 	new->segment = memcpy(new->segment, &sgm, sizeof(Segment));
-	new->segment->hdr.seqno = outbox->nextseqno;
-	outbox->nextseqno += (new->segment->hdr.plds == 0) ? 1 : new->segment->hdr.plds;
+	new->segment->hdr.seqn = outbox->nextseqn;
+	outbox->nextseqn += ((new->segment->hdr.plds == 0) ? 1 : new->segment->hdr.plds) % RUDP_MAX_SEQN;
 
 	if (outbox->size == 0) {
 		new->prev = NULL;
 		new->next = NULL;
 		outbox->head = new;
 		outbox->tail = new;
-		outbox->wndbase = new;
-		outbox->wndend = new;
-		outbox->awndsize++;
+		outbox->wndb = new;
+		outbox->wnde = new;
+		outbox->awnds++;
 	} else {
 		new->prev = outbox->tail;
 		new->next = NULL;
 		outbox->tail->next = new;
 		outbox->tail = new;
-		if (outbox->awndsize < outbox->wndsize) {
-			outbox->wndend = new;
-			outbox->awndsize++;
+		if (outbox->awnds < outbox->wnds) {
+			outbox->wnde = new;
+			outbox->awnds++;
 		}			
 	}	
 	
 	outbox->size++;	
 }
 
-void submitAckToOutbox(SegmentOutbox *outbox, const unsigned long ackno) {
+void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn) {
 	OutboxElement *curr;
 
-	curr = outbox->wndbase;
+	curr = outbox->wndb;
 	while (curr) {
-		if (outbox->wndend)
-			if (curr == outbox->wndend->next)
+		if (outbox->wnde)
+			if (curr == outbox->wnde->next)
 				break;		
-		if (ackno == (curr->segment->hdr.seqno + ((curr->segment->hdr.plds == 0) ? 1 : curr->segment->hdr.plds))) {
-			curr->status = _RUDP_ACKED;
+		if (ackn == ((curr->segment->hdr.seqn + ((curr->segment->hdr.plds == 0) ? 1 : curr->segment->hdr.plds))) % RUDP_MAX_SEQN) {
+			curr->status = RUDP_ACKED;
 			_slideOutboxWindow(outbox);
 			break;
 		}
@@ -106,20 +104,20 @@ void submitAckToOutbox(SegmentOutbox *outbox, const unsigned long ackno) {
 }
 
 void _slideOutboxWindow(SegmentOutbox *outbox) {
-	while (outbox->wndbase) {
-		if (outbox->wndbase->status != _RUDP_ACKED)
+	while (outbox->wndb) {
+		if (outbox->wndb->status != RUDP_ACKED)
 			break;
-		outbox->wndbase = outbox->wndbase->next;
-		if (outbox->wndend == outbox->tail) {
-			outbox->wndend = NULL;
-			outbox->awndsize--;
-		} else if (outbox->wndend == NULL) {
-			outbox->awndsize--;
+		outbox->wndb = outbox->wndb->next;
+		if (outbox->wnde == outbox->tail) {
+			outbox->wnde = NULL;
+			outbox->awnds--;
+		} else if (outbox->wnde == NULL) {
+			outbox->awnds--;
 		} else {
-			outbox->wndend = outbox->wndend->next;
+			outbox->wnde = outbox->wnde->next;
 		}
-		if (outbox->wndbase != NULL)
-			_removeOutboxElement(outbox, outbox->wndbase->prev);
+		if (outbox->wndb != NULL)
+			_removeOutboxElement(outbox, outbox->wndb->prev);
 		else
 			_removeOutboxElement(outbox, outbox->head);	
 	}
@@ -147,27 +145,27 @@ void _removeOutboxElement(SegmentOutbox *outbox, OutboxElement *elem) {
 	outbox->size--;
 }
 
-char *outboxToString(const SegmentOutbox outbox) {
+char *outboxToString(SegmentOutbox *outbox) {
 	OutboxElement *curr = NULL;
 	char *stroutbox = NULL;
 	char *strsgm = NULL;
 
-	if (!(stroutbox = malloc(sizeof(char) * (1 + outbox.size * (_RUDP_MAX_SGM_OUTPUT + 5 + 1))))) {
+	if (!(stroutbox = malloc(sizeof(char) * (77 + outbox->size * (RUDP_MAX_SGM_OUTPUT + 5 + 1))))) {
 		fprintf(stderr, "Cannot allocate string for outbox to string.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	stroutbox[0] = '\0';
+	sprintf(stroutbox, "Outbox size:%u wnds:%u awnds:%u nextseqn:%u\n", outbox->size, outbox->wnds, outbox->awnds, outbox->nextseqn);	
 
-	curr = outbox.head;
+	curr = outbox->head;
 	while (curr) {
-		if (curr == outbox.wndbase)
+		if (curr == outbox->wndb)
 			strcat(stroutbox, "<\t");
-		else if (curr == outbox.wndend)
+		else if (curr == outbox->wnde)
 			strcat(stroutbox, ">\t");
 		else
 			strcat(stroutbox, " \t");
-		if (curr->status == _RUDP_ACKED)
+		if (curr->status == RUDP_ACKED)
 			strcat(stroutbox, "A ");
 		else
 			strcat(stroutbox, "U ");

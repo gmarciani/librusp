@@ -1,11 +1,12 @@
 #include "../core/rudpsegment.h"
 
 int main(void) {
-	Stream stream;
+	Stream *stream = NULL;
 	Segment sgmOne, sgmTwo;
 	char *strsgm = NULL;
 	char *ssgm = NULL;
 	char *msg = "Hello World! I'm happy! Stay hungry, stay foolish, folks!";
+	char *strstream = NULL;
 	int i;
 
 	puts("# Creating SYNACK segments (MAX_PLD=5) with urgp=5 wnds=324, seqn=51, ackn=22, pld=Hello World! #");
@@ -39,33 +40,40 @@ int main(void) {
 		sgmOne.hdr.wnds == sgmTwo.hdr.wnds &&
 		sgmOne.hdr.seqn == sgmTwo.hdr.seqn &&
 		sgmOne.hdr.ackn == sgmTwo.hdr.ackn) {
+
 		puts("Header match SUCCESS!");
+
 		for (i = 0; i < sgmOne.hdr.plds; i++) {
+
 			if (sgmOne.pld[i] != sgmTwo.pld[i]) {
 				puts("Payload match FAILURE!");
 				exit(EXIT_FAILURE);
 			}
 		}
+
 		puts("Payload match SUCCESS!");
+
 	} else {
+
 		puts("Header match FAILURE");
+
 	}
 
-	puts("# Stream of Segments (MAX_PLD=5) with message=Hello World! I'm happy! Stay hungry, stay foolish, folks! #");
+	printf("# Creating stream of Segments (MAX_PLD=%d) with message=%s #\n", RUDP_MAX_PLD, msg);
 
 	stream = createStream(msg);
 
-	printf("Message len: %zd Stream size: %lu Stream len: %lu\n", strlen(msg), stream.size, stream.len);
+	puts("# Stream of segments to string #");
 
-	for (i = 0; i < stream.size; i++) {
-		strsgm = segmentToString(stream.segments[i]);
-		printf("%s\n", strsgm);
-		free(strsgm);
-	}
+	strstream = streamToString(stream);
+
+	printf("%s\n", strstream);
+
+	free(strstream);
 
 	puts("# Freeing stream of segments #");
 
-	freeStream(&stream);
+	freeStream(stream);
 
 	exit(EXIT_SUCCESS);
 }
