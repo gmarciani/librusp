@@ -1,23 +1,25 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include "../rudp.h"
 
 int main(int argc, char **argv) {
-	Connection conn;
+	int connid;
 	char *sndData, *rcvData;
 
-	conn = rudpConnect(argv[1], atoi(argv[2]));
+	connid = rudpConnect(argv[1], atoi(argv[2]));
 
 	sndData = getUserInput("[To Send]>");
 
-	rudpSend(&conn, sndData);
+	rudpSend(connid, sndData);
 
-	rcvData = rudpReceive(&conn, 5);
+	rcvData = rudpReceive(connid, 5);
 
 	printf("[Received]> %s\n", rcvData);
 
-	rudpDisconnect(&conn);
+	rudpDisconnect(connid);
 
 	free(sndData);
 	free(rcvData);
 
-	return(EXIT_SUCCESS);
+	exit(EXIT_SUCCESS);
 }

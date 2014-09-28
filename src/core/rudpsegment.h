@@ -24,9 +24,6 @@
 #define _RUDP_EOS	4
 #define _RUDP_ERR 	5
 
-#define _RUDP_UNACKED 	0
-#define _RUDP_ACKED		1
-
 typedef struct Header {
 	unsigned short vers; // 2 byte
 	unsigned short ctrl; // 2 byte
@@ -45,24 +42,6 @@ typedef struct Stream {
 	unsigned long size;
 	unsigned long len;
 } Stream;
-
-typedef struct Element {
-	unsigned int status;
-	Segment *segment;
-	struct Element *prev;
-	struct Element *next;
-} Element;
-
-typedef struct SegmentList {
-	Element *head;
-	Element *tail;
-	Element *wndbase;
-	Element *wndend;	
-	unsigned long size;
-	unsigned long wndsize;	
-	unsigned long awndsize;
-	unsigned long nextseqno;
-} SegmentList;
 
 /* SEGMENT */
 
@@ -83,21 +62,5 @@ void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm);
 Stream createStream(const char *msg);
 
 void freeStream(Stream *stream);
-
-/* LIST OF SEGMENTS */
-
-SegmentList createSegmentList(const unsigned long isn, const unsigned long wndsize);
-
-void freeSegmentList(SegmentList *list);
-
-void submitSegment(SegmentList *list, const Segment sgm);
-
-void submitAck(SegmentList *list, const unsigned long ackno);
-
-void _slideWindow(SegmentList *list);
-
-void _removeElement(SegmentList *list, Element *elem);
-
-char *listToString(const SegmentList list);
 
 #endif /* _RUDPSEGMENT_H_ */

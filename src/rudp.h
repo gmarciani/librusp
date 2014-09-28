@@ -7,16 +7,20 @@
 
 int rudpListen(const int lport);
 
-Connection rudpConnect(const char *ip, const int port);
+int rudpConnect(const char *ip, const int port);
 
-Connection rudpAccept(const int lsock);
+int rudpAccept(const int lsock);
 
-void rudpDisconnect(Connection *conn);
+void rudpDisconnect(const int connid);
 
 /* COMMUNICATIONS */
 
-void rudpSend(Connection *conn, const char *msg);
+void rudpSend(const int connid, const char *msg);
 
-char *rudpReceive(Connection *conn, const size_t size);
+char *rudpReceive(const int connid, const size_t size);
+
+/* SETTINGS */
+
+void setRUDPDebugMode(const int mode);
 
 #endif /* _RUDP_H_ */

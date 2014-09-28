@@ -1,5 +1,7 @@
 #include "rudp.h"
 
+static int _RUDP_DEBUG = 1;
+
 /* CONNECTION */
 
 int rudpListen(const int lport) {
@@ -17,45 +19,60 @@ int rudpListen(const int lport) {
 	return lsock;
 }
 
-Connection rudpConnect(const char *ip, const int port) {
+int rudpConnect(const char *ip, const int port) {
 	struct sockaddr_in lsaddr;
-	Connection conn;
+	int connid;
 
 	lsaddr = createAddress(ip, port);
 
-	conn = synchronizeConnection(lsaddr);
+	connid = synchronizeConnection(lsaddr);
 
-	return conn;
+	return connid;
 }
 
-Connection rudpAccept(const int lsock) {
-	Connection conn;
+int rudpAccept(const int lsock) {
+	int connid;
 
-	conn = acceptSynchonization(lsock);
+	connid = acceptSynchonization(lsock);
 
-	return conn;
+	return connid;
 }
 
-void rudpDisconnect(Connection *conn) {
-	desynchronizeConnection(conn);
-	
-	destroyConnection(conn);
+void rudpDisconnect(const int connid) {
+	if (getConnectionStatus(connid) != _RUDP_CONN_ESTABLISHED) {
+		fprintf(stderr, "Cannot disconnect connection: connection not established.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	desynchronizeConnection(connid);
 }
 
 /* COMMUNICATION */
 
-void rudpSend(Connection *conn, const char *msg) {
-	Stream stream;
+void rudpSend(const int connid, const char *msg) {
+	if (getConnectionStatus(connid) != _RUDP_CONN_ESTABLISHED) {
+		fprintf(stderr, "Cannot send message: connection not established.\n");
+		exit(EXIT_FAILURE);
+	}
 
-	stream = createStream(msg);
-
-	sendStream(conn, stream);
+	writeOutboxMessage(connid, msg);
 }
 
-char *rudpReceive(Connection *conn, const size_t size) {
-	char *msg;
+char *rudpReceive(const int connid, const size_t size) {
+	char *msg = NULL;
 
-	msg = receiveStream(conn, size);
+	if (getConnectionStatus(connid) != _RUDP_CONN_ESTABLISHED) {
+		fprintf(stderr, "Cannot receive message: connection not established.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	msg = readInboxMessage(connid, size);
 
 	return msg;
+}
+
+/* SETTINGS */
+
+void setRUDPDebugMode(const int mode) {
+	_RUDP_DEBUG = mode;
 }

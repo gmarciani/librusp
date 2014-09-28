@@ -24,14 +24,14 @@ PROTOCOL_LIBS = -lpthread -lm
 
 PROTOCOL_UTILS = $(addprefix $(SRCDIR)/util/, sockmng.h sockmng.c addrutil.h addrutil.c timerutil.h timerutil.c stringutil.h stringutil.c)
 
-PROTOCOL_CORE = $(addprefix $(SRCDIR)/core/, rudpcore.h rudpcore.c rudpsegment.h rudpsegment.c)
+PROTOCOL_CORE = $(addprefix $(SRCDIR)/core/, rudpcore.h rudpcore.c rudpoutbox.h rudpoutbox.c rudpinbox.h rudpinbox.c rudpsegment.h rudpsegment.c rudptimer.h rudptimer.c)
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) $(PROTOCOL_UTILS) $(PROTOCOL_LIBS)
 
 
 # Tests
 
-test: setup snd rcv list stream sgm thread timer struct
+test: setup snd rcv outbox inbox stream sgm thread timer struct
 
 rcv: $(TESTDIR)/rcv.c
 	$(CC) $(CFLAGS) $(TESTDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -39,8 +39,11 @@ rcv: $(TESTDIR)/rcv.c
 snd: $(TESTDIR)/snd.c
 	$(CC) $(CFLAGS) $(TESTDIR)/snd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
-list: $(TESTDIR)/list.c
-	$(CC) $(CFLAGS) $(TESTDIR)/list.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+outbox: $(TESTDIR)/outbox.c
+	$(CC) $(CFLAGS) $(TESTDIR)/outbox.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+
+inbox: $(TESTDIR)/inbox.c
+	$(CC) $(CFLAGS) $(TESTDIR)/inbox.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 stream: $(TESTDIR)/stream.c
 	$(CC) $(CFLAGS) $(TESTDIR)/stream.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@

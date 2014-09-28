@@ -11,17 +11,33 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+/* SOCKET CREATION */
+
 int openSocket();
 
 void closeSocket(const int sock);
 
 void bindSocket(const int sock, struct sockaddr_in *addr);
 
+/* SOCKET I/O */
+
+void writeUnconnectedSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff);
+
+char *readUnconnectedSocket(const int sock, struct sockaddr_in *sndaddr, const size_t rcvsize);
+
+void writeConnectedSocket(const int sock, const char *buff);
+
+char *readConnectedSocket(const int sock, const size_t rcvsize);
+
+/* SOCKET PROPERTIES */
+
 void setSocketConnected(const int sock, const struct sockaddr_in addr);
 
 void setSocketReusable(const int sock);
 
 void setSocketTimeout(const int sock, const long int timeout);
+
+/* SOCKET END-POINTS */
 
 struct sockaddr_in getSocketLocal(const int sock);
 

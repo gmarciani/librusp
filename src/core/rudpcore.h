@@ -1,5 +1,5 @@
-#ifndef __RUDPCORE_H_
-#define __RUDPCORE_H_
+#ifndef _RUDPCORE_H_
+#define _RUDPCORE_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,59 +13,76 @@
 #include <netdb.h>
 #include <limits.h>
 
+#include "rudpinbox.h"
+#include "rudpoutbox.h"
 #include "rudpsegment.h"
 #include "../util/stringutil.h"
 #include "../util/addrutil.h"
 #include "../util/sockmng.h"
 
+#define _RUDP_MAX_CONNECTIONS	10
+
 #define _RUDP_CONN_CLOSED 		0
-#define _RUDP_CONN_LISTEN 		1
-#define _RUDP_CONN_SYN_SENT		2
-#define _RUDP_CONN_SYN_RCVD		3
-#define _RUDP_CONN_ESTABLISHED	4
-#define _RUDP_CONN_CLOSE_WAIT	5	
+#define _RUDP_CONN_SYN_SENT		1
+#define _RUDP_CONN_SYN_RCVD		2
+#define _RUDP_CONN_ESTABLISHED	3
+#define _RUDP_CONN_FIN_SENT		4	
+#define _RUDP_CONN_FIN_RCVD		5
 
 #define _RUDP_ACK_TIMEOUT		2000
 #define _RUDP_MAX_RETRANS		5
-#define _RUDP_WND				1000	
+#define _RUDP_WND				1000
+
+typedef struct ConnectionRecord {
+	unsigned short status;
+	struct sockaddr_in laddr;
+	struct sockaddr_in paddr;	
+	SegmentOutbox outbox;
+	SegmentInbox inbox;
+	int sock;
+} ConnectionRecord;
 
 typedef struct Connection {
-	unsigned short version;
-	unsigned short status;
-	int sock;
-	struct sockaddr_in laddr;
-	struct sockaddr_in paddr;
-	SegmentList unacksgm;
-	unsigned long int seqno;	// fin dove ho inviato
-	unsigned long int lastack;	// fin dove ho correttamente inviato
-	unsigned long int ackno;	// fin dove ho ricevuto
-	unsigned long int wnd;		// quanto posso ancora inviare prima di un ack
+	int connid;
+	unsigned short version;	
+	ConnectionRecord record;
+	pthread_t manager;
 } Connection;
 
-Connection createConnection();
+int synchronizeConnection(const struct sockaddr_in laddr);
 
-Connection synchronizeConnection(struct sockaddr_in laddr);
+int acceptSynchonization(const int lsock);
 
-Connection acceptSynchonization(const int lsock);
+void desynchronizeConnection(const int connid);
 
-void desynchronizeConnection(Connection *conn);
-	
-void destroyConnection(Connection *conn);
+Connection *_createConnection(void);
 
-unsigned long int getISN();
+void _destroyConnection(Connection *conn);
 
-void sendStream(Connection *conn, const Stream stream);
+/* MESSAGE COMMUNICATION */
 
-char *receiveStream(Connection *conn, const size_t size);
+void writeOutboxMessage(const int connid, const char *msg);
 
-/* COMMUNICATION */
+char *readInboxMessage(const int connid, const size_t size);
 
-void sendSegment(Connection *conn, Segment *sgm);
+/* SEGMENT COMMUNICATION */
+
+void sendSegment(Connection *conn, Segment sgm);
+
+void flushOutbox(Connection *conn);
 
 Segment receiveSegment(Connection *conn);
 
+/* UTILITY */
+
+int getConnectionStatus(const int connid);
+
+Connection *_getConnectionById(const int connid);
+
+unsigned long int _getISN();
+
 /* SETTING */
 
-void setDebugMode(const int mode);
+void setRUDPCoreDebugMode(const int mode);
 
-#endif /* __RUDPCORE_H_ */
+#endif /* _RUDPCORE_H_ */
