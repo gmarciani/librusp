@@ -8,44 +8,49 @@
 #include "../util/addrutil.h"
 #include "../util/stringutil.h"
 
-#define _RUDP_VERSION 1
+#define RUDP_VERSION 		1
 
-#define _RUDP_HDR_FIELDS	5
-#define _RUDP_MAX_HDR 		29
-#define _RUDP_MAX_PLD 		5
-#define _RUDP_MAX_SGM		34	
+#define RUDP_HDR_FIELDS		7
+#define RUDP_MAX_HDR 		(2 * 3) + (3 * 5) + (2 * 10)
+#define RUDP_MAX_PLD 		5 	//must be 500
+#define RUDP_MAX_SGM		(2 * 3) + (3 * 5) + (2 * 10) + 5	//RUDP_MAX_HDR + RUDP_MAX_PLD
 
-#define _RUDP_MAX_SGM_OUTPUT 79
+#define RUDP_MAX_SGM_OUTPUT 46 + (2 * 3) + (3 * 5) + (2 * 10) + 5 //output context + RUDP_MAX_SGM
 
-#define _RUDP_SYN 	0
-#define _RUDP_FIN	1
-#define _RUDP_ACK 	2
-#define _RUDP_DAT 	3
-#define _RUDP_EOS	4
-#define _RUDP_ERR 	5
+#define RUDP_NULL	0b00000000
+#define RUDP_SYN 	0b00000001
+#define RUDP_FIN	0b00000010
+#define RUDP_RST	0b00000100
+#define RUDP_ACK 	0b00001000
+#define RUDP_PSH	0b00010000
+#define RUDP_URG	0b00100000
+#define RUDP_KLV	0b01000000
+#define RUDP_ERR 	0b10000000
 
 typedef struct Header {
-	unsigned short vers; // 2 byte
-	unsigned short ctrl; // 2 byte
-	unsigned short plds; // 5 byte
-	unsigned long seqno; // 10 byte
-	unsigned long ackno; // 10 byte
+	uint8_t 	vers;
+	uint8_t 	ctrl;
+	uint16_t	urgp;
+	uint16_t 	plds;
+	uint16_t 	wnds;
+	uint32_t 	seqn;
+	uint32_t 	ackn;
 } Header;
 
 typedef struct Segment {
-	Header hdr;
-	char pld[_RUDP_MAX_PLD + 1];
+	Header 	hdr;
+	char 	pld[RUDP_MAX_PLD + 1];
 } Segment;
 
 typedef struct Stream {
-	Segment *segments;
-	unsigned long size;
-	unsigned long len;
+	Segment 		*segments;
+	unsigned long 	size;
+	unsigned long 	len;
 } Stream;
 
 /* SEGMENT */
 
-Segment createSegment(const unsigned short ctrl, unsigned long seqno, unsigned long ackno, const char *pld);
+Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wnds, unsigned long seqn, unsigned long ackn, const char *pld);
 
 Segment deserializeSegment(const char *ssgm);
 
