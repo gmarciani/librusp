@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -17,7 +18,7 @@ int openSocket();
 
 void closeSocket(const int sock);
 
-void bindSocket(const int sock, struct sockaddr_in *addr);
+void bindSocket(const int sock, const struct sockaddr_in *addr);
 
 /* SOCKET I/O */
 
@@ -35,7 +36,7 @@ void setSocketConnected(const int sock, const struct sockaddr_in addr);
 
 void setSocketReusable(const int sock);
 
-void setSocketTimeout(const int sock, const long int timeout);
+void setSocketReadTimeout(const int sock, const unsigned long millis);
 
 /* SOCKET END-POINTS */
 

@@ -22,9 +22,9 @@ void closeSocket(const int sock) {
 	}
 }
 
-void bindSocket(const int sock, struct sockaddr_in *addr) {
+void bindSocket(const int sock, const struct sockaddr_in *addr) {
 	errno = 0;
-	if (bind(sock, (struct sockaddr *)addr, sizeof(struct sockaddr_in)) == -1) {
+	if (bind(sock, (const struct sockaddr *)addr, sizeof(struct sockaddr_in)) == -1) {
 		fprintf(stderr, "Error in socket binding: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -54,6 +54,10 @@ char *readUnconnectedSocket(const int sock, struct sockaddr_in *sndaddr, const s
 
 	errno = 0;
 	if ((rcvd = recvfrom(sock, buff, rcvsize, 0, (struct sockaddr *)sndaddr, &socksize)) == -1) {
+		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
+			free(buff);
+			return NULL;
+		}
 		fprintf(stderr, "Cannot read from unconnected socket: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -82,6 +86,10 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 
 	errno = 0;
 	if ((rcvd = read(sock, buff, rcvsize)) == -1) {
+		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
+			free(buff);
+			return NULL;
+		}
 		fprintf(stderr, "Cannot read from connected socket: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -96,7 +104,7 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 void setSocketConnected(const int sock, const struct sockaddr_in addr) {
 	errno = 0;
 	if (connect(sock, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in)) == -1) {
-		fprintf(stderr, "Error in connecting socket: %s.\n", strerror(errno));
+		fprintf(stderr, "Cannot set socket connected: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -106,20 +114,20 @@ void setSocketReusable(const int sock) {
 
 	errno = 0;
   	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int)) == -1) {
-		fprintf(stderr, "Error in setsockopt: %s.\n", strerror(errno));
+		fprintf(stderr, "Cannot set socket reusable: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-void setSocketTimeout(const int sock, const long int timeout) {
+void setSocketReadTimeout(const int sock, const unsigned long millis) {
 	struct timeval timer;
 
-	timer.tv_sec = 0;
-  	timer.tv_usec = timeout;
+	timer.tv_sec = ceil(millis / 1000);
+  	timer.tv_usec = (millis % 1000) * 1000;
 
 	errno = 0;  
-  	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,&timer,sizeof(timer)) < 0) {
-      	fprintf(stderr, "Error in setsockopt: %s.\n", strerror(errno));
+  	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const void *)&timer, sizeof(timer)) < 0) {
+      	fprintf(stderr, "Cannot set timeout in socket: %s.\n", strerror(errno));
 		exit(EXIT_FAILURE);
   	}
 }

@@ -1,42 +1,34 @@
 #include "rudp.h"
 
-static int RUDP_DEBUG = 1;
-
 /* CONNECTION */
 
 ConnectionId rudpListen(const int lport) {
-	Connection *conn;
+	ConnectionId connid;
+	Connection *conn = NULL;
 	struct sockaddr_in laddr;
 
 	laddr = createAddress("127.0.0.1", lport);
 
 	conn = createConnection();
 
+	if (!conn)
+		return -1;
+
 	setListeningConnection(conn, laddr);
 
-	return conn->connid;
-}
+	connid = conn->connid;
 
-ConnectionId rudpConnect(const char *ip, const int port) {
-	Connection *conn;
-	struct sockaddr_in laddr;
-
-	saddr = createAddress(ip, port);
-
-	conn = createConnection();
-
-	if (synchronizeConnection(conn, laddr) == -1)
-		return -1;
-	else
-		return conn->connid;
+	return connid;
 }
 
 ConnectionId rudpAccept(const ConnectionId lconnid) {
 	Connection *lconn = NULL;
 	ConnectionId aconnid;
 
-	if (!(lconn = getConnectionById(lconnid))) {
-		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", lconnid);
+	lconn = getConnectionById(lconnid);
+
+	if (!lconn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", lconnid);
 		exit(EXIT_FAILURE);
 	}	
 
@@ -45,15 +37,40 @@ ConnectionId rudpAccept(const ConnectionId lconnid) {
 	return aconnid;
 }
 
+ConnectionId rudpConnect(const char *ip, const int port) {
+	ConnectionId connid;
+	Connection *conn = NULL;
+	struct sockaddr_in laddr;
+	int syncresult;
+
+	laddr = createAddress(ip, port);
+
+	conn = createConnection();
+
+	if (!conn)
+		return -1;
+
+	syncresult = synchronizeConnection(conn, laddr);
+
+	if (syncresult == -1)
+		return -1;		
+
+	connid = conn->connid;
+
+	return connid;
+}
+
 void rudpDisconnect(const ConnectionId connid) {
 	Connection *conn = NULL;
 
-	if (!(conn = getConnectionById(connid))) {
-		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+	conn = getConnectionById(connid);
+
+	if (!conn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
 		exit(EXIT_FAILURE);
 	}	
 
-	if (conn->record.status != RUDP_CONN_ESTABLISHED) {
+	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
 		fprintf(stderr, "Cannot disconnect connection: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -64,13 +81,15 @@ void rudpDisconnect(const ConnectionId connid) {
 void rudpClose(const ConnectionId connid) {	
 	Connection *conn = NULL;
 
-	if (!(conn = getConnectionById(connid))) {
-		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+	conn = getConnectionById(connid);
+
+	if (!conn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
 		exit(EXIT_FAILURE);
 	}	
 
-	if (conn->record.status == RUDP_CONN_CLOSED) {
-		fprintf(stderr, "Cannot close connection: connection already closed.\n");
+	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
+		fprintf(stderr, "Cannot close connection: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -82,12 +101,14 @@ void rudpClose(const ConnectionId connid) {
 void rudpSend(const ConnectionId connid, const char *msg) {
 	Connection *conn = NULL;
 
-	if (!(conn = getConnectionById(connid))) {
-		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}	
+	conn = getConnectionById(connid);
 
-	if (conn->record.status != RUDP_CONN_ESTABLISHED) {
+	if (!conn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}		
+
+	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
 		fprintf(stderr, "Cannot send message: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -99,12 +120,14 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 	Connection *conn = NULL;	
 	char *msg = NULL;	
 
-	if (!(conn = getConnectionById(connid))) {
-		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+	conn = getConnectionById(connid);
+
+	if (!conn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
 		exit(EXIT_FAILURE);
 	}	
 
-	if (conn->record.status != RUDP_CONN_ESTABLISHED) {
+	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
 		fprintf(stderr, "Cannot receive message: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -114,8 +137,68 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 	return msg;
 }
 
-/* SETTINGS */
+/* UTILITY */
 
-void setRUDPDebugMode(const int mode) {
-	RUDP_DEBUG = mode;
+struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
+	Connection *conn = NULL;
+	struct sockaddr_in addr;
+
+	conn = getConnectionById(connid);
+
+	if (!conn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}
+
+	if (conn->record.state == RUDP_CONN_CLOSED) {
+		fprintf(stderr, "Cannot get local address: connection closed.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	addr = getSocketLocal(conn->record.sock);
+
+	return addr;
+}
+
+struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
+	Connection *conn = NULL;
+	struct sockaddr_in addr;
+
+	conn = getConnectionById(connid);
+
+	if (!conn) {
+		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}
+
+	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
+		fprintf(stderr, "Cannot get peer address: connection not established.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	addr = getSocketPeer(conn->record.sock);
+
+	return addr;
+}
+
+char *rudpAddressToString(const struct sockaddr_in addr) {
+	char *straddr = NULL;
+	char *strip = NULL;
+	int port;
+
+	strip = getIp(addr);
+
+	port = getPort(addr);
+
+	if (!(straddr = malloc(sizeof(char) * (ADDRESS_IPV4_MAX_OUTPUT + 1)))) {
+		fprintf(stderr, "Cannot allocate memory for address to string.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	sprintf(straddr, "%s:%d", strip, port);
+
+	free(strip);
+
+	return straddr;
+
 }

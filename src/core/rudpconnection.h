@@ -1,5 +1,5 @@
-#ifndef _RUDPCORE_H_
-#define _RUDPCORE_H_
+#ifndef _RUDPCONNECTION_H_
+#define _RUDPCONNECTION_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,26 +21,27 @@
 #include "../util/addrutil.h"
 #include "../util/sockmng.h"
 
-#define RUDP_MAX_CONNECTIONS	10
+#define RUDP_MAX_CONNECTIONS	20
 
 #define RUDP_CONN_CLOSED 		0
-#define RUDP_CONN_SYN_SENT		1
-#define RUDP_CONN_SYN_RCVD		2
-#define RUDP_CONN_ESTABLISHED	3
-#define RUDP_CONN_WAITCLOSE		4
-#define RUDP_CONN_FIN_SENT		5	
-#define RUDP_CONN_FIN_RCVD		6
+#define RUDP_CONN_LISTEN		1
+#define RUDP_CONN_SYN_SENT		2
+#define RUDP_CONN_SYN_RCVD		3
+#define RUDP_CONN_ESTABLISHED	4
+#define RUDP_CONN_WAITCLOSE		5
+#define RUDP_CONN_FIN_SENT		6	
+#define RUDP_CONN_FIN_RCVD		7
 
-#define RUDP_ACK_TIMEOUT		2000
+#define RUDP_ACK_TIMEOUT		3000 //millis
 #define RUDP_MAX_RETRANS		10
 #define RUDP_MAX_WNDS			10
+
+/* CONNECTION */
 
 typedef int ConnectionId;
 
 typedef struct ConnectionRecord {
-	unsigned short status;
-	struct sockaddr_in laddr;
-	struct sockaddr_in paddr;	
+	unsigned short state;
 	SegmentOutbox *outbox;
 	SegmentInbox *inbox;
 	int sock;
@@ -53,7 +54,11 @@ typedef struct Connection {
 	pthread_t manager;
 } Connection;
 
+Connection *createListeningConnection(const struct sockaddr_in laddr);
+
 Connection *createConnection(void);
+
+Connection *getConnectionById(const ConnectionId connid);
 
 void setListeningConnection(Connection *conn, const struct sockaddr_in laddr);
 
@@ -71,20 +76,4 @@ void writeOutboxMessage(Connection *conn, const char *msg);
 
 char *readInboxMessage(Connection *conn, const size_t size);
 
-/* SEGMENT COMMUNICATION */
-
-void sendSegment(Connection *conn, Segment sgm);
-
-Segment receiveSegment(Connection *conn);
-
-/* UTILITY */
-
-Connection *getConnectionById(const ConnectionId connid);
-
-uint32_t getISN();
-
-/* SETTING */
-
-void setRUDPCoreDebugMode(const int mode);
-
-#endif /* _RUDPCORE_H_ */
+#endif /* _RUDPCONNECTION_H_ */

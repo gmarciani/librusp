@@ -1,14 +1,16 @@
 #include "rudpinbox.h"
 
-SegmentInbox *createInbox(const uint32_t wnds) {
+//static void slideInboxWindow(SegmentInbox *inbox);
 
+//static void removeInboxElement(SegmentInbox *inbox, InboxElement *elem);
+
+SegmentInbox *createInbox(const uint32_t isn, const uint32_t wnds) {
+	SegmentInbox *inbox = NULL;
+
+	return inbox;
 }
 
 void freeInbox(SegmentInbox *inbox) {
-
-}
-
-void setListeningInbox(SegmentInbox *inbox) {
 
 }
 
@@ -29,14 +31,15 @@ char *readInboxBuffer(SegmentInbox *inbox, const size_t size) {
 	return msg;
 }
 
-void _slideInboxWindow(SegmentInbox *inbox) {
-
-}
-
-void _removeInboxElement(SegmentInbox *inbox, InboxElement *elem) {
-
-}
-
 char *inboxToString(const SegmentInbox inbox) {
 	return NULL;
 }
+/*
+static void slideInboxWindow(SegmentInbox *inbox) {
+
+}
+
+static void removeInboxElement(SegmentInbox *inbox, InboxElement *elem) {
+
+}
+*/

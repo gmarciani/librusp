@@ -26,30 +26,28 @@ PROTOCOL_UTILS = $(addprefix $(SRCDIR)/util/, sockmng.h sockmng.c addrutil.h add
 
 PROTOCOL_SEGMENTS = $(addprefix $(SRCDIR)/core/, rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
 
-PROTOCOL_OUTBOX = $(addprefix $(SRCDIR)/core/, rudpoutbox.h rudpoutbox.c) $(PROTOCOL_SEGMENTS)
+PROTOCOL_MAILBOX = $(addprefix $(SRCDIR)/core/, rudpoutbox.h rudpoutbox.c rudpinbox.h rudpinbox.c) $(PROTOCOL_SEGMENTS)
 
-PROTOCOL_INBOX = $(addprefix $(SRCDIR)/core/, rudpinbox.h rudpinbox.c) $(PROTOCOL_SEGMENTS)
+PROTOCOL_CONNECTION = $(addprefix $(SRCDIR)/core/, rudpconnection.h rudpconnection.c) $(PROTOCOL_MAILBOX)
 
-PROTOCOL_CORE = $(addprefix $(SRCDIR)/core/, rudpcore.h rudpcore.c) $(PROTOCOL_SOCKETS)
-
-PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CORE) 
+PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION) 
 
 
 # Tests
 
-test: setup snd rcv outbox inbox segment thread timer bitmask
+test: setup sender receiver outbox inbox segment thread timer bitmask
 
-rcv: $(TESTDIR)/rcv.c
-	$(CC) $(CFLAGS) $(TESTDIR)/rcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+sender: $(TESTDIR)/sender.c
+	$(CC) $(CFLAGS) $(TESTDIR)/sender.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
-snd: $(TESTDIR)/snd.c
-	$(CC) $(CFLAGS) $(TESTDIR)/snd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+receiver: $(TESTDIR)/receiver.c
+	$(CC) $(CFLAGS) $(TESTDIR)/receiver.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 outbox: $(TESTDIR)/outbox.c
-	$(CC) $(CFLAGS) $(TESTDIR)/outbox.c $(PROTOCOL_OUTBOX) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $(TESTDIR)/outbox.c $(PROTOCOL_MAILBOX) -o $(BINDIR)/$(TESTPREFIX)$@
 
 inbox: $(TESTDIR)/inbox.c
-	$(CC) $(CFLAGS) $(TESTDIR)/inbox.c $(PROTOCOL_INBOX) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $(TESTDIR)/inbox.c $(PROTOCOL_MAILBOX) -o $(BINDIR)/$(TESTPREFIX)$@
 
 segment: $(TESTDIR)/segment.c
 	$(CC) $(CFLAGS) $(TESTDIR)/segment.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@

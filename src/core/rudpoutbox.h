@@ -38,10 +38,6 @@ void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn);
 
 Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno);
 
-void _slideOutboxWindow(SegmentOutbox *outbox);
-
-void _removeOutboxElement(SegmentOutbox *outbox, OutboxElement *elem);
-
 char *outboxToString(SegmentOutbox *outbox);
 
 #endif /* _RUDPOUTBOX_H_ */

@@ -6,6 +6,8 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+#define ADDRESS_IPV4_MAX_OUTPUT 21
+
 struct sockaddr_in createAddress(const char *ip, const int port);
 
 int isEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_in addrTwo);
