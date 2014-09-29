@@ -1,12 +1,14 @@
 #include "rudpinbox.h"
 
-SegmentInbox createInbox(const unsigned long isn, const unsigned long wndsize) {
-	SegmentInbox inbox;
+SegmentInbox *createInbox(const uint32_t wnds) {
 
-	return inbox;
 }
 
 void freeInbox(SegmentInbox *inbox) {
+
+}
+
+void setListeningInbox(SegmentInbox *inbox) {
 
 }
 

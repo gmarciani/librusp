@@ -5,19 +5,21 @@
 
 /* CONNECTION */
 
-int rudpListen(const int lport);
+ConnectionId rudpListen(const int lport);
 
-int rudpConnect(const char *ip, const int port);
+ConnectionId rudpConnect(const char *ip, const int port);
 
-int rudpAccept(const int lsock);
+ConnectionId rudpAccept(const ConnectionId lconnid);
 
-void rudpDisconnect(const int connid);
+void rudpDisconnect(const ConnectionId connid);
+
+void rudpClose(const ConnectionId connid);
 
 /* COMMUNICATIONS */
 
-void rudpSend(const int connid, const char *msg);
+void rudpSend(const ConnectionId connid, const char *msg);
 
-char *rudpReceive(const int connid, const size_t size);
+char *rudpReceive(const ConnectionId connid, const size_t size);
 
 /* SETTINGS */
 

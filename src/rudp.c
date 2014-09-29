@@ -1,72 +1,115 @@
 #include "rudp.h"
 
-static int _RUDP_DEBUG = 1;
+static int RUDP_DEBUG = 1;
 
 /* CONNECTION */
 
-int rudpListen(const int lport) {
+ConnectionId rudpListen(const int lport) {
+	Connection *conn;
 	struct sockaddr_in laddr;
-	int lsock;	
 
 	laddr = createAddress("127.0.0.1", lport);
 
-	lsock = openSocket();	
+	conn = createConnection();
 
-	setSocketReusable(lsock);
+	setListeningConnection(conn, laddr);
 
-	bindSocket(lsock, &laddr);
-
-	return lsock;
+	return conn->connid;
 }
 
-int rudpConnect(const char *ip, const int port) {
-	struct sockaddr_in lsaddr;
-	int connid;
+ConnectionId rudpConnect(const char *ip, const int port) {
+	Connection *conn;
+	struct sockaddr_in laddr;
 
-	lsaddr = createAddress(ip, port);
+	saddr = createAddress(ip, port);
 
-	connid = synchronizeConnection(lsaddr);
+	conn = createConnection();
 
-	return connid;
+	if (synchronizeConnection(conn, laddr) == -1)
+		return -1;
+	else
+		return conn->connid;
 }
 
-int rudpAccept(const int lsock) {
-	int connid;
+ConnectionId rudpAccept(const ConnectionId lconnid) {
+	Connection *lconn = NULL;
+	ConnectionId aconnid;
 
-	connid = acceptSynchonization(lsock);
+	if (!(lconn = getConnectionById(lconnid))) {
+		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", lconnid);
+		exit(EXIT_FAILURE);
+	}	
 
-	return connid;
+	aconnid = acceptSynchonization(lconn);
+
+	return aconnid;
 }
 
-void rudpDisconnect(const int connid) {
-	if (getConnectionStatus(connid) != _RUDP_CONN_ESTABLISHED) {
+void rudpDisconnect(const ConnectionId connid) {
+	Connection *conn = NULL;
+
+	if (!(conn = getConnectionById(connid))) {
+		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}	
+
+	if (conn->record.status != RUDP_CONN_ESTABLISHED) {
 		fprintf(stderr, "Cannot disconnect connection: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	desynchronizeConnection(connid);
+	desynchronizeConnection(conn);
+}
+
+void rudpClose(const ConnectionId connid) {	
+	Connection *conn = NULL;
+
+	if (!(conn = getConnectionById(connid))) {
+		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}	
+
+	if (conn->record.status == RUDP_CONN_CLOSED) {
+		fprintf(stderr, "Cannot close connection: connection already closed.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	destroyConnection(conn);
 }
 
 /* COMMUNICATION */
 
-void rudpSend(const int connid, const char *msg) {
-	if (getConnectionStatus(connid) != _RUDP_CONN_ESTABLISHED) {
+void rudpSend(const ConnectionId connid, const char *msg) {
+	Connection *conn = NULL;
+
+	if (!(conn = getConnectionById(connid))) {
+		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}	
+
+	if (conn->record.status != RUDP_CONN_ESTABLISHED) {
 		fprintf(stderr, "Cannot send message: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	writeOutboxMessage(connid, msg);
+	writeOutboxMessage(conn, msg);
 }
 
-char *rudpReceive(const int connid, const size_t size) {
-	char *msg = NULL;
+char *rudpReceive(const ConnectionId connid, const size_t size) {
+	Connection *conn = NULL;	
+	char *msg = NULL;	
 
-	if (getConnectionStatus(connid) != _RUDP_CONN_ESTABLISHED) {
+	if (!(conn = getConnectionById(connid))) {
+		fprintf(stderr, "Cannot retrieve connection with specified id: %d.\n", connid);
+		exit(EXIT_FAILURE);
+	}	
+
+	if (conn->record.status != RUDP_CONN_ESTABLISHED) {
 		fprintf(stderr, "Cannot receive message: connection not established.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	msg = readInboxMessage(connid, size);
+	msg = readInboxMessage(conn, size);
 
 	return msg;
 }
@@ -74,5 +117,5 @@ char *rudpReceive(const int connid, const size_t size) {
 /* SETTINGS */
 
 void setRUDPDebugMode(const int mode) {
-	_RUDP_DEBUG = mode;
+	RUDP_DEBUG = mode;
 }

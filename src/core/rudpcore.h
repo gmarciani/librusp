@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -20,66 +21,67 @@
 #include "../util/addrutil.h"
 #include "../util/sockmng.h"
 
-#define _RUDP_MAX_CONNECTIONS	10
+#define RUDP_MAX_CONNECTIONS	10
 
-#define _RUDP_CONN_CLOSED 		0
-#define _RUDP_CONN_SYN_SENT		1
-#define _RUDP_CONN_SYN_RCVD		2
-#define _RUDP_CONN_ESTABLISHED	3
-#define _RUDP_CONN_FIN_SENT		4	
-#define _RUDP_CONN_FIN_RCVD		5
+#define RUDP_CONN_CLOSED 		0
+#define RUDP_CONN_SYN_SENT		1
+#define RUDP_CONN_SYN_RCVD		2
+#define RUDP_CONN_ESTABLISHED	3
+#define RUDP_CONN_WAITCLOSE		4
+#define RUDP_CONN_FIN_SENT		5	
+#define RUDP_CONN_FIN_RCVD		6
 
-#define _RUDP_ACK_TIMEOUT		2000
-#define _RUDP_MAX_RETRANS		5
-#define _RUDP_WND				1000
+#define RUDP_ACK_TIMEOUT		2000
+#define RUDP_MAX_RETRANS		10
+#define RUDP_MAX_WNDS			10
+
+typedef int ConnectionId;
 
 typedef struct ConnectionRecord {
 	unsigned short status;
 	struct sockaddr_in laddr;
 	struct sockaddr_in paddr;	
-	SegmentOutbox outbox;
-	SegmentInbox inbox;
+	SegmentOutbox *outbox;
+	SegmentInbox *inbox;
 	int sock;
 } ConnectionRecord;
 
 typedef struct Connection {
-	int connid;
-	unsigned short version;	
+	unsigned short version;
+	ConnectionId connid;
 	ConnectionRecord record;
 	pthread_t manager;
 } Connection;
 
-int synchronizeConnection(const struct sockaddr_in laddr);
+Connection *createConnection(void);
 
-int acceptSynchonization(const int lsock);
+void setListeningConnection(Connection *conn, const struct sockaddr_in laddr);
 
-void desynchronizeConnection(const int connid);
+ConnectionId acceptSynchonization(Connection *lconn);
 
-Connection *_createConnection(void);
+int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr);
 
-void _destroyConnection(Connection *conn);
+void desynchronizeConnection(Connection *conn);
+
+void destroyConnection(Connection *conn);
 
 /* MESSAGE COMMUNICATION */
 
-void writeOutboxMessage(const int connid, const char *msg);
+void writeOutboxMessage(Connection *conn, const char *msg);
 
-char *readInboxMessage(const int connid, const size_t size);
+char *readInboxMessage(Connection *conn, const size_t size);
 
 /* SEGMENT COMMUNICATION */
 
 void sendSegment(Connection *conn, Segment sgm);
 
-void flushOutbox(Connection *conn);
-
 Segment receiveSegment(Connection *conn);
 
 /* UTILITY */
 
-int getConnectionStatus(const int connid);
+Connection *getConnectionById(const ConnectionId connid);
 
-Connection *_getConnectionById(const int connid);
-
-unsigned long int _getISN();
+uint32_t getISN();
 
 /* SETTING */
 

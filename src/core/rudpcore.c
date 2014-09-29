@@ -1,26 +1,94 @@
 #include "rudpcore.h"
 
-static int _RUDP_CORE_DEBUG = 1;
+static int RUDP_CORE_DEBUG = 1;
 
-static Connection *_RUDP_CONNECTIONS_POOL[_RUDP_MAX_CONNECTIONS];
-static int _RUDP_CONNECTIONS_INPOOL = 0;
-static int _RUDP_NEXT_CONNECTION_ID = 0;
+static Connection *RUDP_CONNECTIONS_POOL[RUDP_MAX_CONNECTIONS];
+static int RUDP_CONNECTIONS_POOL_SIZE = 0;
+static int RUDP_NEXT_CONNECTION_ID = 0;
 
 /* CONNECTION */
 
-int synchronizeConnection(const struct sockaddr_in laddr) {
+Connection *createConnection(void) {
 	Connection *conn = NULL;
-	Segment sgm, syn, synack, acksynack;
 
-	conn = _createConnection();
+	if (RUDP_CONNECTIONS_POOL_SIZE == RUDP_MAX_CONNECTIONS) {
+		fprintf(stderr, "Cannot allocate connection: too many connections in pool.\n");
+		return NULL;
+	}
 
-	conn->record.paddr = laddr;
+	if (!(conn = malloc(sizeof(Connection)))) {
+		fprintf(stderr, "Cannot allocate new connection.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	conn->connid = RUDP_NEXT_CONNECTION_ID;
+	RUDP_NEXT_CONNECTION_ID++;
+
+	RUDP_CONNECTIONS_POOL[RUDP_CONNECTIONS_POOL_SIZE] = conn;
+	RUDP_CONNECTIONS_POOL_SIZE++;
+
+	conn->version = RUDP_VERSION;	
+	conn->record.status = RUDP_CONN_CLOSED;
+	conn->record.sock = openSocket();	
+
+	return conn;
+}
+
+void setListeningConnection(Connection *conn, const struct sockaddr_in laddr) {
+	setSocketReusable(conn->record.sock);	
+	bindSocket(conn->record.sock, &laddr);
+	conn->record.inbox = createInbox(RUDP_MAX_WNDS);
+	//setListeningInbox(conn->record.inbox);
+	conn->record.status = RUDP_CONN_LISTEN;	
+}
+
+ConnectionId acceptSynchonization(Connection *lconn) {
+	Connection *aconn = NULL;
+	Segment syn, synack, acksynack;
+	struct sockaddr_in caddr;
+	char *ssgm = NULL;	
+
+	if (lconn->record.status != RUDP_CONN_LISTEN) {
+		fprintf(stderr, "Cannot accept connection: connection is not listening.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/*syn = receiveSegment(lconn);	
+
+	conn->record.paddr = caddr;
+
+	conn->record.inbox = createInbox(syn.hdr.seqno, _RUDP_WND);	
+
+	conn->record.status = _RUDP_CONN_SYN_RCVD;
 
 	conn->record.outbox = createOutbox(_getISN(), _RUDP_WND);
 
-	syn = createSegment(_RUDP_SYN, 0, 0, NULL);
+	synack = createSegment(_RUDP_ACK, 0, 0, NULL);	
+
+	sendSegment(conn, synack);
+
+	conn->record.status = _RUDP_CONN_SYN_SENT;
+
+	// receive acksynack*/
+
+	return aconn->connid;
+}
+
+int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
+	Segment sgm, syn, synack, acksynack;
+
+	conn->record.paddr = laddr;
+
+	conn->record.outbox = createOutbox(getISN(), RUDP_MAX_WNDS);
+
+	syn = createSegment(RUDP_SYN, 0, 0, 0, 0, NULL);
 
 	sendSegment(conn, syn);
+
+	do {
+		
+		sgm = _receiveSegment(conn);
+	while (sgm.hdr.ctrl != (RUDP_SYN | RUDP_ACK));
 
 	conn->record.status = _RUDP_CONN_SYN_SENT;
 
@@ -41,85 +109,55 @@ int synchronizeConnection(const struct sockaddr_in laddr) {
 	return conn->connid;
 }
 
-int acceptSynchonization(const int lsock) {
-	Connection *conn = NULL;
-	Segment sgm, syn, synack, acksynack;
-	struct sockaddr_in caddr;
-	char *ssgm = NULL;
+void desynchronizeConnection(Connection *conn) {
+	Segment fin, finack;
 
-	conn = _createConnection();
+	conn->record.status = RUDP_WAITCLOSE; // posso inviare solo FIN, e ricevere solo FINACK
 
-	do {
-		ssgm = readUnconnectedSocket(lsock, &caddr, _RUDP_MAX_SGM);
-		sgm = deserializeSegment(ssgm);
-		free(ssgm);
-	} while (sgm.hdr.ctrl != _RUDP_ACK);
+	fin = createSegment(RUDP_FIN, 0, 0, 0, 0, NULL);
 
-	syn = sgm;	
+	sendSegment(conn, fin);
 
-	conn->record.paddr = caddr;
+	finack = receiveSegment(conn);
 
-	conn->record.inbox = createInbox(syn.hdr.seqno, _RUDP_WND);	
-
-	conn->record.status = _RUDP_CONN_SYN_RCVD;
-
-	conn->record.outbox = createOutbox(_getISN(), _RUDP_WND);
-
-	synack = createSegment(_RUDP_ACK, 0, 0, NULL);	
-
-	sendSegment(conn, synack);
-
-	conn->record.status = _RUDP_CONN_SYN_SENT;
-
-	// receive acksynack
-
-	return conn->connid;
+	destroyConnection(conn);
 }
 
-void desynchronizeConnection(const int connid) {
-	// to implement!
-}
 
-Connection *_createConnection(void) {
-	Connection *conn = NULL;
+	
+void destroyConnection(Connection *conn) {
+	conn->record.status = RUDP_CONN_CLOSED;
 
-	if (_RUDP_CONNECTIONS_INPOOL == _RUDP_MAX_CONNECTIONS) {
-		fprintf(stderr, "Cannot allocate connection: too many connections in pool.\n");
-		return NULL;
-	}
+	freeOutbox(conn->record.outbox);
 
-	if (!(conn = malloc(sizeof(Connection)))) {
-		fprintf(stderr, "Cannot allocate new connection.\n");
+	freeInbox(conn->record.inbox);
+
+	if (close(conn->record.sock) == -1) {
+		fprintf("Cannot close socket.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	conn->connid = _RUDP_NEXT_CONNECTION_ID;
-	_RUDP_NEXT_CONNECTION_ID++;
+	free(conn);
 
-	_RUDP_CONNECTIONS_POOL[_RUDP_CONNECTIONS_INPOOL] = conn;
-	_RUDP_CONNECTIONS_INPOOL++;
-
-	conn->version = _RUDP_VERSION;	
-	conn->record.status = _RUDP_CONN_CLOSED;
-	conn->record.sock = openSocket();	
-
-	return conn;
-}
-	
-void _destroyConnection(Connection *conn) {
-	// to implement!
+	RUDP_CONNECTION_POOL_SIZE--;	
 }
 
 /* MESSAGE COMMUNICATION */
 
-void writeOutboxMessage(const int connid, const char *msg) {
-	// to implement!
+void writeOutboxMessage(Connection *conn, const char *msg) {
+	Stream *stream = NULL;
+	int i;
+
+	stream = createStream(msg);
+
+	for (i = 0; i < stream.size; i++)
+		sendSegment(conn, sgm);
 }
 
-char *readInboxMessage(const int connid, const size_t size) {
+char *readInboxMessage(Connection *conn, const size_t size) {
 	char *msg = NULL;
 	
-	// to implement!	
+	msg = readInboxBuffer(conn->record.inbox, size);	
 	
 	return msg;
 }
@@ -127,76 +165,40 @@ char *readInboxMessage(const int connid, const size_t size) {
 /* SEGMENT COMMUNICATION */
 
 void sendSegment(Connection *conn, Segment sgm) {
-	if (conn->record.status == _RUDP_CONN_CLOSED) {
+	if (conn->record.status == RUDP_CONN_CLOSED) {
 		fprintf(stderr, "Cannot send segment: connection closed.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	submitSegmentToOutbox(&(conn->record.outbox), sgm);
-
-	flushOutbox(conn);
-}
-
-void flushOutbox(Connection *conn) {
-	OutboxElement *curr = NULL;
-	char *ssgm = NULL;	
-
-	while (conn->record.outbox.size != 0) {
-		curr = conn->record.outbox.wndbase;
-		while (curr) {
-			if (conn->record.outbox.wndend)
-				if (curr == conn->record.outbox.wndend->next)
-					break;
-			if (curr->status == _RUDP_UNACKED) {
-				ssgm = serializeSegment(*(curr->segment));
-				writeConnectedSocket(conn->record.sock, ssgm);
-				if (_RUDP_CORE_DEBUG)
-					printOutSegment(conn->record.paddr, *(curr->segment));
-				free(ssgm);
-				// start timeout
-			}
-			curr = curr->next;
-		}
-	}	
 }
 
 Segment receiveSegment(Connection *conn) {	
 	Segment sgm;
 
-	sgm = readInboxSegment(&(conn->record.inbox)); //il primo segmento affidabile
+	sgm = readInboxSegment(&(conn->record.inbox));
 
 	return sgm;
 }
 
 /* UTILITY */
 
-int getConnectionStatus(const int connid) {
-	Connection *conn;
-	int status;
-
-	conn = _getConnectionById(connid);
-
-	status = conn->record.status;
-
-	return status;
-}
-
-Connection *_getConnectionById(const int connid) {
+Connection *getConnectionById(const int connid) {
 	int i;
 
-	for (i = 0; i < _RUDP_CONNECTIONS_INPOOL; i++)
-		if (_RUDP_CONNECTIONS_POOL[i]->connid == connid)
-			return _RUDP_CONNECTIONS_POOL[i];
+	for (i = 0; i < RUDP_CONNECTIONS_POOL_SIZE; i++)
+		if (RUDP_CONNECTIONS_POOL[i]->connid == connid)
+			return RUDP_CONNECTIONS_POOL[i];
 
 	return NULL;
 }
 
-unsigned long int _getISN() {
-	unsigned long int isn;
+uint32_t getISN() {
+	uint32_t isn;
 	struct timeval time;
 
 	gettimeofday(&time, NULL);
-	isn = (1000000 * time.tv_sec + time.tv_usec) % 4;
+	isn = (uint32_t) (1000000 * time.tv_sec + time.tv_usec) % 4;
 
 	return isn;
 }
@@ -204,5 +206,5 @@ unsigned long int _getISN() {
 /* SETTING */
 
 void setRUDPCoreDebugMode(const int mode) {
-	_RUDP_CORE_DEBUG = mode;
+	RUDP_CORE_DEBUG = mode;
 }

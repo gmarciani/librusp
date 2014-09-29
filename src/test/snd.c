@@ -2,21 +2,23 @@
 #include <stdio.h>
 #include "../rudp.h"
 
+#define RCVSIZE 5
+
 int main(int argc, char **argv) {
-	int connid;
+	ConnectionId conn;
 	char *sndData, *rcvData;
 
-	connid = rudpConnect(argv[1], atoi(argv[2]));
+	conn = rudpConnect(argv[1], atoi(argv[2]));
 
 	sndData = getUserInput("[To Send]>");
 
-	rudpSend(connid, sndData);
+	rudpSend(conn, sndData);
 
-	rcvData = rudpReceive(connid, 5);
+	rcvData = rudpReceive(conn, RCVSIZE);
 
 	printf("[Received]> %s\n", rcvData);
 
-	rudpDisconnect(connid);
+	rudpDisconnect(conn);
 
 	free(sndData);
 	free(rcvData);

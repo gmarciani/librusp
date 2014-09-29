@@ -2,22 +2,25 @@
 #include <stdio.h>
 #include "../rudp.h"
 
+#define RCVSIZE 10
+
 int main(int argc, char **argv) {
-	int connid;
-	int lsock;
+	ConnectionId lconn, aconn;
 	char *data;
 
-	lsock = rudpListen(atoi(argv[1]));	
+	lconn = rudpListen(atoi(argv[1]));	
 
-	connid = rudpAccept(lsock);
+	aconn = rudpAccept(lconn);
 
-	data = rudpReceive(connid, 10);
+	rudpClose(lconn);
+
+	data = rudpReceive(aconn, RCVSIZE);
 
 	printf("[Received] %s\n", data);
 
-	rudpSend(connid, data);
+	rudpSend(aconn, data);
 
-	rudpDisconnect(connid);
+	rudpDisconnect(aconn);
 
 	free(data);
 

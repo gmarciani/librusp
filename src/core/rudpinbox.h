@@ -24,15 +24,17 @@ typedef struct SegmentInbox {
 	unsigned long nextseqno;
 } SegmentInbox;
 
-SegmentInbox createInbox(const unsigned long isn, const unsigned long wndsize);
+SegmentInbox *createInbox(const uint32_t wnds);
 
 void freeInbox(SegmentInbox *inbox);
 
-void submitSegmentToInbox(SegmentInbox *inbox, const Segment sgm);
+void setListeningInbox(SegmentInbox *inbox);
+
+char *readInboxBuffer(SegmentInbox *inbox, const size_t size);
 
 Segment readInboxSegment(SegmentInbox *inbox);
 
-char *readInboxBuffer(SegmentInbox *inbox, const size_t size);
+void submitSegmentToInbox(SegmentInbox *inbox, const Segment sgm);
 
 void _slideInboxWindow(SegmentInbox *inbox);
 
