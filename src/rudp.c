@@ -70,11 +70,6 @@ void rudpDisconnect(const ConnectionId connid) {
 		exit(EXIT_FAILURE);
 	}	
 
-	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
-		fprintf(stderr, "Cannot disconnect connection: connection not established.\n");
-		exit(EXIT_FAILURE);
-	}
-
 	desynchronizeConnection(conn);
 }
 
@@ -87,11 +82,6 @@ void rudpClose(const ConnectionId connid) {
 		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
 		exit(EXIT_FAILURE);
 	}	
-
-	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
-		fprintf(stderr, "Cannot close connection: connection not established.\n");
-		exit(EXIT_FAILURE);
-	}
 
 	destroyConnection(conn);
 }
@@ -106,12 +96,7 @@ void rudpSend(const ConnectionId connid, const char *msg) {
 	if (!conn) {
 		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
 		exit(EXIT_FAILURE);
-	}		
-
-	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
-		fprintf(stderr, "Cannot send message: connection not established.\n");
-		exit(EXIT_FAILURE);
-	}
+	}	
 
 	writeOutboxMessage(conn, msg);
 }
@@ -126,11 +111,6 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
 		exit(EXIT_FAILURE);
 	}	
-
-	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
-		fprintf(stderr, "Cannot receive message: connection not established.\n");
-		exit(EXIT_FAILURE);
-	}
 
 	msg = readInboxMessage(conn, size);
 
@@ -150,12 +130,7 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (conn->record.state == RUDP_CONN_CLOSED) {
-		fprintf(stderr, "Cannot get local address: connection closed.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	addr = getSocketLocal(conn->record.sock);
+	addr = getSocketLocal(conn->record->sock);
 
 	return addr;
 }
@@ -171,34 +146,7 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (conn->record.state != RUDP_CONN_ESTABLISHED) {
-		fprintf(stderr, "Cannot get peer address: connection not established.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	addr = getSocketPeer(conn->record.sock);
+	addr = getSocketPeer(conn->record->sock);
 
 	return addr;
-}
-
-char *rudpAddressToString(const struct sockaddr_in addr) {
-	char *straddr = NULL;
-	char *strip = NULL;
-	int port;
-
-	strip = getIp(addr);
-
-	port = getPort(addr);
-
-	if (!(straddr = malloc(sizeof(char) * (ADDRESS_IPV4_MAX_OUTPUT + 1)))) {
-		fprintf(stderr, "Cannot allocate memory for address to string.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	sprintf(straddr, "%s:%d", strip, port);
-
-	free(strip);
-
-	return straddr;
-
 }

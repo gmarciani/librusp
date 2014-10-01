@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,6 +14,7 @@
 #include <libconfig.h>
 #include <netdb.h>
 #include <limits.h>
+#include <pthread.h>
 
 #include "rudpinbox.h"
 #include "rudpoutbox.h"
@@ -20,8 +22,6 @@
 #include "../util/stringutil.h"
 #include "../util/addrutil.h"
 #include "../util/sockmng.h"
-
-#define RUDP_MAX_CONNECTIONS	20
 
 #define RUDP_CONN_CLOSED 		0
 #define RUDP_CONN_LISTEN		1
@@ -32,8 +32,11 @@
 #define RUDP_CONN_FIN_SENT		6	
 #define RUDP_CONN_FIN_RCVD		7
 
+#define RUDP_SYN_TIMEOUT		6000 //millis
+#define RUDP_SYNACK_TIMEOUT		2000 //milis
+
 #define RUDP_ACK_TIMEOUT		3000 //millis
-#define RUDP_MAX_RETRANS		10
+#define RUDP_MAX_RETRANS		3
 #define RUDP_MAX_WNDS			10
 
 /* CONNECTION */
@@ -45,16 +48,15 @@ typedef struct ConnectionRecord {
 	SegmentOutbox *outbox;
 	SegmentInbox *inbox;
 	int sock;
+	pthread_mutex_t *recordmtx;
 } ConnectionRecord;
 
 typedef struct Connection {
 	unsigned short version;
 	ConnectionId connid;
-	ConnectionRecord record;
+	ConnectionRecord *record;
 	pthread_t manager;
 } Connection;
-
-Connection *createListeningConnection(const struct sockaddr_in laddr);
 
 Connection *createConnection(void);
 

@@ -12,6 +12,9 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#define ON_READ		0b01
+#define ON_WRITE	0b10
+
 /* SOCKET CREATION */
 
 int openSocket();
@@ -36,7 +39,7 @@ void setSocketConnected(const int sock, const struct sockaddr_in addr);
 
 void setSocketReusable(const int sock);
 
-void setSocketReadTimeout(const int sock, const unsigned long millis);
+void setSocketTimeout(const int sock, const int mode, const unsigned long millis);
 
 /* SOCKET END-POINTS */
 

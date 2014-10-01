@@ -9,6 +9,11 @@ int main(int argc, char **argv) {
 	char *straaddr = NULL;
 	char *strcaddr = NULL;
 
+	if (argc != 2) {
+		fprintf(stderr, "Usage %s [server-port]\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
 	printf("# Opening listening connection on port: %d #\n", atoi(argv[1]));
 
 	lconn = rudpListen(atoi(argv[1]));
@@ -26,7 +31,7 @@ int main(int argc, char **argv) {
 
 	printf("# Getting string representation of local address of listening connection #\n");
 
-	strladdr = rudpAddressToString(laddr);
+	strladdr = addressToString(laddr);
 
 	printf("%s\n", strladdr);
 
@@ -44,7 +49,7 @@ int main(int argc, char **argv) {
 
 	printf("# Getting string representation of local address of established connection #\n");
 
-	straaddr = rudpAddressToString(aaddr);
+	straaddr = addressToString(aaddr);
 
 	printf("%s\n", straaddr);
 
@@ -56,11 +61,13 @@ int main(int argc, char **argv) {
 
 	printf("# Getting string representation of peer address of established connection #\n");
 
-	strcaddr = rudpAddressToString(caddr);	
+	strcaddr = addressToString(caddr);	
 
 	printf("%s\n", strcaddr);	
 
 	free(strcaddr);
+
+	while(1);
 
 	exit(EXIT_SUCCESS);
 }

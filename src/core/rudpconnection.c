@@ -1,27 +1,44 @@
 #include "rudpconnection.h"
 
-static Connection *RUDP_CONNECTIONS_POOL[RUDP_MAX_CONNECTIONS];
+static int RUDP_CONN_DEBUG = 1;
 
-static int RUDP_CONNECTIONS_POOL_SIZE = 0;
+/* CONNECTIONS POOL */
 
-static int RUDP_NEXT_CONNECTION_ID = 0;
+static Connection **CONNPOOL = NULL;
 
-static void setConnectionState(Connection *conn, unsigned short state);
+static int CONNPOOL_SIZE = 0;
 
-static void sendSegment(Connection *conn, Segment sgm);
+static int CONNPOOL_ACTIVE = 0;
 
-//static Segment receiveSegment(Connection *conn);
+static int CONNPOOL_NEXTID = 0;
 
-static uint32_t getISN();
+static void connectionsPoolDoublingHalving();
+
+static int getConnectionsPoolFirstAvailablePosition();
 
 /* CONNECTION */
 
+//static void sendSegment(Connection *conn, Segment sgm);
+
+//static Segment receiveSegment(Connection *conn);
+
+static pthread_t createManager(ConnectionRecord *record);
+
+static void *managerLoop(void *arg);
+
+static uint32_t getISN();
+
 Connection *createConnection(void) {
 	Connection *conn = NULL;
+	int poolpos;
 
-	if (RUDP_CONNECTIONS_POOL_SIZE == RUDP_MAX_CONNECTIONS) {
-		fprintf(stderr, "Cannot allocate connection: too many connections in pool.\n");
-		return NULL;
+	connectionsPoolDoublingHalving();
+
+	poolpos = getConnectionsPoolFirstAvailablePosition();	
+
+	if (poolpos == -1) {
+		fprintf(stderr, "Cannot retrieve available position in connections pool.\n");
+		exit(EXIT_FAILURE);
 	}
 
 	if (!(conn = malloc(sizeof(Connection)))) {
@@ -29,80 +46,115 @@ Connection *createConnection(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	if (!(conn->record = malloc(sizeof(ConnectionRecord)))) {
+		fprintf(stderr, "Cannot allocate connection record for new connection.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	conn->version = RUDP_VERSION;
 
-	conn->connid = RUDP_NEXT_CONNECTION_ID;
+	conn->connid = CONNPOOL_NEXTID;
 
-	RUDP_NEXT_CONNECTION_ID++;
+	if (!(conn->record->recordmtx = malloc(sizeof(pthread_mutex_t)))) {
+		fprintf(stderr, "Cannot allocate memory for connection mutex.\n");
+		exit(EXIT_FAILURE);
+	}
 
-	setConnectionState(conn, RUDP_CONN_CLOSED);
+	if (pthread_mutex_init(conn->record->recordmtx, NULL) != 0) {
+		fprintf(stderr, "Cannot create connection record mutex\n");
+		exit(EXIT_FAILURE);
+	} 
 
-	RUDP_CONNECTIONS_POOL[RUDP_CONNECTIONS_POOL_SIZE] = conn;
+	conn->record->state = RUDP_CONN_CLOSED;
 
-	RUDP_CONNECTIONS_POOL_SIZE++;	
+	CONNPOOL[poolpos] = conn;
 
-	printf("Connection created with id: %d\n", conn->connid);
+	CONNPOOL_NEXTID++;	
+
+	CONNPOOL_SIZE++;
+
+	if (RUDP_CONN_DEBUG)
+		printf("Connection created with id: %d\n", conn->connid);
 
 	return conn;
 }
 
 Connection *getConnectionById(const int connid) {
-	int i;
+	int poolpos;
 
-	for (i = 0; i < RUDP_CONNECTIONS_POOL_SIZE; i++) {
-		if (RUDP_CONNECTIONS_POOL[i]) {
-			if (RUDP_CONNECTIONS_POOL[i]->connid == connid)
-				return RUDP_CONNECTIONS_POOL[i];
+	for (poolpos = 0; poolpos < CONNPOOL_SIZE; poolpos++) {
+
+		if (CONNPOOL[poolpos]) {
+
+			if (CONNPOOL[poolpos]->connid == connid) {
+
+				if (RUDP_CONN_DEBUG)
+					printf("Connection retrieved with id: %d\n", connid);	
+
+				return CONNPOOL[poolpos];
+			}				
 		}		
-	}		
+	}	
+
+	if (RUDP_CONN_DEBUG)
+		printf("Cannot retrieve connection with id: %d\n", connid);	
 
 	return NULL;
 }
 
 void setListeningConnection(Connection *conn, const struct sockaddr_in laddr) {
-	if (conn->record.state != RUDP_CONN_CLOSED) {
-		fprintf(stderr, "Cannot make connection listening: connection not closed.\n");
+	
+	if (conn->record->state != RUDP_CONN_CLOSED) {
+		fprintf(stderr, "Cannot set connection listening: connection not closed.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	conn->record.sock = openSocket();
+	conn->record->sock = openSocket();
 
-	setSocketReusable(conn->record.sock);
+	setSocketReusable(conn->record->sock);
 	
-	bindSocket(conn->record.sock, &laddr);
+	bindSocket(conn->record->sock, &laddr);
 
-	setConnectionState(conn, RUDP_CONN_LISTEN);
+	conn->record->state = RUDP_CONN_LISTEN;
+
+	if (RUDP_CONN_DEBUG)
+		printf("Connection successfully set for listening on address %s\n", addressToString(laddr));
 }
 
 ConnectionId acceptSynchonization(Connection *lconn) {
 	Connection *aconn = NULL;
 	struct sockaddr_in caddr;	
-	Segment syn, synack, acksynack;
-	int asock;
-	char *lssgm = NULL;
-	char *pssgm = NULL;	
+	Segment syn;
+	Segment synack; 
+	Segment acksynack;
+	char *ssyn = NULL;
+	char *ssynack = NULL;
+	char *sacksynack = NULL;
+	int asock;	
 	uint32_t pisn;
 	uint32_t lisn;	
 
-	if (lconn->record.state != RUDP_CONN_LISTEN) {
+	if (lconn->record->state != RUDP_CONN_LISTEN) {
 		fprintf(stderr, "Cannot accept connection: connection not listening.\n");
 		exit(EXIT_FAILURE);
-	}
+	}	
 
 	while (1) {
 
 		do {
-			pssgm = readUnconnectedSocket(lconn->record.sock, &caddr, RUDP_MAX_SGM);			
 
-			syn = deserializeSegment(pssgm);
-			
-			printInSegment(caddr, syn);
+			ssyn = readUnconnectedSocket(lconn->record->sock, &caddr, RUDP_MAX_SGM);			
 
-			free(pssgm);
+			syn = deserializeSegment(ssyn);
+
+			if (RUDP_CONN_DEBUG)
+				printInSegment(caddr, syn);
+
+			free(ssyn);
 
 		} while (syn.hdr.ctrl != RUDP_SYN);
 
-		setConnectionState(lconn, RUDP_CONN_SYN_RCVD);
+		lconn->record->state = RUDP_CONN_SYN_RCVD;
 
 		pisn = syn.hdr.seqn;
 
@@ -112,132 +164,171 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setSocketConnected(asock, caddr);	
 
-		setSocketReadTimeout(asock, RUDP_ACK_TIMEOUT);
+		setSocketTimeout(asock, ON_READ, RUDP_SYNACK_TIMEOUT);
 
 		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, lisn, ((pisn + 1) % RUDP_MAX_SEQN), NULL);	
 
-		lssgm = serializeSegment(synack);
+		ssynack = serializeSegment(synack);
 
-		writeConnectedSocket(asock, lssgm);		
+		int retrans = 0;
 
-		printOutSegment(caddr, synack);
+		do {			
 
-		free(lssgm);	
+			writeConnectedSocket(asock, ssynack);		
 
-		setConnectionState(lconn, RUDP_CONN_SYN_SENT);	
+			if (RUDP_CONN_DEBUG)
+				printOutSegment(getSocketPeer(asock), synack);
 
-		pssgm = readConnectedSocket(asock, RUDP_MAX_SGM);
+			lconn->record->state = RUDP_CONN_SYN_SENT;
+		
+			sacksynack = readConnectedSocket(asock, RUDP_MAX_SGM);
 
-		if (pssgm) {
+			if (sacksynack) {
 
-			acksynack = deserializeSegment(pssgm);
+				acksynack = deserializeSegment(sacksynack);
 
-			printInSegment(caddr, acksynack);
+				free(sacksynack);
 
-			free(pssgm);
+				if (RUDP_CONN_DEBUG)
+					printInSegment(getSocketPeer(asock), acksynack);				
 
-			if ((acksynack.hdr.ctrl == RUDP_ACK) &&
-				(acksynack.hdr.seqn == ((pisn + 1) % RUDP_MAX_SEQN)) &&
-				(acksynack.hdr.ackn == ((lisn + 1) % RUDP_MAX_SEQN))) {
-			
-				aconn = createConnection();	
+				if ((acksynack.hdr.ctrl == RUDP_ACK) &&
+					(acksynack.hdr.seqn == ((pisn + 1) % RUDP_MAX_SEQN)) &&
+					(acksynack.hdr.ackn == ((lisn + 1) % RUDP_MAX_SEQN))) {
+		
+					aconn = createConnection();	
 
-				if (aconn) {
-					aconn->record.outbox = createOutbox(((lisn + 1) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
+					if (aconn) {
 
-					aconn->record.inbox = createInbox(((pisn + 2) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
+						free(ssynack);
 
-					aconn->record.sock = asock;
+						aconn->record->outbox = createOutbox(((lisn + 1) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
 
-					setConnectionState(aconn, RUDP_CONN_ESTABLISHED);
+						aconn->record->inbox = createInbox(((pisn + 2) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
 
-					return aconn->connid;
-				}				
+						aconn->record->sock = asock;
+
+						aconn->manager = createManager(aconn->record);
+
+						if (RUDP_CONN_DEBUG)
+							printf("Connection acceptance succeed.\n");
+
+						aconn->record->state = RUDP_CONN_ESTABLISHED;
+
+						return aconn->connid;
+					}				
+				}
 			}
-		}		
+
+			retrans++;
+
+		} while (retrans <= RUDP_MAX_RETRANS);				
+
+		if (RUDP_CONN_DEBUG)
+			printf("Connection acceptance failed.\n");
 
 		closeSocket(asock);
 
-		setConnectionState(lconn, RUDP_CONN_LISTEN);		
+		lconn->record->state = RUDP_CONN_LISTEN;		
 	}
 }
 
 int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 	struct sockaddr_in aaddr;	
-	Segment syn, synack, acksynack;
+	Segment syn;
+	Segment synack;
+	Segment acksynack;
+	char *ssyn = NULL;
+	char *ssynack = NULL;
+	char *sacksynack = NULL;
 	int asock;
-	char *lssgm = NULL;
-	char *pssgm = NULL;	
 	uint32_t lisn;
 	uint32_t pisn;	
 
-	if (conn->record.state != RUDP_CONN_CLOSED) {
-		fprintf(stderr, "Cannot synchronize connection: connection already active.\n");
+	if (conn->record->state != RUDP_CONN_CLOSED) {
+		fprintf(stderr, "Cannot synchronize connection: connection not closed.\n");
 		exit(EXIT_FAILURE);
-	}
+	}	
 
 	lisn = getISN();
 
 	asock = openSocket();
 
-	setSocketReadTimeout(asock, RUDP_ACK_TIMEOUT);	
+	setSocketTimeout(asock, ON_READ, RUDP_SYN_TIMEOUT);		
 
 	syn = createSegment(RUDP_SYN, 0, 0, lisn, 0, NULL);
 
-	lssgm = serializeSegment(syn);
+	ssyn = serializeSegment(syn);
 
-	writeUnconnectedSocket(asock, laddr, lssgm);
+	int retrans = 0;
 
-	printOutSegment(laddr, syn);
+	do {				
 
-	free(lssgm);
+		writeUnconnectedSocket(asock, laddr, ssyn);
 
-	setConnectionState(conn, RUDP_CONN_SYN_SENT);
+		if (RUDP_CONN_DEBUG)
+			printOutSegment(laddr, syn);
 
-	pssgm = readUnconnectedSocket(asock, &aaddr, RUDP_MAX_SGM);
+		conn->record->state = RUDP_CONN_SYN_SENT;
 
-	if (pssgm) {
+		ssynack = readUnconnectedSocket(asock, &aaddr, RUDP_MAX_SGM);
 
-		synack = deserializeSegment(pssgm);
+		if (ssynack) {
 
-		printInSegment(aaddr, synack);
+			synack = deserializeSegment(ssynack);
 
-		free(pssgm);
+			free(ssynack);
 
-		if ((synack.hdr.ctrl == (RUDP_SYN | RUDP_ACK)) &&
-			(synack.hdr.ackn == ((lisn + 1) % RUDP_MAX_SEQN))) {
+			if (RUDP_CONN_DEBUG)
+				printInSegment(aaddr, synack);
 
-			setConnectionState(conn, RUDP_CONN_SYN_RCVD);
+			if ((synack.hdr.ctrl == (RUDP_SYN | RUDP_ACK)) &&
+				(synack.hdr.ackn == ((lisn + 1) % RUDP_MAX_SEQN))) {
 
-			setSocketConnected(asock, aaddr);
+				conn->record->state = RUDP_CONN_SYN_RCVD;
 
-			pisn = synack.hdr.seqn;
+				setSocketConnected(asock, aaddr);
 
-			acksynack = createSegment(RUDP_ACK, 0, 0, ((lisn + 1) % RUDP_MAX_SEQN), ((pisn + 1) % RUDP_MAX_SEQN), NULL);
+				pisn = synack.hdr.seqn;
 
-			lssgm = serializeSegment(acksynack);
+				acksynack = createSegment(RUDP_ACK, 0, 0, ((lisn + 1) % RUDP_MAX_SEQN), ((pisn + 1) % RUDP_MAX_SEQN), NULL);
 
-			writeConnectedSocket(asock, lssgm);
+				sacksynack = serializeSegment(acksynack);
 
-			printOutSegment(aaddr, acksynack);
+				writeConnectedSocket(asock, sacksynack);
 
-			free(lssgm);
+				free(sacksynack);
 
-			conn->record.outbox = createOutbox(((lisn + 2) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
+				if (RUDP_CONN_DEBUG)				
+					printOutSegment(aaddr, acksynack);				
 
-			conn->record.inbox = createInbox(((pisn + 1) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
+				conn->record->outbox = createOutbox(((lisn + 2) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
 
-			conn->record.sock = asock;
-			
-			setConnectionState(conn, RUDP_CONN_ESTABLISHED);
+				conn->record->inbox = createInbox(((pisn + 1) % RUDP_MAX_SEQN), RUDP_MAX_WNDS);
 
-			return conn->connid;					
-		}
-	}	
+				conn->record->sock = asock;
+
+				conn->manager = createManager(conn->record);
+
+				conn->record->state = RUDP_CONN_ESTABLISHED;
+
+				if (RUDP_CONN_DEBUG)
+					printf("Connection synchronization succeed.\n");
+
+				return conn->connid;					
+			}
+		}	
+
+		retrans++;
+
+	} while (retrans <= RUDP_MAX_RETRANS);	
+
+	if (RUDP_CONN_DEBUG)
+		printf("Connection synchronization failed.\n");
 
 	closeSocket(asock);
 
-	setConnectionState(conn, RUDP_CONN_CLOSED);
+	conn->record->state = RUDP_CONN_CLOSED;
 
 	return -1;
 }
@@ -248,24 +339,30 @@ void desynchronizeConnection(Connection *conn) {
 }
 	
 void destroyConnection(Connection *conn) {
-	conn->record.state = RUDP_CONN_CLOSED;
+	int managerRetval;
 
-	freeInbox(conn->record.inbox);
+	conn->record->state = RUDP_CONN_CLOSED;
 
-	freeOutbox(conn->record.outbox);	
+	if (pthread_join(conn->manager, (void *)&managerRetval) != 0) {
+		fprintf(stderr, "Cannot join connection manager.\n");
+		exit(EXIT_FAILURE);
+	}
 
-	if (close(conn->record.sock) == -1) {
+	if (managerRetval != 0 && RUDP_CONN_DEBUG)
+		fprintf(stderr, "Connection manager reported some errors.\n");
+
+	freeInbox(conn->record->inbox);
+
+	freeOutbox(conn->record->outbox);	
+
+	if (close(conn->record->sock) == -1) {
 		fprintf(stderr, "Cannot close socket.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	free(conn);
 
-	RUDP_CONNECTIONS_POOL_SIZE--;	
-}
-
-static void setConnectionState(Connection *conn, unsigned short state) {
-	conn->record.state = state;
+	CONNPOOL_SIZE--;	
 }
 
 /* MESSAGE COMMUNICATION */
@@ -277,24 +374,24 @@ void writeOutboxMessage(Connection *conn, const char *msg) {
 	stream = createStream(msg);
 
 	for (i = 0; i < stream->size; i++)
-		sendSegment(conn, stream->segments[i]);
+		submitSegmentToOutbox(conn->record->outbox, stream->segments[i]);
 }
 
 char *readInboxMessage(Connection *conn, const size_t size) {
 	char *msg = NULL;
 	
-	msg = readInboxBuffer(conn->record.inbox, size);	
+	msg = readInboxBuffer(conn->record->inbox, size);	
 	
 	return msg;
 }
 
 /* SEGMENT COMMUNICATION */
-
+/*
 static void sendSegment(Connection *conn, Segment sgm) {
 
-	submitSegmentToOutbox(conn->record.outbox, sgm);
+	submitSegmentToOutbox(conn->record->outbox, sgm);
 }
-/*
+
 static Segment receiveSegment(Connection *conn) {	
 	Segment sgm;
 
@@ -303,16 +400,90 @@ static Segment receiveSegment(Connection *conn) {
 	return sgm;
 }*/
 
-/* UTILITY */
+static void connectionsPoolDoublingHalving() {
+	if (CONNPOOL_SIZE == 0) {
+
+		CONNPOOL_SIZE = 2;
+
+		if (!(CONNPOOL = malloc(sizeof(Connection *) * CONNPOOL_SIZE))) {
+			fprintf(stderr, "Cannot allocate connections pool.\n");
+			exit(EXIT_FAILURE);
+		}		
+
+		if (RUDP_CONN_DEBUG)
+			printf("Connections pool successfully allocated with size %d.\n", CONNPOOL_SIZE);
+		
+		return;
+
+	} else if (CONNPOOL_ACTIVE == CONNPOOL_SIZE - 1) {
+
+		CONNPOOL_SIZE *= 2;
+			
+		if (!(CONNPOOL = realloc(CONNPOOL, sizeof(Connection *) * CONNPOOL_SIZE))) {
+			fprintf(stderr, "Cannot reallocate connections pool.\n");
+			exit(EXIT_FAILURE);
+		}		
+
+		if (RUDP_CONN_DEBUG)
+			printf("Connections pool successfully reallocated with size %d.\n", CONNPOOL_SIZE);
+
+		return;
+
+	} else if (CONNPOOL_ACTIVE <= ceil(CONNPOOL_SIZE * (1/4)) - 1) {
+
+		CONNPOOL_SIZE /= 2;
+				
+		if (!(CONNPOOL = realloc(CONNPOOL, sizeof(Connection *) * CONNPOOL_SIZE))) {
+			fprintf(stderr, "Cannot reallocate connections pool.\n");
+			exit(EXIT_FAILURE);
+		}		
+
+		if (RUDP_CONN_DEBUG)
+			printf("Connections pool successfully reallocated with size %d.\n", CONNPOOL_SIZE);
+
+		return;
+	}
+}
+
+static int getConnectionsPoolFirstAvailablePosition() {
+	int poolpos;
+
+	for (poolpos = 0; poolpos < CONNPOOL_SIZE; poolpos++) {
+		if (!CONNPOOL[poolpos])
+			return poolpos;
+	}
+
+	return -1;
+}
 
 static uint32_t getISN() {
 	uint32_t isn;
 	struct timeval time;
 
 	gettimeofday(&time, NULL);
-	isn = (uint32_t) (((1000 * time.tv_sec + time.tv_usec) % 4) % RUDP_MAX_SEQN);
 
-	printf("Getting ISN %u\n", isn);
+	isn = (uint32_t) ((1000 * time.tv_sec + time.tv_usec) % RUDP_MAX_SEQN);
 
 	return isn;
+}
+
+static pthread_t createManager(ConnectionRecord *record) {
+	pthread_t tid;
+
+	if (pthread_create(&tid, NULL, managerLoop, record) != 0) {
+		fprintf(stderr, "Cannot create connection manager.\n");
+		exit(EXIT_FAILURE);
+	} 
+
+	return tid;
+}
+
+static void *managerLoop(void *arg) {
+	ConnectionRecord *record = (ConnectionRecord *) arg;
+	int retval = 0;
+
+	while (1) {
+		if (record->state == RUDP_CONN_CLOSED)
+			pthread_exit((void *)&retval);
+	}		
 }

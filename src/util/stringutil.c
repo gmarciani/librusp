@@ -1,48 +1,6 @@
 #include "stringutil.h"
 
-char *getTime(void) {
-	char *str = NULL;
-	char localTime[10];
-	size_t size = 40;
-	
-	struct timeval time;
-
-	if (!(str = malloc(sizeof(char) * size))) {
-		fprintf(stderr, "Error in string allocation for time.\n");
-		exit(EXIT_FAILURE);
-	}
-	
-	gettimeofday(&time, NULL);
-	struct tm *local = localtime(&time.tv_sec);
-	strftime(localTime, 10, "%H:%M:%S", local);
-	snprintf(str, size, "%s:%ld", localTime, time.tv_usec);
-	
-	return str;
-}
-
-char *getUserInput(const char *descr) {
-	char *input;
-	size_t size = 2048;	
-
-	if (!(input = malloc(sizeof(char) * size))) {
-		fprintf(stderr, "Error in string allocation for user input.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	input[0] = '\0';
-
-	printf("\n%s", descr);
-	fflush(stdout);
-
-  	if (getline(&input, &size, stdin) == -1) {
-		fprintf(stderr, "Error in getline for user input.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	input[strlen(input) - 1] = '\0';
-
-	return input;
-}
+/* STRING MANAGEMENT */
 
 char *stringDuplication(const char *src) {
 	char *dest = NULL;
@@ -68,6 +26,7 @@ char *stringNDuplication(const char *src, size_t size) {
 	size_t sizeToCopy;	
 
 	srcSize = strlen(src);
+
 	sizeToCopy = (srcSize >= size) ? size : srcSize;
 
 	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1)))) {
@@ -96,10 +55,13 @@ char *stringConcatenation(const char *srcOne, const char *srcTwo) {
 	dest[0] = '\0';
 
 	dest = strcat(dest, srcOne);
+
 	dest = strcat(dest, srcTwo);
 
 	return dest;
 }
+
+/* STRING SPLITTING */
 
 char **splitStringByDelimiter(const char *src, const char *delim, int *numSubstr) {
 	char **substr = NULL;
@@ -138,6 +100,7 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 	int i;
 
 	temp = stringDuplication(src);
+
 	tempp = temp;
 
 	if (!(substr = malloc(sizeof(char *) * numSubstr))) {
@@ -146,15 +109,21 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 	}
 
 	for (delimMatch = strstr(temp, delim); delimMatch != NULL; delimMatch = strstr(temp, delim)) {	
+
 		effNumSubstr ++;
+
 		tokenSize = delimMatch - temp;
+
 		substr[effNumSubstr - 1] = stringNDuplication(temp, tokenSize);
+
 		temp = delimMatch + delimSize;
+
 		if (effNumSubstr + 1 == numSubstr)
 			break;
 	}
 	
 	effNumSubstr ++;
+
 	substr[effNumSubstr - 1] = stringDuplication(temp);
 
 	for (i = effNumSubstr; i < numSubstr; i++)
@@ -171,6 +140,7 @@ char **splitStringBySize(const char *src, const size_t size, int *numSubstr) {
 	int i;
 
 	srcsize = strlen(src);
+
 	*numSubstr = (srcsize % size == 0) ? (srcsize / size) : ((srcsize / size) + 1);
 
 	if (!(substr = malloc(sizeof(char *) * *numSubstr))) {
@@ -199,6 +169,8 @@ char **splitStringBySection(const char *src, const size_t *ssize, const int nums
 	return substr;
 }
 
+/* ARRAY (DE)SERIALIZATION */
+
 char *arraySerialization(char **array, const int numItems, const char *delim) {
 	char *sarray;
 	size_t sarraysize = 0;
@@ -215,9 +187,12 @@ char *arraySerialization(char **array, const int numItems, const char *delim) {
 	sarray[0] = '\0';
 
 	for (i = 0; i < numItems; i++) {
+
 		sarray = strcat(sarray, array[i]);
+
 		if (i == (numItems -1))
 			break;
+
 		sarray = strcat(sarray, delim);
 	}
 
@@ -226,4 +201,54 @@ char *arraySerialization(char **array, const int numItems, const char *delim) {
 
 char **arrayDeserialization(const char *sarray, const char *delim, int *numItems) {
 	return splitStringByDelimiter(sarray, delim, numItems);
+}
+
+/* VARIOUS */
+
+char *getTime(void) {
+	char *str = NULL;
+	char localTime[10];
+	size_t size = 40;
+	
+	struct timeval time;
+
+	if (!(str = malloc(sizeof(char) * size))) {
+		fprintf(stderr, "Error in string allocation for time.\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	gettimeofday(&time, NULL);
+
+	struct tm *local = localtime(&time.tv_sec);
+
+	strftime(localTime, 10, "%H:%M:%S", local);
+
+	snprintf(str, size, "%s:%ld", localTime, time.tv_usec);
+	
+	return str;
+}
+
+char *getUserInput(const char *descr) {
+	char *input;
+	size_t size = 2048;	
+
+	if (!(input = malloc(sizeof(char) * size))) {
+		fprintf(stderr, "Error in string allocation for user input.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	input[0] = '\0';
+
+	printf("\n%s", descr);
+
+	fflush(stdout);
+
+  	if (getline(&input, &size, stdin) == -1) {
+		fprintf(stderr, "Error in getline for user input.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	input[strlen(input) - 1] = '\0';
+
+	return input;
 }

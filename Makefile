@@ -13,6 +13,10 @@ SRCDIR = src
 
 BINDIR = bin
 
+COREDIR = $(SRCDIR)/core
+
+UTILDIR = $(SRCDIR)/util
+
 TESTDIR = src/test
 
 TESTPREFIX = test_
@@ -22,13 +26,13 @@ TESTPREFIX = test_
 
 PROTOCOL_LIBS = -lpthread -lm
 
-PROTOCOL_UTILS = $(addprefix $(SRCDIR)/util/, sockmng.h sockmng.c addrutil.h addrutil.c timerutil.h timerutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
+PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockmng.h sockmng.c addrutil.h addrutil.c timerutil.h timerutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
 
-PROTOCOL_SEGMENTS = $(addprefix $(SRCDIR)/core/, rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
+PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
 
-PROTOCOL_MAILBOX = $(addprefix $(SRCDIR)/core/, rudpoutbox.h rudpoutbox.c rudpinbox.h rudpinbox.c) $(PROTOCOL_SEGMENTS)
+PROTOCOL_MAILBOX = $(addprefix $(COREDIR)/, rudpoutbox.h rudpoutbox.c rudpinbox.h rudpinbox.c) $(PROTOCOL_SEGMENTS)
 
-PROTOCOL_CONNECTION = $(addprefix $(SRCDIR)/core/, rudpconnection.h rudpconnection.c) $(PROTOCOL_MAILBOX)
+PROTOCOL_CONNECTION = $(addprefix $(COREDIR)/, rudpconnection.h rudpconnection.c) $(PROTOCOL_MAILBOX)
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION) 
 
@@ -52,14 +56,17 @@ inbox: $(TESTDIR)/inbox.c
 segment: $(TESTDIR)/segment.c
 	$(CC) $(CFLAGS) $(TESTDIR)/segment.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-thread: $(TESTDIR)/thread.c
-	$(CC) $(CFLAGS) $(TESTDIR)/thread.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
-
 timer: $(TESTDIR)/timer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
+#list: $(TESTDIR)/list.c
+#	$(CC) $(CFLAGS) $(TESTDIR)/list.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+
+thread: $(TESTDIR)/thread.c
+	$(CC) $(CFLAGS) $(TESTDIR)/thread.c -lpthread -o $(BINDIR)/$(TESTPREFIX)$@
+
 bitmask: $(TESTDIR)/bitmask.c
-	$(CC) $(CFLAGS) $(TESTDIR)/bitmask.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $(TESTDIR)/bitmask.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*

@@ -5,9 +5,11 @@ unsigned long startTimeout(unsigned long millis, unsigned long period) {
 	struct itimerval timeout, oldtimeout;
 
 	timeout.it_value.tv_sec = ceil(millis / 1000);
+
 	timeout.it_value.tv_usec = (millis % 1000) * 1000;
 
 	timeout.it_interval.tv_sec = ceil(period / 1000);
+
 	timeout.it_interval.tv_usec = (period % 1000) * 1000;
 	
 	if (setitimer(ITIMER_REAL, &timeout, &oldtimeout) == -1) {
@@ -39,7 +41,9 @@ void registerTimeoutHandler(void (*handler) (int)) {
 	struct sigaction sa;
 
 	sigemptyset(&sa.sa_mask);
+
 	sa.sa_flags = 0;
+
 	sa.sa_handler = handler;
 
 	if (sigaction(SIGALRM, &sa, NULL) == -1) {

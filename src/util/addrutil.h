@@ -12,6 +12,8 @@ struct sockaddr_in createAddress(const char *ip, const int port);
 
 int isEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_in addrTwo);
 
+char *addressToString(const struct sockaddr_in addr);
+
 char *getIp(const struct sockaddr_in addr);
 
 int getPort(const struct sockaddr_in addr);

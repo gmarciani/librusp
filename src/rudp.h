@@ -27,6 +27,4 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid);
 
 struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid);
 
-char *rudpAddressToString(const struct sockaddr_in addr);
-
 #endif /* _RUDP_H_ */
