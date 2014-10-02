@@ -8,6 +8,8 @@ int main(int argc, char **argv) {
 	char *strladdr = NULL;
 	char *straaddr = NULL;
 	char *strcaddr = NULL;
+	char *rcvdata = NULL;
+	size_t rcvsize = 20;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage %s [server-port]\n", argv[0]);
@@ -67,7 +69,11 @@ int main(int argc, char **argv) {
 
 	free(strcaddr);
 
-	while(1);
+	printf("# Receiving %zu bytes of data #\n", rcvsize);
+
+	rcvdata = rudpReceive(aconn, rcvsize);
+
+	printf("# Received %zu bytes of data: %s #\n", strlen(rcvdata), rcvdata);
 
 	exit(EXIT_SUCCESS);
 }

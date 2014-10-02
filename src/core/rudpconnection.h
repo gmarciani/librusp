@@ -37,7 +37,7 @@
 
 #define RUDP_ACK_TIMEOUT		3000 //millis
 #define RUDP_MAX_RETRANS		3
-#define RUDP_MAX_WNDS			10
+#define RUDP_MAX_WNDS			5
 
 /* CONNECTION */
 

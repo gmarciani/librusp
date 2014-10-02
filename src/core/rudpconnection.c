@@ -308,6 +308,8 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 				conn->record->sock = asock;
 
+				setSocketTimeout(asock, ON_READ, RUDP_ACK_TIMEOUT);	
+
 				conn->manager = createManager(conn->record);
 
 				conn->record->state = RUDP_CONN_ESTABLISHED;
@@ -373,14 +375,34 @@ void writeOutboxMessage(Connection *conn, const char *msg) {
 
 	stream = createStream(msg);
 
+	if (pthread_mutex_lock(conn->record->recordmtx) != 0) {
+		fprintf(stderr, "Cannot lock connection record mutex to write to outbox.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	for (i = 0; i < stream->size; i++)
 		submitSegmentToOutbox(conn->record->outbox, stream->segments[i]);
+
+	if (pthread_mutex_unlock(conn->record->recordmtx) != 0) {
+		fprintf(stderr, "Cannot unlock connection record mutex to write to outbox.\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 char *readInboxMessage(Connection *conn, const size_t size) {
 	char *msg = NULL;
+
+	if (pthread_mutex_lock(conn->record->recordmtx) != 0) {
+		fprintf(stderr, "Cannot lock connection record mutex to read from inbox outbox.\n");
+		exit(EXIT_FAILURE);
+	}
 	
 	msg = readInboxBuffer(conn->record->inbox, size);	
+
+	if (pthread_mutex_unlock(conn->record->recordmtx) != 0) {
+		fprintf(stderr, "Cannot unlock connection record mutex to read from inbox outbox.\n");
+		exit(EXIT_FAILURE);
+	}
 	
 	return msg;
 }
@@ -481,9 +503,25 @@ static pthread_t createManager(ConnectionRecord *record) {
 static void *managerLoop(void *arg) {
 	ConnectionRecord *record = (ConnectionRecord *) arg;
 	int retval = 0;
+	Segment lsgm;
+	Segment psgm;
+	char *lssgm = NULL;
+	char *pssgm = NULL;
 
 	while (1) {
-		if (record->state == RUDP_CONN_CLOSED)
-			pthread_exit((void *)&retval);
+
+		switch (record->state) {
+
+			case RUDP_CONN_ESTABLISHED:
+
+				pssgm = readConnectedSocket(record->sock, RUDP_MAX_SGM);				
+
+				break;
+
+			case RUDP_CONN_CLOSED:
+				pthread_exit((void *)&retval);
+				break;
+		}
+			
 	}		
 }
