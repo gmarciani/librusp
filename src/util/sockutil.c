@@ -1,4 +1,4 @@
-#include "sockmng.h"
+#include "sockutil.h"
 
 /* SOCKET CREATION */
 
@@ -132,12 +132,12 @@ void setSocketReusable(const int sock) {
 	}
 }
 
-void setSocketTimeout(const int sock, const int mode, const unsigned long millis) {
+void setSocketTimeout(const int sock, const uint8_t mode, const uint64_t nanos) {
 	struct timeval timer;
 
-	timer.tv_sec = ceil(millis / 1000);
+	timer.tv_sec = (time_t) ceil(nanos / 1000000000);
 
-  	timer.tv_usec = (millis % 1000) * 1000;
+  	timer.tv_usec = (suseconds_t) ceil((nanos % 1000000000) % 1000);
 
 	if (mode & ON_READ) {
 		errno = 0;  

@@ -19,43 +19,50 @@
 #include "rudpinbox.h"
 #include "rudpoutbox.h"
 #include "rudpsegment.h"
+
 #include "../util/stringutil.h"
+#include "../util/listutil.h"
+#include "../util/threadutil.h"
+#include "../util/timerutil.h"
 #include "../util/addrutil.h"
-#include "../util/sockmng.h"
+#include "../util/sockutil.h"
 
-#define RUDP_CONN_CLOSED 		0
-#define RUDP_CONN_LISTEN		1
-#define RUDP_CONN_SYN_SENT		2
-#define RUDP_CONN_SYN_RCVD		3
-#define RUDP_CONN_ESTABLISHED	4
-#define RUDP_CONN_WAITCLOSE		5
-#define RUDP_CONN_FIN_SENT		6	
-#define RUDP_CONN_FIN_RCVD		7
+#define RUDP_CONN_CLOSED 		(uint8_t)	0
+#define RUDP_CONN_LISTEN		(uint8_t)	1
+#define RUDP_CONN_SYN_SENT		(uint8_t)	2
+#define RUDP_CONN_SYN_RCVD		(uint8_t)	3
+#define RUDP_CONN_ESTABLISHED	(uint8_t)	4
+#define RUDP_CONN_WAITCLOSE		(uint8_t)	5
+#define RUDP_CONN_FIN_SENT		(uint8_t)	6	
+#define RUDP_CONN_FIN_RCVD		(uint8_t)	7
 
-#define RUDP_SYN_TIMEOUT		6000 //millis
-#define RUDP_SYNACK_TIMEOUT		2000 //milis
+// RTT = 2000000000 nanos
+#define RUDP_TIMEOUT_ACK		(uint64_t) 	2000000000 // nanos (1 * RTT)
 
-#define RUDP_ACK_TIMEOUT		3000 //millis
-#define RUDP_MAX_RETRANS		3
-#define RUDP_MAX_WNDS			5
+#define RUDP_MAX_CONN_ATTEMPTS	(int)		3
+
+#define RUDP_MAX_RETRANS		(int)		3
+#define RUDP_MAX_WNDS			(int)		10
 
 /* CONNECTION */
 
 typedef int ConnectionId;
 
 typedef struct ConnectionRecord {
-	unsigned short state;
-	SegmentOutbox *outbox;
-	SegmentInbox *inbox;
-	int sock;
-	pthread_mutex_t *recordmtx;
+	uint8_t 			state;
+	SegmentOutbox 		*outbox;
+	SegmentInbox  		*inbox;
+	int 				sock;
+	timer_t				timer;
+	pthread_mutex_t 	*conn_mtx;
+	pthread_cond_t  	*conn_cnd;
 } ConnectionRecord;
 
 typedef struct Connection {
-	unsigned short version;
-	ConnectionId connid;
-	ConnectionRecord *record;
-	pthread_t manager;
+	uint8_t 			version;
+	ConnectionId 		connid;
+	ConnectionRecord 	*record;
+	pthread_t 			manager;
 } Connection;
 
 Connection *createConnection(void);

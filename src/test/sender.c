@@ -7,7 +7,6 @@ int main(int argc, char **argv) {
 	struct sockaddr_in caddr, saddr;
 	char *strcaddr = NULL;
 	char *strsaddr = NULL;
-	char *snddata = "Hello world!";
 
 	if (argc != 3) {
 		fprintf(stderr, "Usage %s [server-ip] [server-port]\n", argv[0]);
@@ -49,11 +48,9 @@ int main(int argc, char **argv) {
 
 	free(strsaddr);
 
-	printf("# Sending %zu bytes of data: %s #\n", strlen(snddata), snddata);
+	printf("# Disconnecting established connection #\n");
 
-	rudpSend(conn, snddata);
-
-	printf("# Data sent #\n");
+	rudpDisconnect(conn);
 
 	exit(EXIT_SUCCESS);
 }

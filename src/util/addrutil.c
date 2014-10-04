@@ -16,7 +16,9 @@ struct sockaddr_in createAddress(const char *ip, const int port) {
 	} else {
 
 		if (inet_pton(AF_INET, ip, &(addr.sin_addr)) <= 0) {
+
 			fprintf(stderr, "Error in address to-network translation: %s:%d.\n", ip, port);
+
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -40,7 +42,9 @@ char *addressToString(const struct sockaddr_in addr) {
 	port = getPort(addr);
 
 	if (!(straddr = malloc(sizeof(char) * (ADDRESS_IPV4_MAX_OUTPUT + 1)))) {
+
 		fprintf(stderr, "Cannot allocate memory for address to string.\n");
+
 		exit(EXIT_FAILURE);
 	}
 
@@ -53,15 +57,19 @@ char *addressToString(const struct sockaddr_in addr) {
 }
 
 char *getIp(const struct sockaddr_in addr) {
-	char *str;
+	char *str = NULL;
 
 	if (!(str = malloc(INET_ADDRSTRLEN))) {
+
 		fprintf(stderr, "Error in serialized address allocation.\n");
+
 		exit(EXIT_FAILURE);
 	}
 
 	if (!inet_ntop(AF_INET, &(addr.sin_addr), str, INET_ADDRSTRLEN)) {
+
 		fprintf(stderr, "Error in address to-presentation translation.\n");
+
 		exit(EXIT_FAILURE);
 	}
 

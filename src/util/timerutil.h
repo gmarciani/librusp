@@ -3,14 +3,20 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/time.h>
+#include <string.h>
+#include <stdint.h>
+#include <pthread.h>
+#include <time.h>
 #include <signal.h>
 #include <math.h>
 
-unsigned long startTimeout(unsigned long millis, unsigned long period);
+#define TIMER_ONCE		0
+#define TIMER_PERIODIC 	1	
 
-unsigned long getTimeout();
+timer_t createTimer(void (*handler) (union sigval), void *arg);
 
-void registerTimeoutHandler(void (*handler) (int));
+void freeTimer(const timer_t timerid);
+
+void setTimer(const timer_t timerid, const uint64_t nanos, const uint8_t mode);
 
 #endif /* TIMERUTIL_H_ */

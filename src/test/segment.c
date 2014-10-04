@@ -9,25 +9,25 @@ int main(void) {
 	char *strstream = NULL;
 	int i;
 
-	puts("# Creating SYNACK segments (MAX_PLD=5) with urgp=5 wnds=324, seqn=51, ackn=22, pld=Hello World! #");
+	printf("# Creating SYNACK segments (MAX_PLD=5) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s #\n", msg);
 
-	sgmOne = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, "Hello world!");
+	sgmOne = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, msg);
 
 	strsgm = segmentToString(sgmOne);
 
-	puts("# Segment to string #");
+	printf("# Segment to string #\n");
 
 	printf("%s\n", strsgm);
 
 	free(strsgm);
 
-	puts("# Serialized segment #");	
+	printf("# Serialized segment #\n");	
 
 	ssgm = serializeSegment(sgmOne);
 
 	printf("%s\n", ssgm);
 
-	puts("# Deserializing segment #");
+	printf("# Deserializing segment #\n");
 
 	sgmTwo = deserializeSegment(ssgm);
 
@@ -41,21 +41,24 @@ int main(void) {
 		sgmOne.hdr.seqn == sgmTwo.hdr.seqn &&
 		sgmOne.hdr.ackn == sgmTwo.hdr.ackn) {
 
-		puts("Header match SUCCESS!");
+		printf("Header match SUCCESS!\n");
 
 		for (i = 0; i < sgmOne.hdr.plds; i++) {
 
 			if (sgmOne.pld[i] != sgmTwo.pld[i]) {
-				puts("Payload match FAILURE!");
+
+				printf("Payload match FAILURE!\n");
+
 				exit(EXIT_FAILURE);
+
 			}
 		}
 
-		puts("Payload match SUCCESS!");
+		printf("Payload match SUCCESS!\n");
 
 	} else {
 
-		puts("Header match FAILURE");
+		printf("Header match FAILURE\n");
 
 	}
 
@@ -63,7 +66,7 @@ int main(void) {
 
 	stream = createStream(msg);
 
-	puts("# Stream of segments to string #");
+	printf("# Stream of segments to string #\n");
 
 	strstream = streamToString(stream);
 
@@ -71,7 +74,19 @@ int main(void) {
 
 	free(strstream);
 
-	puts("# Freeing stream of segments #");
+	printf("# Cleaning stream of segments #\n");
+
+	cleanStream(stream);
+
+	printf("# Stream of segments to string #\n");
+
+	strstream = streamToString(stream);
+
+	printf("%s\n", strstream);
+
+	free(strstream);
+
+	printf("# Freeing stream of segments #\n");
 
 	freeStream(stream);
 

@@ -47,13 +47,13 @@ ConnectionId rudpConnect(const char *ip, const int port) {
 
 	conn = createConnection();
 
-	if (!conn)
-		return -1;
-
 	syncresult = synchronizeConnection(conn, laddr);
 
-	if (syncresult == -1)
-		return -1;		
+	if (syncresult == -1) {
+		destroyConnection(conn);
+		return -1;
+	}
+				
 
 	connid = conn->connid;
 

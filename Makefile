@@ -24,9 +24,9 @@ TESTPREFIX = test_
 
 # Dependencies
 
-PROTOCOL_LIBS = -lpthread -lm
+PROTOCOL_LIBS = -lpthread -lrt -lm
 
-PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockmng.h sockmng.c addrutil.h addrutil.c timerutil.h timerutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
+PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
 
 PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
 
@@ -34,7 +34,7 @@ PROTOCOL_MAILBOX = $(addprefix $(COREDIR)/, rudpsegmentlist.h rudpsegmentlist.c 
 
 PROTOCOL_CONNECTION = $(addprefix $(COREDIR)/, rudpconnection.h rudpconnection.c) $(PROTOCOL_MAILBOX)
 
-PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION) 
+PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
 
 
 # Tests
@@ -61,9 +61,6 @@ segment: $(TESTDIR)/segment.c
 
 timer: $(TESTDIR)/timer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
-
-#list: $(TESTDIR)/list.c
-#	$(CC) $(CFLAGS) $(TESTDIR)/list.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 thread: $(TESTDIR)/thread.c
 	$(CC) $(CFLAGS) $(TESTDIR)/thread.c -lpthread -o $(BINDIR)/$(TESTPREFIX)$@

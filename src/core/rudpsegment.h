@@ -12,10 +12,10 @@
 
 #define RUDP_HDR_FIELDS		7
 #define RUDP_MAX_HDR 		(2 * 3) + (3 * 5) + (2 * 10)
-#define RUDP_MAX_PLD 		5 	//must be 500
-#define RUDP_MAX_SGM		(2 * 3) + (3 * 5) + (2 * 10) + 5	//RUDP_MAX_HDR + RUDP_MAX_PLD
+#define RUDP_MAX_PLD 		5
+#define RUDP_MAX_SGM		(RUDP_MAX_HDR + RUDP_MAX_PLD)
 
-#define RUDP_MAX_SGM_OUTPUT 46 + (2 * 3) + (3 * 5) + (2 * 10) + 5 //output context + RUDP_MAX_SGM
+#define RUDP_MAX_SGM_OUTPUT (RUDP_MAX_SGM + 46)
 
 #define RUDP_MAX_SEQN		4294967296
 
@@ -45,9 +45,9 @@ typedef struct Segment {
 } Segment;
 
 typedef struct Stream {
-	Segment 		*segments;
-	unsigned long 	size;
-	unsigned long 	len;
+	Segment 	*segments;
+	uint32_t 	size;
+	uint32_t 	len;
 } Stream;
 
 /* SEGMENT */
@@ -69,6 +69,8 @@ void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm);
 Stream *createStream(const char *msg);
 
 void freeStream(Stream *stream);
+
+void cleanStream(Stream *stream);
 
 char *streamToString(Stream *stream);
 

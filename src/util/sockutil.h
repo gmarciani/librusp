@@ -1,9 +1,10 @@
-#ifndef SOCKMNG_H_
-#define SOCKMNG_H_
+#ifndef SOCKUTIL_H_
+#define SOCKUTIL_H_
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 #include <sys/socket.h>
@@ -39,7 +40,7 @@ void setSocketConnected(const int sock, const struct sockaddr_in addr);
 
 void setSocketReusable(const int sock);
 
-void setSocketTimeout(const int sock, const int mode, const unsigned long millis);
+void setSocketTimeout(const int sock, const uint8_t mode, const uint64_t nanos);
 
 /* SOCKET END-POINTS */
 
@@ -47,4 +48,4 @@ struct sockaddr_in getSocketLocal(const int sock);
 
 struct sockaddr_in getSocketPeer(const int sock);
 
-#endif /* SOCKMNG_H_ */
+#endif /* SOCKUTIL_H_ */
