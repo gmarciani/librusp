@@ -1,21 +1,17 @@
 #include "rudpoutbox.h"
 
-static void slideOutboxWindow(SegmentOutbox *outbox);
+static void slideOutboxWindow(Outbox *outbox);
 
-static void removeOutboxElement(SegmentOutbox *outbox, OutboxElement *elem);
+static void removeOutboxElement(Outbox *outbox, OutboxElement *elem);
 
-SegmentOutbox *createOutbox(const uint32_t isn, const uint32_t wnds) {
-	SegmentOutbox *outbox;
+Outbox *createOutbox(const uint32_t isn, const uint32_t wnds) {
+	Outbox *outbox;
 
-	if (wnds == 0) {
-		fprintf(stderr, "Cannot create outbox with window size set to zero.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (wnds == 0)
+		ERREXIT("Cannot create outbox with window size set to zero.");
 
-	if (!(outbox = malloc(sizeof(SegmentOutbox)))) {
-		fprintf(stderr, "Cannot allocate memory for outbox.\n");
-		exit(EXIT_FAILURE);	
-	}
+	if (!(outbox = malloc(sizeof(Outbox))))
+		ERREXIT("Cannot allocate memory for outbox.");
 
 	outbox->head = NULL;
 
@@ -36,7 +32,7 @@ SegmentOutbox *createOutbox(const uint32_t isn, const uint32_t wnds) {
 	return outbox;
 }
 
-void freeOutbox(SegmentOutbox *outbox) {
+void freeOutbox(Outbox *outbox) {
 	OutboxElement *curr = NULL;
 
 	curr = outbox->head;
@@ -65,18 +61,14 @@ void freeOutbox(SegmentOutbox *outbox) {
 	free(outbox);
 }
 
-void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm) {
+void submitSegmentToOutbox(Outbox *outbox, const Segment sgm) {
 	OutboxElement *new = NULL;
 
-	if (!(new = malloc(sizeof(OutboxElement)))) {
-		fprintf(stderr, "Cannot allocate memory for outbox element insertion.\n");
-		exit(EXIT_FAILURE);
-	}	
+	if (!(new = malloc(sizeof(OutboxElement))))
+		ERREXIT("Cannot allocate memory for outbox element insertion.");
 
-	if (!(new->segment = malloc(sizeof(Segment)))) {
-		fprintf(stderr, "Cannot allocate memory for outbox segment insertion.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(new->segment = malloc(sizeof(Segment))))
+		ERREXIT("Cannot allocate memory for outbox segment insertion.");
 
 	new->status = RUDP_UNACKED;	
 
@@ -84,8 +76,7 @@ void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm) {
 
 	new->segment->hdr.seqn = outbox->nextseqn;
 
-	outbox->nextseqn += ((new->segment->hdr.plds == 0) ? 1 : new->segment->hdr.plds) % RUDP_MAX_SEQN;
-
+	outbox->nextseqn = RUDP_NXTSEQN(outbox->nextseqn, new->segment->hdr.plds);
 
 	if (outbox->size == 0) {
 
@@ -124,7 +115,7 @@ void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm) {
 	outbox->size++;	
 }
 
-void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn) {
+void submitAckToOutbox(Outbox *outbox, const uint32_t ackn) {
 	OutboxElement *curr;
 
 	curr = outbox->wndb;
@@ -135,7 +126,7 @@ void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn) {
 			if (curr == outbox->wnde->next)
 				break;	
 	
-		if (ackn == ((curr->segment->hdr.seqn + ((curr->segment->hdr.plds == 0) ? 1 : curr->segment->hdr.plds))) % RUDP_MAX_SEQN) {
+		if (ackn == RUDP_NXTSEQN(curr->segment->hdr.seqn, curr->segment->hdr.plds)) {
 
 			curr->status = RUDP_ACKED;
 
@@ -148,14 +139,12 @@ void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn) {
 	}
 }
 
-Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno) {
+Segment *getRetransmittableSegments(Outbox *outbox, uint32_t *retransno) {
 	Segment *retrans = NULL;
 	OutboxElement *curr = NULL;
 
-	if (!(retrans = malloc(sizeof(Segment) * outbox->awnds))) {
-		fprintf(stderr, "Cannot allocate memory for array of retransmittable segments from outbox.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(retrans = malloc(sizeof(Segment) * outbox->awnds)))
+		ERREXIT("Cannot allocate memory for array of retransmittable segments from outbox.");
 	
 	curr = outbox->wndb;
 
@@ -169,10 +158,8 @@ Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno) 
 
 		if (curr->status == RUDP_UNACKED) {
 
-			if (!memcpy(retrans + *retransno, curr->segment, sizeof(Segment))) {
-				fprintf(stderr, "Cannot copy segment from outbox to retransmittable segments.\n");
-				exit(EXIT_FAILURE);
-			}
+			if (!memcpy(retrans + *retransno, curr->segment, sizeof(Segment))) 
+				ERREXIT("Cannot copy segment from outbox to retransmittable segments.");
 
 			*retransno += 1;
 		}
@@ -183,15 +170,13 @@ Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno) 
 	return retrans;
 }
 
-char *outboxToString(SegmentOutbox *outbox) {
+char *outboxToString(Outbox *outbox) {
 	OutboxElement *curr = NULL;
 	char *stroutbox = NULL;
 	char *strsgm = NULL;
 
-	if (!(stroutbox = malloc(sizeof(char) * (77 + outbox->size * (RUDP_MAX_SGM_OUTPUT + 5 + 1))))) {
-		fprintf(stderr, "Cannot allocate string for outbox to string.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(stroutbox = malloc(sizeof(char) * (77 + outbox->size * (RUDP_SGMSO + 5 + 1)))))
+		ERREXIT("Cannot allocate string for outbox to string.");
 
 	sprintf(stroutbox, "Outbox size:%u wnds:%u awnds:%u nextseqn:%u\n", outbox->size, outbox->wnds, outbox->awnds, outbox->nextseqn);	
 
@@ -225,7 +210,7 @@ char *outboxToString(SegmentOutbox *outbox) {
 	return stroutbox;
 }
 
-static void slideOutboxWindow(SegmentOutbox *outbox) {
+static void slideOutboxWindow(Outbox *outbox) {
 	while (outbox->wndb) {
 
 		if (outbox->wndb->status != RUDP_ACKED)
@@ -256,7 +241,7 @@ static void slideOutboxWindow(SegmentOutbox *outbox) {
 	}
 }
 
-static void removeOutboxElement(SegmentOutbox *outbox, OutboxElement *elem) {
+static void removeOutboxElement(Outbox *outbox, OutboxElement *elem) {
 	if (!elem)
 		return;
 

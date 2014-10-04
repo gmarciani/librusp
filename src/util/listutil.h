@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define LIST_INITIALIZER	(List) {.size = 0, .head = NULL, .tail = NULL}
+#define LIST_INITIALIZER (List) {.size = 0, .head = NULL, .tail = NULL}
 
 typedef struct ListElement {
 	void 				*value;

@@ -3,10 +3,8 @@
 SegmentList *createSegmentList(void) {
 	SegmentList *list = NULL;
 
-	if (!(list = malloc(sizeof(SegmentList)))) {
-		fprintf(stderr, "Cannot allocate memory for segment list.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(list = malloc(sizeof(SegmentList))))
+		ERREXIT("Cannot allocate memory for segment list.");
 
 	list->size = 0;
 	
@@ -30,15 +28,11 @@ void cleanSegmentList(SegmentList *list) {
 void addSegmentToSegmentList(SegmentList *list, const Segment sgm) {
 	SegmentListElement *new = NULL;
 
-	if (!(new = malloc(sizeof(SegmentListElement)))) {
-		fprintf(stderr, "Cannot allocate memory for new segment list element.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(new = malloc(sizeof(SegmentListElement))))
+		ERREXIT("Cannot allocate memory for new segment list element.");
 
-	if (!(new->segment = malloc(sizeof(Segment)))) {
-		fprintf(stderr, "Cannot allocate memory for segment in new segment list element.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(new->segment = malloc(sizeof(Segment))))
+		ERREXIT("Cannot allocate memory for segment in new segment list element.");
 
 	memcpy(new->segment, &sgm, sizeof(Segment));
 
@@ -140,10 +134,8 @@ char *segmentListToString(SegmentList *list) {
 	char *strlist = NULL;
 	char *strsgm = NULL;
 
-	if (!(strlist = malloc(sizeof(char) * list->size * (RUDP_MAX_SGM_OUTPUT + 1)))) {
-		fprintf(stderr, "Cannot allocate memory for string representation of segment list.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(strlist = malloc(sizeof(char) * list->size * (RUDP_SGMSO + 1))))
+		ERREXIT("Cannot allocate memory for string representation of segment list.");
 
 	strlist[0] = '\0';
 

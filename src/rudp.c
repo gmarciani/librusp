@@ -27,10 +27,8 @@ ConnectionId rudpAccept(const ConnectionId lconnid) {
 
 	lconn = getConnectionById(lconnid);
 
-	if (!lconn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", lconnid);
-		exit(EXIT_FAILURE);
-	}	
+	if (!lconn)
+		ERREXIT("Cannot retrieve connection.");
 
 	aconnid = acceptSynchonization(lconn);
 
@@ -65,10 +63,8 @@ void rudpDisconnect(const ConnectionId connid) {
 
 	conn = getConnectionById(connid);
 
-	if (!conn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}	
+	if (!conn)
+		ERREXIT("Cannot retrieve connection.");	
 
 	desynchronizeConnection(conn);
 }
@@ -78,10 +74,8 @@ void rudpClose(const ConnectionId connid) {
 
 	conn = getConnectionById(connid);
 
-	if (!conn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}	
+	if (!conn)
+		ERREXIT("Cannot retrieve connection.");	
 
 	destroyConnection(conn);
 }
@@ -93,10 +87,8 @@ void rudpSend(const ConnectionId connid, const char *msg) {
 
 	conn = getConnectionById(connid);
 
-	if (!conn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}	
+	if (!conn)
+		ERREXIT("Cannot retrieve connection.");	
 
 	writeOutboxMessage(conn, msg);
 }
@@ -107,10 +99,8 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 
 	conn = getConnectionById(connid);
 
-	if (!conn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}	
+	if (!conn)
+		ERREXIT("Cannot retrieve connection.");
 
 	msg = readInboxMessage(conn, size);
 
@@ -125,10 +115,8 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
 
 	conn = getConnectionById(connid);
 
-	if (!conn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}
+	if (!conn)
+		ERREXIT("Cannot retrieve connection.");
 
 	addr = getSocketLocal(conn->record->sock);
 
@@ -141,10 +129,8 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 
 	conn = getConnectionById(connid);
 
-	if (!conn) {
-		fprintf(stderr, "Cannot retrieve connection with id: %d.\n", connid);
-		exit(EXIT_FAILURE);
-	}
+	if (!conn)
+		ERREXIT("Cannot retrieve connection.");
 
 	addr = getSocketPeer(conn->record->sock);
 

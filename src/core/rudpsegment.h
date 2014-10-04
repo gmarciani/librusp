@@ -4,30 +4,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "../util/addrutil.h"
 #include "../util/stringutil.h"
 
-#define RUDP_VERSION 		1
+#define RUDP_VERS 1
 
-#define RUDP_HDR_FIELDS		7
-#define RUDP_MAX_HDR 		(2 * 3) + (3 * 5) + (2 * 10)
-#define RUDP_MAX_PLD 		5
-#define RUDP_MAX_SGM		(RUDP_MAX_HDR + RUDP_MAX_PLD)
+#define RUDP_HDRF 7
+#define RUDP_HDRS 41
+#define RUDP_PLDS 5
+#define RUDP_SGMS (RUDP_HDRS + RUDP_PLDS)
 
-#define RUDP_MAX_SGM_OUTPUT (RUDP_MAX_SGM + 46)
+#define RUDP_SGMSO (RUDP_SGMS + 46)
 
-#define RUDP_MAX_SEQN		4294967296
+#define RUDP_MAXSEQN (uint32_t) 4294967295
 
-#define RUDP_NULL	0b00000000
-#define RUDP_SYN 	0b00000001
-#define RUDP_FIN	0b00000010
-#define RUDP_RST	0b00000100
-#define RUDP_ACK 	0b00001000
-#define RUDP_PSH	0b00010000
-#define RUDP_URG	0b00100000
-#define RUDP_KLV	0b01000000
-#define RUDP_ERR 	0b10000000
+#define RUDP_NXTSEQN(a, b) ((a) + (b)) % RUDP_MAXSEQN
+
+#define RUDP_NUL 0b00000000
+#define RUDP_SYN 0b00000001
+#define RUDP_FIN 0b00000010
+#define RUDP_RST 0b00000100
+#define RUDP_ACK 0b00001000
+#define RUDP_PSH 0b00010000
+#define RUDP_URG 0b00100000
+#define RUDP_KLV 0b01000000
+#define RUDP_ERR 0b10000000
+
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 typedef struct Header {
 	uint8_t 	vers;
@@ -41,7 +46,7 @@ typedef struct Header {
 
 typedef struct Segment {
 	Header 	hdr;
-	char 	pld[RUDP_MAX_PLD + 1];
+	char 	pld[RUDP_PLDS + 1];
 } Segment;
 
 typedef struct Stream {

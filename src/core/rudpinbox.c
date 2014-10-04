@@ -1,45 +1,45 @@
 #include "rudpinbox.h"
 
-//static void slideInboxWindow(SegmentInbox *inbox);
+//static void slideInboxWindow(Inbox *inbox);
 
-//static void removeInboxElement(SegmentInbox *inbox, InboxElement *elem);
+//static void removeInboxElement(Inbox *inbox, InboxElement *elem);
 
-SegmentInbox *createInbox(const uint32_t isn, const uint32_t wnds) {
-	SegmentInbox *inbox = NULL;
+Inbox *createInbox(const uint32_t isn, const uint32_t wnds) {
+	Inbox *inbox = NULL;
 
 	return inbox;
 }
 
-void freeInbox(SegmentInbox *inbox) {
+void freeInbox(Inbox *inbox) {
 
 }
 
-void submitSegmentToInbox(SegmentInbox *inbox, const Segment sgm) {
+void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 
 }
 
-Segment readInboxSegment(SegmentInbox *inbox) {
+Segment readInboxSegment(Inbox *inbox) {
 	Segment sgm;
 
 	return sgm;
 }
 
-char *readInboxBuffer(SegmentInbox *inbox, const size_t size) {
+char *readInboxBuffer(Inbox *inbox, const size_t size) {
 	char *msg = NULL;
 
 
 	return msg;
 }
 
-char *inboxToString(const SegmentInbox inbox) {
+char *inboxToString(Inbox *inbox) {
 	return NULL;
 }
 /*
-static void slideInboxWindow(SegmentInbox *inbox) {
+static void slideInboxWindow(Inbox *inbox) {
 
 }
 
-static void removeInboxElement(SegmentInbox *inbox, InboxElement *elem) {
+static void removeInboxElement(Inbox *inbox, InboxElement *elem) {
 
 }
 */

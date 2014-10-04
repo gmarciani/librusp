@@ -131,3 +131,13 @@ void destroyConditionVariable(pthread_cond_t *cnd) {
 
 	free(cnd);
 }
+
+void signalConditionVariable(pthread_cond_t *cnd) {
+	
+	if (pthread_cond_signal(cnd) != 0) {
+
+		fprintf(stderr, "Cannot signal condition variable.\n");
+
+		exit(EXIT_FAILURE);
+	}
+}

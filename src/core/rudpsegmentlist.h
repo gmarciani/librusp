@@ -1,7 +1,12 @@
 #ifndef _RUDPSEGMENTLIST_H_
 #define _RUDPSEGMENTLIST_H_
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
 #include "rudpsegment.h"
+
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 typedef struct SegmentListElement {
 	Segment *segment;
@@ -10,7 +15,7 @@ typedef struct SegmentListElement {
 } SegmentListElement;
 
 typedef struct SegmentList {
-	unsigned long size;
+	uint32_t size;
 	SegmentListElement *head;
 	SegmentListElement *tail;
 } SegmentList;

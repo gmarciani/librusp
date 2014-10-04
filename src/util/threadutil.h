@@ -33,4 +33,6 @@ void initializeConditionVariable(pthread_cond_t *cnd);
 
 void destroyConditionVariable(pthread_cond_t *cnd);
 
+void signalConditionVariable(pthread_cond_t *cnd);
+
 #endif /* THREADUTIL_H_ */

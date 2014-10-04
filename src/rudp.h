@@ -3,6 +3,8 @@
 
 #include "core/rudpconnection.h"
 
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+
 /* CONNECTION */
 
 ConnectionId rudpListen(const int lport);

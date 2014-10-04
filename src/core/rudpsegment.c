@@ -2,14 +2,14 @@
 
 /* SEGMENT */
 
-const static size_t RUDP_HDR_FIELDS_SIZE[RUDP_HDR_FIELDS] = {3, 3, 5, 5, 5, 10, 10};
+const static size_t RUDP_HDRF_SIZE[RUDP_HDRF] = {3, 3, 5, 5, 5, 10, 10};
 
 Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wnds, unsigned long seqn, unsigned long ackn, const char *pld) {
 	Segment sgm;
 	size_t pldsize = 0;
 	int i;
 
-	sgm.hdr.vers = RUDP_VERSION;
+	sgm.hdr.vers = RUDP_VERS;
 
 	sgm.hdr.ctrl = ctrl;
 
@@ -23,7 +23,7 @@ Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wn
 
 	if (pld) {
 
-		pldsize = (strlen(pld) < RUDP_MAX_PLD) ? strlen(pld) : RUDP_MAX_PLD;
+		pldsize = (strlen(pld) < RUDP_PLDS) ? strlen(pld) : RUDP_PLDS;
 
 		for (i = 0; i < pldsize; i++)
 			sgm.pld[i] = pld[i];
@@ -44,9 +44,9 @@ Segment deserializeSegment(const char *ssgm) {
 	size_t pldsize;
 	int i;
 
-	hdr = stringNDuplication(ssgm, RUDP_MAX_HDR);
+	hdr = stringNDuplication(ssgm, RUDP_HDRS);
 
-	hdrfields = splitStringBySection(hdr, RUDP_HDR_FIELDS_SIZE, RUDP_HDR_FIELDS);
+	hdrfields = splitStringBySection(hdr, RUDP_HDRF_SIZE, RUDP_HDRF);
 
 	sgm.hdr.vers = (uint8_t) atoi(hdrfields[0]);
 
@@ -58,18 +58,18 @@ Segment deserializeSegment(const char *ssgm) {
 
 	sgm.hdr.wnds = (uint16_t) atoi(hdrfields[4]);
 
-	sgm.hdr.seqn = (uint32_t) (strtoul(hdrfields[5], NULL, 10) % RUDP_MAX_SEQN);
+	sgm.hdr.seqn = (uint32_t) (strtoul(hdrfields[5], NULL, 10) % RUDP_MAXSEQN);
 
-	sgm.hdr.ackn = (uint32_t) (strtoul(hdrfields[6], NULL, 10) % RUDP_MAX_SEQN);
+	sgm.hdr.ackn = (uint32_t) (strtoul(hdrfields[6], NULL, 10) % RUDP_MAXSEQN);
 
-	pldsize = (sgm.hdr.plds < RUDP_MAX_PLD) ? sgm.hdr.plds : RUDP_MAX_PLD;
+	pldsize = (sgm.hdr.plds < RUDP_PLDS) ? sgm.hdr.plds : RUDP_PLDS;
 
 	for (i = 0; i < pldsize; i++)
-		sgm.pld[i] = *(ssgm + RUDP_MAX_HDR + i);
+		sgm.pld[i] = *(ssgm + RUDP_HDRS + i);
 
 	sgm.pld[i] = '\0';	
 
-	for (i = 0; i < RUDP_HDR_FIELDS; i++)
+	for (i = 0; i < RUDP_HDRF; i++)
 		free(hdrfields[i]);
 
 	free(hdrfields);
@@ -82,10 +82,8 @@ Segment deserializeSegment(const char *ssgm) {
 char *serializeSegment(const Segment sgm) {
 	char *ssgm = NULL;
 
-	if (!(ssgm = malloc(sizeof(char) * (RUDP_MAX_SGM + 1)))) {
-		fprintf(stderr, "Cannot allocate memory for segment serialization.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(ssgm = malloc(sizeof(char) * (RUDP_SGMS + 1)))) 
+		ERREXIT("Cannot allocate memory for segment serialization.");
 
 	sprintf(ssgm, "%03u%03u%05u%05u%05u%010u%010u%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, sgm.pld);
 
@@ -95,10 +93,8 @@ char *serializeSegment(const Segment sgm) {
 char *segmentToString(const Segment sgm) {
 	char *str = NULL;
 
-	if (!(str = malloc(sizeof(char) * (RUDP_MAX_SGM_OUTPUT + 1)))) {
-		fprintf(stderr, "Error in segment to string allocation.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(str = malloc(sizeof(char) * (RUDP_SGMSO + 1))))
+		ERREXIT("Error in segment to string allocation.");
 
 	sprintf(str, "vers:%u ctrl:%u urgp:%u plds:%u wnds:%u seqn:%u ackn:%u pld:%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, sgm.pld);
 
@@ -160,17 +156,13 @@ Stream *createStream(const char *msg) {
 	int numchunks = 0;
 	int i, j;
 
-	if (!(stream = malloc(sizeof(Stream)))) {
-		fprintf(stderr, "Cannot allocate memory for stream of segments.\n");
-		exit(EXIT_FAILURE);
-	}	
+	if (!(stream = malloc(sizeof(Stream))))
+		ERREXIT("Cannot allocate memory for stream of segments.");
 
-	chunks = splitStringBySize(msg, RUDP_MAX_PLD, &numchunks);
+	chunks = splitStringBySize(msg, RUDP_PLDS, &numchunks);
 
-	if (!(stream->segments = malloc(sizeof(Segment) * numchunks))) {
-		fprintf(stderr, "Cannot allocate memory for stream of segments.\n");
-		exit(EXIT_FAILURE);
-	}	
+	if (!(stream->segments = malloc(sizeof(Segment) * numchunks)))
+		ERREXIT("Cannot allocate memory for stream of segments.");
 
 	memset(stream->segments, 0, sizeof(Segment) * numchunks);
 
@@ -180,9 +172,9 @@ Stream *createStream(const char *msg) {
 
 	for (i = 0; i < numchunks; i++) {
 
-		stream->segments[i].hdr.vers = RUDP_VERSION;
+		stream->segments[i].hdr.vers = RUDP_VERS;
 
-		stream->segments[i].hdr.ctrl = RUDP_NULL;
+		stream->segments[i].hdr.ctrl = RUDP_NUL;
 
 		stream->segments[i].hdr.urgp = 0;
 
@@ -241,10 +233,8 @@ char *streamToString(Stream *stream) {
 	char *strsgm = NULL;
 	int i;
 
-	if (!(strstream = malloc(sizeof(char) * (18 + stream->size * (RUDP_MAX_SGM_OUTPUT + 1) + 1)))) {
-		fprintf(stderr, "Cannot allocate memory for stream to string.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(strstream = malloc(sizeof(char) * (18 + stream->size * (RUDP_SGMSO + 1) + 1))))
+		ERREXIT("Cannot allocate memory for stream to string.");
 
 	sprintf(strstream, "Stream size:%u len:%u\n", stream->size, stream->len);
 

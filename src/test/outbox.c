@@ -5,12 +5,12 @@
 #include "../core/rudpsegment.h"
 #include "../util/stringutil.h"
 
-#define ISN		4294967280
+#define ISN	4294967280
 #define WNDSIZE 3
 
 int main(void) {
 	Stream *stream = NULL;
-	SegmentOutbox *outbox = NULL;
+	Outbox *outbox = NULL;
 	Segment *retrans = NULL;
 	uint32_t ackn;
 	uint32_t retransno;
@@ -42,7 +42,7 @@ int main(void) {
 			break;
 		}
 
-		printf("# Creating stream of segments (MAX_PLD:%d) #\n", RUDP_MAX_PLD);
+		printf("# Creating stream of segments (MAX_PLD:%d) #\n", RUDP_PLDS);
 
 		stream = createStream(input);
 

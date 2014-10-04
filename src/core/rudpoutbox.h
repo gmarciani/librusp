@@ -5,10 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "rudpsegment.h"
 
 #define RUDP_UNACKED 	0
 #define RUDP_ACKED		1
+
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 typedef struct OutboxElement {
 	uint8_t status;
@@ -18,7 +21,7 @@ typedef struct OutboxElement {
 	struct OutboxElement *next;
 } OutboxElement;
 
-typedef struct SegmentOutbox {
+typedef struct Outbox {
 	OutboxElement *head;
 	OutboxElement *tail;
 	OutboxElement *wndb;
@@ -27,18 +30,20 @@ typedef struct SegmentOutbox {
 	uint32_t wnds;	
 	uint32_t awnds;
 	uint32_t nextseqn;
-} SegmentOutbox;
+	pthread_cond_t *outbox_cnd;
+	pthread_mutex_t *outbox_mtx;
+} Outbox;
 
-SegmentOutbox *createOutbox(const uint32_t isn, const uint32_t wnds);
+Outbox *createOutbox(const uint32_t isn, const uint32_t wnds);
 
-void freeOutbox(SegmentOutbox *outbox);
+void freeOutbox(Outbox *outbox);
 
-void submitSegmentToOutbox(SegmentOutbox *outbox, const Segment sgm);
+void submitSegmentToOutbox(Outbox *outbox, const Segment sgm);
 
-void submitAckToOutbox(SegmentOutbox *outbox, const uint32_t ackn);
+void submitAckToOutbox(Outbox *outbox, const uint32_t ackn);
 
-Segment *getRetransmittableSegments(SegmentOutbox *outbox, uint32_t *retransno);
+Segment *getRetransmittableSegments(Outbox *outbox, uint32_t *retransno);
 
-char *outboxToString(SegmentOutbox *outbox);
+char *outboxToString(Outbox *outbox);
 
 #endif /* _RUDPOUTBOX_H_ */

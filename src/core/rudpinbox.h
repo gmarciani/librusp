@@ -3,17 +3,20 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include "rudpsegment.h"
 
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+
 typedef struct InboxElement {
-	unsigned int status;
+	uint8_t status;
 	Segment *segment;
 	struct InboxElement *prev;
 	struct InboxElement *next;
 } InboxElement;
 
-typedef struct SegmentInbox {
+typedef struct Inbox {
 	InboxElement *head;
 	InboxElement *tail;
 	InboxElement *wndbase;
@@ -22,18 +25,18 @@ typedef struct SegmentInbox {
 	unsigned long wndsize;	
 	unsigned long awndsize;
 	unsigned long nextseqno;
-} SegmentInbox;
+} Inbox;
 
-SegmentInbox *createInbox(const uint32_t isn, const uint32_t wnds);
+Inbox *createInbox(const uint32_t isn, const uint32_t wnds);
 
-void freeInbox(SegmentInbox *inbox);
+void freeInbox(Inbox *inbox);
 
-Segment readInboxSegment(SegmentInbox *inbox);
+Segment readInboxSegment(Inbox *inbox);
 
-char *readInboxBuffer(SegmentInbox *inbox, const size_t size);
+char *readInboxBuffer(Inbox *inbox, const size_t size);
 
-void submitSegmentToInbox(SegmentInbox *inbox, const Segment sgm);
+void submitSegmentToInbox(Inbox *inbox, const Segment sgm);
 
-char *inboxToString(const SegmentInbox inbox);
+char *inboxToString(Inbox *inbox);
 
 #endif /* _RUDPINBOX_H_ */

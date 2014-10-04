@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include "../core/rudpsegment.h"
 
 int main(void) {
@@ -62,7 +64,7 @@ int main(void) {
 
 	}
 
-	printf("# Creating stream of Segments (MAX_PLD=%d) with message=%s #\n", RUDP_MAX_PLD, msg);
+	printf("# Creating stream of Segments (MAX_PLD=%d) with message=%s #\n", RUDP_PLDS, msg);
 
 	stream = createStream(msg);
 

@@ -28,9 +28,9 @@ PROTOCOL_LIBS = -lpthread -lrt -lm
 
 PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
 
-PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
+PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsegmentlist.h rudpsegmentlist.c rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
 
-PROTOCOL_MAILBOX = $(addprefix $(COREDIR)/, rudpsegmentlist.h rudpsegmentlist.c rudpoutbox.h rudpoutbox.c rudpinbox.h rudpinbox.c) $(PROTOCOL_SEGMENTS)
+PROTOCOL_MAILBOX = $(addprefix $(COREDIR)/, rudpoutbox.h rudpoutbox.c rudpinbox.h rudpinbox.c) $(PROTOCOL_SEGMENTS)
 
 PROTOCOL_CONNECTION = $(addprefix $(COREDIR)/, rudpconnection.h rudpconnection.c) $(PROTOCOL_MAILBOX)
 
