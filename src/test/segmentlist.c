@@ -31,12 +31,13 @@ int main(void) {
 
 	printf("%s\n", strlist);
 
+	free(strlist);
+
 	printf("# Removing segment with sequence number 6 from segment list #\n");
 
 	curr = list->head;
 
 	while (curr) {
-		puts("iter");
 		
 		if (curr->segment->hdr.seqn == 6)
 			break;
@@ -52,6 +53,8 @@ int main(void) {
 
 	printf("%s\n", strlist);
 
+	free(strlist);
+
 	printf("# Cleaning segment list #\n");
 
 	cleanSegmentList(list);
@@ -61,6 +64,8 @@ int main(void) {
 	strlist = segmentListToString(list);
 
 	printf("%s\n", strlist);
+
+	free(strlist);
 
 	printf("# Freeing segment list #\n");
 

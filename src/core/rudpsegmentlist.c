@@ -134,7 +134,7 @@ char *segmentListToString(SegmentList *list) {
 	char *strlist = NULL;
 	char *strsgm = NULL;
 
-	if (!(strlist = malloc(sizeof(char) * list->size * (RUDP_SGMSO + 1))))
+	if (!(strlist = malloc(sizeof(char) * list->size * (RUDP_SGMSO + 1) + 1)))
 		ERREXIT("Cannot allocate memory for string representation of segment list.");
 
 	strlist[0] = '\0';

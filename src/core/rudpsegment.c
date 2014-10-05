@@ -233,7 +233,7 @@ char *streamToString(Stream *stream) {
 	char *strsgm = NULL;
 	int i;
 
-	if (!(strstream = malloc(sizeof(char) * (18 + stream->size * (RUDP_SGMSO + 1) + 1))))
+	if (!(strstream = malloc(sizeof(char) * (38 + stream->size * (RUDP_SGMSO + 1) + 1))))
 		ERREXIT("Cannot allocate memory for stream to string.");
 
 	sprintf(strstream, "Stream size:%u len:%u\n", stream->size, stream->len);

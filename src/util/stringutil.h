@@ -9,6 +9,8 @@
 #include <time.h>
 #include <sys/types.h>
 
+#define BUFFER_DHBREAKPOINT 65535
+
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 typedef struct Buffer {
@@ -23,9 +25,9 @@ Buffer *createBuffer(void);
 
 void freeBuffer(Buffer *buff);
 
-char *getBuffer(Buffer *buff, const size_t size);
+char *getBuffer(Buffer *buff, const uint32_t size);
 
-char *readFromBuffer(Buffer *buff, const size_t size);
+char *readFromBuffer(Buffer *buff, const uint32_t size);
 
 void writeToBuffer(Buffer *buff, const char *str, const size_t size);
 

@@ -39,7 +39,7 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
 
 # Tests
 
-test: setup sender receiver outbox inbox segmentlist segment thread timer bitmask
+test: setup sender receiver outbox inbox segmentlist segment thread timer buffer bitmask
 
 sender: $(TESTDIR)/sender.c
 	$(CC) $(CFLAGS) $(TESTDIR)/sender.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -64,6 +64,9 @@ timer: $(TESTDIR)/timer.c
 
 thread: $(TESTDIR)/thread.c
 	$(CC) $(CFLAGS) $(TESTDIR)/thread.c -lpthread -o $(BINDIR)/$(TESTPREFIX)$@
+
+buffer: $(TESTDIR)/buffer.c
+	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@
 
 bitmask: $(TESTDIR)/bitmask.c
 	$(CC) $(CFLAGS) $(TESTDIR)/bitmask.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@

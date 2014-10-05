@@ -27,10 +27,9 @@ void freeBuffer(Buffer *buff) {
 	free(buff);
 }
 
-char *getBuffer(Buffer *buff, const size_t size) {
+char *getBuffer(Buffer *buff, const uint32_t size) {
 	char *str = NULL;
-	size_t sizeToCopy;
-	int i;
+	uint32_t sizeToCopy, i;
 
 	sizeToCopy = (size < buff->csize) ? size : buff->csize;
 
@@ -45,39 +44,53 @@ char *getBuffer(Buffer *buff, const size_t size) {
 	return str;
 }
 
-char *readFromBuffer(Buffer *buff, const size_t size) {
+char *readFromBuffer(Buffer *buff, const uint32_t size) {
 	char *str = NULL;
-	size_t sizeToCopy;
+	uint32_t sizeToCopy;
 
 	sizeToCopy = (size < buff->csize) ? size : buff->csize;
 
 	str = getBuffer(buff, sizeToCopy);
 
-	memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->csize - sizeToCopy));
+	if (sizeToCopy != 0) {
 
-	buff->csize -= sizeToCopy;
+		memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->csize - sizeToCopy));
 
-	if (buff->csize <= buff->bsize / 4) {
+		buff->csize -= sizeToCopy;
 
-		buff->bsize /= 2;
+		if (buff->csize <= buff->bsize / 4) {
 
-		if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
-			ERREXIT("Cannot reallocate memory for buffer.");
+			buff->bsize /= 2;
+
+			if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
+				ERREXIT("Cannot reallocate memory for buffer.");
+		}
 	}
 
 	return str;
 }
 
 void writeToBuffer(Buffer *buff, const char *str, const size_t size) {
-	puts("Writing to buffer");
-	int i;
+	size_t i;
 
-	if (buff->csize + size >= buff->bsize / 2 ) {
-		
-		buff->bsize = (buff->csize + size) * 2;
+	if (size == 0)
+		return;
 
-		if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
-			ERREXIT("Cannot reallocate memory for buffer.");
+	if (buff->csize + size >= buff->bsize / 2) {
+
+		if ((buff->csize + size) * 2 <= BUFFER_DHBREAKPOINT) {
+			
+			buff->bsize = (buff->csize + size) * 2;
+
+			if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
+				ERREXIT("Cannot reallocate memory for buffer.");	
+		} else {
+
+			buff->bsize = (buff->csize + size < BUFFER_DHBREAKPOINT) ? BUFFER_DHBREAKPOINT : buff->csize + size;
+
+			if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
+				ERREXIT("Cannot reallocate memory for buffer.");
+		}		
 	}
 
 	for (i = 0 ; i < size; i++) 
@@ -85,9 +98,7 @@ void writeToBuffer(Buffer *buff, const char *str, const size_t size) {
 
 	buff->csize += size;
 
-	printf("bsize%u csize:%u\n", buff->bsize, buff->csize);	
-
-	puts("end writing to buffer");
+	printf("csize:%u bsize:%u\n", buff->csize, buff->bsize);
 }
 
 /* STRING MANAGEMENT */
