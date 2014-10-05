@@ -15,7 +15,7 @@ int main(void) {
 
 	printf("# Getting buffer string representation #\n");
 
-	strbuff = getBuffer(buff, buff->bsize);
+	strbuff = bufferToString(buff);
 
 	printf("%s\n", strbuff);
 
@@ -40,7 +40,7 @@ int main(void) {
 
 		printf("# Getting buffer string representation #\n");
 
-		strbuff = getBuffer(buff, buff->bsize);
+		strbuff = bufferToString(buff);
 
 		printf("%s\n", strbuff);
 
@@ -62,7 +62,7 @@ int main(void) {
 
 		printf("# Getting buffer string representation #\n");
 
-		strbuff = getBuffer(buff, buff->bsize);
+		strbuff = bufferToString(buff);
 
 		printf("%s\n", strbuff);
 

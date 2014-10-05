@@ -1,15 +1,19 @@
 #include "rudpinbox.h"
 
 Inbox *createInbox(const uint32_t wndb, const uint32_t wnds) {
-	Inbox *inbox;
+	Inbox *inbox = NULL;
 
 	if (wnds == 0)
 		ERREXIT("Cannot create inbox with window size set to zero.");
 
-	if (!(inbox = malloc(sizeof(Inbox))) ||
-		!(inbox->inbox_mtx = malloc(sizeof(pthread_mutex_t))) ||
+	if (!(inbox = malloc(sizeof(Inbox))))
+		ERREXIT("Cannot allocate memory for inbox.");
+
+	memset(inbox, 0, sizeof(Inbox));
+
+	if (!(inbox->inbox_mtx = malloc(sizeof(pthread_mutex_t))) ||
 		!(inbox->inbox_cnd = malloc(sizeof(pthread_cond_t))))
-		ERREXIT("Cannot allocate memory for inbox resources.");
+		ERREXIT("Cannot allocate memory for inbox resources.");	
 
 	initializeMutex(inbox->inbox_mtx);
 
@@ -121,12 +125,12 @@ char *inboxToString(Inbox *inbox) {
 
 	strsgmbuff = segmentListToString(inbox->sgmbuff);
 
-	struserbuff = getBuffer(inbox->userbuff, inbox->userbuff->csize);	
+	struserbuff = bufferToString(inbox->userbuff);	
 
-	if (!(strinbox = malloc(sizeof(char) * (90 + strlen(strsgmbuff)  + strlen(struserbuff) + 1))))
+	if (!(strinbox = malloc(sizeof(char) * (102 + strlen(strsgmbuff) + strlen(struserbuff) + 1))))
 		ERREXIT("Cannot allocate memory for inbox string representation.");
 
-	sprintf(strinbox, "wndb:%u wnde:%u wnds:%u psh:%u pshsize:%u\n%s\n%s", inbox->wndb, inbox->wnde, inbox->wnds, inbox->push, inbox->pushsize, strsgmbuff, struserbuff);
+	sprintf(strinbox, "wndb:%u wnde:%u wnds:%u psh:%u pshsize:%u\nsgmbuff:\n%s\nuserbuff:\n%s", inbox->wndb, inbox->wnde, inbox->wnds, inbox->push, inbox->pushsize, strsgmbuff, struserbuff);
 
 	free(strsgmbuff);
 

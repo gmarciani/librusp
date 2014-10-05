@@ -27,9 +27,9 @@ void freeBuffer(Buffer *buff) {
 	free(buff);
 }
 
-char *getBuffer(Buffer *buff, const uint32_t size) {
+char *getBuffer(Buffer *buff, const size_t size) {
 	char *str = NULL;
-	uint32_t sizeToCopy, i;
+	size_t sizeToCopy, i;
 
 	sizeToCopy = (size < buff->csize) ? size : buff->csize;
 
@@ -39,14 +39,14 @@ char *getBuffer(Buffer *buff, const uint32_t size) {
 	for (i = 0; i < sizeToCopy; i++) 
 		str[i] = buff->content[i];
 
-	str[i] = '\0';
+	str[sizeToCopy] = '\0';
 
 	return str;
 }
 
-char *readFromBuffer(Buffer *buff, const uint32_t size) {
+char *readFromBuffer(Buffer *buff, const size_t size) {
 	char *str = NULL;
-	uint32_t sizeToCopy;
+	size_t sizeToCopy;
 
 	sizeToCopy = (size < buff->csize) ? size : buff->csize;
 
@@ -58,7 +58,7 @@ char *readFromBuffer(Buffer *buff, const uint32_t size) {
 
 		buff->csize -= sizeToCopy;
 
-		if (buff->csize <= buff->bsize / 4) {
+		if (buff->csize <= (buff->bsize / 4)) {
 
 			buff->bsize /= 2;
 
@@ -76,7 +76,7 @@ void writeToBuffer(Buffer *buff, const char *str, const size_t size) {
 	if (size == 0)
 		return;
 
-	if (buff->csize + size >= buff->bsize / 2) {
+	if ((buff->csize + size) >= (buff->bsize / 2)) {
 
 		if ((buff->csize + size) * 2 <= BUFFER_DHBREAKPOINT) {
 			
@@ -97,8 +97,22 @@ void writeToBuffer(Buffer *buff, const char *str, const size_t size) {
 		buff->content[buff->csize + i] = str[i];
 
 	buff->csize += size;
+}
 
-	printf("csize:%u bsize:%u\n", buff->csize, buff->bsize);
+char *bufferToString(Buffer *buff) {
+	char *strbuff = NULL;
+	char *strcontent = NULL;
+
+	strcontent = getBuffer(buff, buff->csize);
+
+	if (!(strbuff = malloc(sizeof(char) * (43 + strlen(strcontent) + 1))))
+		ERREXIT("Cannot allocate memory for buffer string representation.");
+
+	sprintf(strbuff, "bsize:%zu csize:%zu content:%s", buff->bsize, buff->csize, strcontent);
+
+	free(strcontent);
+
+	return strbuff;
 }
 
 /* STRING MANAGEMENT */
@@ -119,7 +133,7 @@ char *stringDuplication(const char *src) {
 	return dest;
 }
 
-char *stringNDuplication(const char *src, size_t size) {
+char *stringNDuplication(const char *src, const size_t size) {
 	char *dest = NULL;
 	size_t srcSize;
 	size_t sizeToCopy;	
