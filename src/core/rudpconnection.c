@@ -16,8 +16,6 @@ static void *managerLoop(void *arg);
 
 static void timeoutHandler(union sigval arg);
 
-static uint32_t getISN(void);
-
 Connection *createConnection(void) {
 	Connection *conn = NULL;
 
@@ -128,7 +126,7 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setConnectionState(lconn, RUDP_CONN_SYNR);
 
-		seqn = getISN();
+		seqn = getRandom32();
 
 		ackn = RUDP_NXTSEQN(syn.hdr.seqn, 0);	
 
@@ -184,11 +182,11 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 					aconn->record->timer = createTimer(timeoutHandler, aconn->record);
 
-					setTimer(aconn->record->timer, RUDP_TIMEO_ACK, TIMER_PERIODIC);
-
-					aconn->manager = createThread(managerLoop, aconn->record, THREAD_DETACHED);
+					setTimer(aconn->record->timer, RUDP_TIMEO_ACK, TIMER_PERIODIC);					
 
 					setConnectionState(aconn, RUDP_CONN_ESTA);
+
+					aconn->manager = createThread(managerLoop, aconn->record, THREAD_DETACHED);
 
 					if (RUDP_CONN_DEBUG)
 						printf("Connection acceptance succeed.\n");
@@ -238,7 +236,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 		if (RUDP_CONN_DEBUG)
 			printf("Connection attempt: %d.\n", connattempts);	
 
-		seqn = getISN();
+		seqn = getRandom32();
 
 		ackn = 0;				
 
@@ -306,9 +304,9 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 					setTimer(conn->record->timer, RUDP_TIMEO_ACK, TIMER_PERIODIC);
 
-					conn->manager = createThread(managerLoop, conn->record, THREAD_DETACHED);
-
 					setConnectionState(conn, RUDP_CONN_ESTA);
+
+					conn->manager = createThread(managerLoop, conn->record, THREAD_DETACHED);					
 
 					if (RUDP_CONN_DEBUG)
 						printf("Connection synchronization succeed.\n");
@@ -429,12 +427,22 @@ void writeOutboxMessage(Connection *conn, const char *msg) {
 
 	stream = createStream(msg);
 
-	//lockMutex(conn->record->conn_mtx);
+	lockMutex(conn->record->outbox->outbox_mtx);
+
+	while (conn->record->outbox->size != 0)
+		waitConditionVariable(conn->record->outbox->outbox_cnd, conn->record->outbox->outbox_mtx);
 
 	for (i = 0; i < stream->size; i++)
 		submitSegmentToOutbox(conn->record->outbox, stream->segments[i]);
 
-	//unlockMutex(conn->record->conn_mtx);
+	unlockMutex(conn->record->outbox->outbox_mtx);
+
+	lockMutex(conn->record->outbox->outbox_mtx);
+
+	while (conn->record->outbox->size != 0)
+		waitConditionVariable(conn->record->outbox->outbox_cnd, conn->record->outbox->outbox_mtx);
+
+	unlockMutex(conn->record->outbox->outbox_mtx);
 }
 
 char *readInboxMessage(Connection *conn, const size_t size) {
@@ -443,33 +451,79 @@ char *readInboxMessage(Connection *conn, const size_t size) {
 	if (getConnectionState(conn) != RUDP_CONN_ESTA)
 		ERREXIT("Cannot read message from inbox: connection not established.");
 
-	//lockMutex(conn->record->conn_mtx);
+	lockMutex(conn->record->inbox->inbox_mtx);
+
+	while (conn->record->inbox->userdata == 0)
+		waitConditionVariable(conn->record->inbox->inbox_cnd, conn->record->inbox->inbox_mtx);
 	
 	msg = readInboxBuffer(conn->record->inbox, size);	
 
-	//unlockMutex(conn->record->conn_mtx);
+	unlockMutex(conn->record->inbox->inbox_mtx);
 	
 	return msg;
 }
 
 static void *managerLoop(void *arg) {
+	ConnectionRecord *connrec = (ConnectionRecord *) arg;
+	Segment sgm;
+	char *ssgm = NULL;
 
-	
-	// to implement
+	while (1) {
+
+		ssgm = readConnectedSocket(connrec->sock, RUDP_SGMS);
+
+		if (ssgm) {
+
+			sgm = deserializeSegment(ssgm);
+
+			if (RUDP_CONN_DEBUG)
+				printInSegment(getSocketPeer(connrec->sock), sgm);
+
+			lockMutex(connrec->inbox->inbox_mtx);
+
+			submitSegmentToInbox(connrec->inbox, sgm);
+
+			unlockMutex(connrec->inbox->inbox_mtx);
+		}
+	}
+
 	return NULL;		
 }
 
 static void timeoutHandler(union sigval arg) {
+	ConnectionRecord *connrec = (ConnectionRecord *) arg.sival_ptr;
+	Segment *retrans = NULL;
+	char *ssgm = NULL;
+	uint32_t retransno, i;
 
-}
+	lockMutex(connrec->outbox->outbox_mtx);
 
-static uint32_t getISN(void) {
-	uint32_t isn;
-	struct timeval time;
+	retrans = getRetransmittableSegments(connrec->outbox, &retransno);
 
-	gettimeofday(&time, NULL);
+	if (retransno != 0) {
+		
+		for (i = 0; i < retransno; i++) {
 
-	isn = (uint32_t) ((1000 * time.tv_sec + time.tv_usec) % RUDP_MAXSEQN);
+			retrans[i].hdr.ctrl |= RUDP_ACK;
 
-	return isn;
+			lockMutex(connrec->inbox->inbox_mtx);
+
+			retrans[i].hdr.ackn = connrec->inbox->lastackn;
+
+			unlockMutex(connrec->inbox->inbox_mtx);
+			
+			ssgm = serializeSegment(retrans[i]);			
+
+			writeConnectedSocket(connrec->sock, ssgm);
+
+			if (RUDP_CONN_DEBUG)
+				printOutSegment(getSocketPeer(connrec->sock), retrans[i]);
+
+			free(ssgm);
+		}
+	}
+
+	free(retrans);
+
+	unlockMutex(connrec->outbox->outbox_mtx);	
 }

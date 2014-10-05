@@ -21,6 +21,7 @@
 #include "rudpsegment.h"
 
 #include "../util/stringutil.h"
+#include "../util/mathutil.h"
 #include "../util/listutil.h"
 #include "../util/threadutil.h"
 #include "../util/timerutil.h"

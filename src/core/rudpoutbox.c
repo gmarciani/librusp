@@ -10,8 +10,14 @@ Outbox *createOutbox(const uint32_t isn, const uint32_t wnds) {
 	if (wnds == 0)
 		ERREXIT("Cannot create outbox with window size set to zero.");
 
-	if (!(outbox = malloc(sizeof(Outbox))))
-		ERREXIT("Cannot allocate memory for outbox.");
+	if (!(outbox = malloc(sizeof(Outbox))) ||
+		!(outbox->outbox_mtx = malloc(sizeof(pthread_mutex_t))) ||
+		!(outbox->outbox_cnd = malloc(sizeof(pthread_cond_t))))
+		ERREXIT("Cannot allocate memory for outbox resources.");
+
+	initializeMutex(outbox->outbox_mtx);
+
+	initializeConditionVariable(outbox->outbox_cnd);
 
 	outbox->head = NULL;
 
@@ -57,6 +63,10 @@ void freeOutbox(Outbox *outbox) {
 
 		curr = curr->next;
 	}
+
+	destroyMutex(outbox->outbox_mtx);
+
+	destroyConditionVariable(outbox->outbox_cnd);
 
 	free(outbox);
 }

@@ -20,7 +20,7 @@
 
 #define RUDP_MAXSEQN (uint32_t) 4294967295
 
-#define RUDP_NXTSEQN(a, b) ((a) + (b)) % RUDP_MAXSEQN
+#define RUDP_NXTSEQN(a, b) ((a) + ((b == 0) ? 1 : (b))) % RUDP_MAXSEQN
 
 #define RUDP_NUL 0b00000000
 #define RUDP_SYN 0b00000001

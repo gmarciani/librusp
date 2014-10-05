@@ -13,8 +13,12 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#include "mathutil.h"
+
 #define ON_READ		0b01
 #define ON_WRITE	0b10
+
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 /* SOCKET CREATION */
 
@@ -47,5 +51,9 @@ void setSocketTimeout(const int sock, const uint8_t mode, const uint64_t nanos);
 struct sockaddr_in getSocketLocal(const int sock);
 
 struct sockaddr_in getSocketPeer(const int sock);
+
+/* UTILITY */
+
+void setSocketDrop(const double drop);
 
 #endif /* SOCKUTIL_H_ */

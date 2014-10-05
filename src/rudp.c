@@ -136,3 +136,7 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 
 	return addr;
 }
+
+void setSegmentDrop(const double dropprob) {
+	setSocketDrop(dropprob);
+}

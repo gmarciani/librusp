@@ -4,9 +4,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <time.h>
 #include <sys/types.h>
+
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+
+typedef struct Buffer {
+	char *content;
+	uint32_t csize;
+	uint32_t bsize;
+} Buffer;
+
+/* BUFFER MANAGEMENT */
+
+Buffer *createBuffer(void);
+
+void freeBuffer(Buffer *buff);
+
+char *getBuffer(Buffer *buff, const size_t size);
+
+char *readFromBuffer(Buffer *buff, const size_t size);
+
+void writeToBuffer(Buffer *buff, const char *str, const size_t size);
 
 /* STRING MANAGEMENT */
 

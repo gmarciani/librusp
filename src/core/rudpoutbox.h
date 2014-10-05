@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "rudpsegment.h"
+#include "../util/threadutil.h"
 
 #define RUDP_UNACKED 	0
 #define RUDP_ACKED		1
@@ -30,8 +31,8 @@ typedef struct Outbox {
 	uint32_t wnds;	
 	uint32_t awnds;
 	uint32_t nextseqn;
-	pthread_cond_t *outbox_cnd;
 	pthread_mutex_t *outbox_mtx;
+	pthread_cond_t *outbox_cnd;
 } Outbox;
 
 Outbox *createOutbox(const uint32_t isn, const uint32_t wnds);

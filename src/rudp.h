@@ -2,6 +2,7 @@
 #define _RUDP_H_
 
 #include "core/rudpconnection.h"
+#include "util/sockutil.h"
 
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
@@ -28,5 +29,7 @@ char *rudpReceive(const ConnectionId connid, const size_t size);
 struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid);
 
 struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid);
+
+void setSegmentDrop(const double dropprob);
 
 #endif /* _RUDP_H_ */

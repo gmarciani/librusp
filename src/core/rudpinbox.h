@@ -5,37 +5,33 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <pthread.h>
 #include "rudpsegment.h"
+#include "rudpsegmentlist.h"
+#include "../util/stringutil.h"
+#include "../util/threadutil.h"
 
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
-typedef struct InboxElement {
-	uint8_t status;
-	Segment *segment;
-	struct InboxElement *prev;
-	struct InboxElement *next;
-} InboxElement;
-
 typedef struct Inbox {
-	InboxElement *head;
-	InboxElement *tail;
-	InboxElement *wndbase;
-	InboxElement *wndend;	
-	unsigned long size;
-	unsigned long wndsize;	
-	unsigned long awndsize;
-	unsigned long nextseqno;
+	uint32_t wndb;
+	uint32_t wnde;
+	uint32_t wnds;
+	SegmentList *sgmbuff;		
+	Buffer *userbuff;
+	uint8_t push;
+	uint32_t pushsize;
+	pthread_mutex_t *inbox_mtx;
+	pthread_cond_t *inbox_cnd;
 } Inbox;
 
-Inbox *createInbox(const uint32_t isn, const uint32_t wnds);
+Inbox *createInbox(const uint32_t wndb, const uint32_t wnds);
 
 void freeInbox(Inbox *inbox);
 
-Segment readInboxSegment(Inbox *inbox);
+void submitSegmentToInbox(Inbox *inbox, const Segment sgm);
 
 char *readInboxBuffer(Inbox *inbox, const size_t size);
-
-void submitSegmentToInbox(Inbox *inbox, const Segment sgm);
 
 char *inboxToString(Inbox *inbox);
 

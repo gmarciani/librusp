@@ -9,6 +9,8 @@
 #define THREAD_DETACHED 0
 #define THREAD_JOINABLE 1
 
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+
 /* THREAD */
 
 pthread_t createThread(void *(*threadFunc) (void *), void *arg, const uint8_t mode);
@@ -32,6 +34,8 @@ void unlockMutex(pthread_mutex_t *mtx);
 void initializeConditionVariable(pthread_cond_t *cnd);
 
 void destroyConditionVariable(pthread_cond_t *cnd);
+
+void waitConditionVariable(pthread_cond_t *cnd, pthread_mutex_t *mtx);
 
 void signalConditionVariable(pthread_cond_t *cnd);
 

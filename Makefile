@@ -26,7 +26,7 @@ TESTPREFIX = test_
 
 PROTOCOL_LIBS = -lpthread -lrt -lm
 
-PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
+PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
 
 PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsegmentlist.h rudpsegmentlist.c rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
 

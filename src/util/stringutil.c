@@ -1,5 +1,95 @@
 #include "stringutil.h"
 
+/* BUFFER MANAGEMENT */
+
+Buffer *createBuffer(void) {
+	Buffer *buff = NULL;
+
+	if (!(buff = malloc(sizeof(Buffer))) ||
+		!(buff->content = malloc(sizeof(char))))
+		ERREXIT("Cannot allocate memory for buffer.");
+
+	buff->csize = 0;
+
+	buff->bsize = 1;
+
+	return buff;
+}
+
+void freeBuffer(Buffer *buff) {
+	
+	free(buff->content);
+
+	buff->csize = 0;
+
+	buff->bsize = 0;
+
+	free(buff);
+}
+
+char *getBuffer(Buffer *buff, const size_t size) {
+	char *str = NULL;
+	size_t sizeToCopy;
+	int i;
+
+	sizeToCopy = (size < buff->csize) ? size : buff->csize;
+
+	if (!(str = malloc(sizeof(char) * (sizeToCopy + 1))))
+		ERREXIT("Cannot allocate memory for buffer get.");
+
+	for (i = 0; i < sizeToCopy; i++) 
+		str[i] = buff->content[i];
+
+	str[i] = '\0';
+
+	return str;
+}
+
+char *readFromBuffer(Buffer *buff, const size_t size) {
+	char *str = NULL;
+	size_t sizeToCopy;
+
+	sizeToCopy = (size < buff->csize) ? size : buff->csize;
+
+	str = getBuffer(buff, sizeToCopy);
+
+	memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->csize - sizeToCopy));
+
+	buff->csize -= sizeToCopy;
+
+	if (buff->csize <= buff->bsize / 4) {
+
+		buff->bsize /= 2;
+
+		if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
+			ERREXIT("Cannot reallocate memory for buffer.");
+	}
+
+	return str;
+}
+
+void writeToBuffer(Buffer *buff, const char *str, const size_t size) {
+	puts("Writing to buffer");
+	int i;
+
+	if (buff->csize + size >= buff->bsize / 2 ) {
+		
+		buff->bsize = (buff->csize + size) * 2;
+
+		if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
+			ERREXIT("Cannot reallocate memory for buffer.");
+	}
+
+	for (i = 0 ; i < size; i++) 
+		buff->content[buff->csize + i] = str[i];
+
+	buff->csize += size;
+
+	printf("bsize%u csize:%u\n", buff->bsize, buff->csize);	
+
+	puts("end writing to buffer");
+}
+
 /* STRING MANAGEMENT */
 
 char *stringDuplication(const char *src) {
@@ -8,10 +98,8 @@ char *stringDuplication(const char *src) {
 
 	srcSize = strlen(src);
 
-	if (!(dest = malloc(sizeof(char) * (srcSize + 1)))) {
-		fprintf(stderr, "Error in string allocation for duplication: src=%s.\n", src);
-		exit(EXIT_FAILURE);
-	}
+	if (!(dest = malloc(sizeof(char) * (srcSize + 1))))
+		ERREXIT("Cannot allocate memory for string duplication.");
 
 	dest[0] = '\0';
 	
@@ -29,10 +117,8 @@ char *stringNDuplication(const char *src, size_t size) {
 
 	sizeToCopy = (srcSize >= size) ? size : srcSize;
 
-	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1)))) {
-		fprintf(stderr, "Error in string allocation for duplication: src=%s size=%zu.\n", src, size);
-		exit(EXIT_FAILURE);
-	}
+	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1))))
+		ERREXIT("Cannot allocate memory for string n duplication.");
 
 	dest[0] = '\0';
 	
@@ -47,10 +133,8 @@ char *stringConcatenation(const char *srcOne, const char *srcTwo) {
 
 	srcSize = strlen(srcOne) + strlen(srcTwo);
 
-	if (!(dest = malloc(sizeof(char) * (srcSize + 1)))) {
-		fprintf(stderr, "Error in string allocation for concatenation: srcOne=%s srcTwo=%s.\n", srcOne, srcTwo);
-		exit(EXIT_FAILURE);
-	}
+	if (!(dest = malloc(sizeof(char) * (srcSize + 1))))
+		ERREXIT("Cannot allocate memory for string concatenation.");
 
 	dest[0] = '\0';
 
@@ -70,17 +154,13 @@ char **splitStringByDelimiter(const char *src, const char *delim, int *numSubstr
 
 	temp = stringDuplication(src);
 
-	if (!(substr = malloc(sizeof(char *)))) {
-		fprintf(stderr, "Error in substrings allocation for split: src=%s delim=%s.\n", src, delim);
-		exit(EXIT_FAILURE);
-	}
+	if (!(substr = malloc(sizeof(char *))))
+		ERREXIT("Cannot allocate memory for string split by delimiter.");
 
 	for (token = strtok(temp, delim), *numSubstr = 0; token != NULL; token = strtok(NULL, delim)) {	
 		*numSubstr += 1;
-		if (!(substr = realloc(substr, sizeof(char *) * *numSubstr))) {
-			fprintf(stderr, "Error in substring %d reallocation for split: src=%s delim=%s.\n", *numSubstr, src, delim);
-			exit(EXIT_FAILURE);
-		}
+		if (!(substr = realloc(substr, sizeof(char *) * *numSubstr)))
+			ERREXIT("Cannot reallocate memory for string split by delimiter.");
 
 		substr[*numSubstr - 1] = stringDuplication(token);
 	}
@@ -103,10 +183,8 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 
 	tempp = temp;
 
-	if (!(substr = malloc(sizeof(char *) * numSubstr))) {
-		fprintf(stderr, "Error in substrings allocation for split: src=%s delim=%s numSubstr=%d.\n", src, delim, numSubstr);
-		exit(EXIT_FAILURE);
-	}
+	if (!(substr = malloc(sizeof(char *) * numSubstr))) 
+		ERREXIT("Cannot allocate memory for string split by n delimiter.");
 
 	for (delimMatch = strstr(temp, delim); delimMatch != NULL; delimMatch = strstr(temp, delim)) {	
 
@@ -143,10 +221,8 @@ char **splitStringBySize(const char *src, const size_t size, int *numSubstr) {
 
 	*numSubstr = (srcsize % size == 0) ? (srcsize / size) : ((srcsize / size) + 1);
 
-	if (!(substr = malloc(sizeof(char *) * *numSubstr))) {
-		fprintf(stderr, "Error in substrings allocation for split: src=%s size=%zu.\n", src, size);
-		exit(EXIT_FAILURE);
-	}
+	if (!(substr = malloc(sizeof(char *) * *numSubstr)))
+		ERREXIT("Cannot allocate memory for string split by size.");
 	
 	for (i = 0; i < *numSubstr; i++)
 		substr[i] = stringNDuplication(src + (i * size), size);
@@ -158,10 +234,8 @@ char **splitStringBySection(const char *src, const size_t *ssize, const int nums
 	char **substr;
 	int processed, i;
 
-	if (!(substr = malloc(sizeof(char *) * numsubstr))) {
-		fprintf(stderr, "Error in substrings allocation for split by section\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(substr = malloc(sizeof(char *) * numsubstr)))
+		ERREXIT("Cannot allocate memory for string split by section.");
 
 	for (i = 0, processed = 0; i < numsubstr; i++, processed += ssize[i-1])
 		substr[i] = stringNDuplication(src + processed, ssize[i]);
@@ -179,10 +253,8 @@ char *arraySerialization(char **array, const int numItems, const char *delim) {
 	for (i = 0; i < numItems; i++)
 		sarraysize += (strlen(array[i]) + 1);
 
-	if (!(sarray = malloc(sizeof(char) * (sarraysize + 1)))) {
-		fprintf(stderr, "Error in string allocation for array serialization.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(sarray = malloc(sizeof(char) * (sarraysize + 1))))
+		ERREXIT("Cannot allocate memory for array serialization.");
 
 	sarray[0] = '\0';
 
@@ -212,10 +284,8 @@ char *getTime(void) {
 	
 	struct timeval time;
 
-	if (!(str = malloc(sizeof(char) * size))) {
-		fprintf(stderr, "Error in string allocation for time.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(str = malloc(sizeof(char) * size)))
+		ERREXIT("Cannot allocate memory for time string representation.");
 	
 	gettimeofday(&time, NULL);
 
@@ -232,10 +302,8 @@ char *getUserInput(const char *descr) {
 	char *input;
 	size_t size = 2048;	
 
-	if (!(input = malloc(sizeof(char) * size))) {
-		fprintf(stderr, "Error in string allocation for user input.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(input = malloc(sizeof(char) * size)))
+		ERREXIT("Cannot allocate memory for user input.");
 
 	input[0] = '\0';
 
@@ -243,10 +311,8 @@ char *getUserInput(const char *descr) {
 
 	fflush(stdout);
 
-  	if (getline(&input, &size, stdin) == -1) {
-		fprintf(stderr, "Error in getline for user input.\n");
-		exit(EXIT_FAILURE);
-	}
+  	if (getline(&input, &size, stdin) == -1)
+		ERREXIT("Cannot get line for user input.");
 
 	input[strlen(input) - 1] = '\0';
 
