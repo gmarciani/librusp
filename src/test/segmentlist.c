@@ -15,9 +15,17 @@ int main(void) {
 
 	list = createSegmentList();
 
+	printf("# Segmentlist to string #\n");
+
+	strlist = segmentListToString(list);
+
+	printf("%s\n", strlist);
+
+	free(strlist);
+
 	printf("# Adding %d segments to segment list #\n", NUM_ELEMENTS);
 
-	for (i = NUM_ELEMENTS; i >= 0; i--) {
+	for (i = NUM_ELEMENTS; i > 0; i--) {
 	
 		sgm = createSegment(RUDP_ACK, 0, 0, i, 0, NULL);
 
@@ -25,7 +33,7 @@ int main(void) {
 
 	}
 
-	printf("# Getting string representation of segment list #\n");
+	printf("# Segmentlist to string #\n");
 
 	strlist = segmentListToString(list);
 
@@ -47,7 +55,7 @@ int main(void) {
 
 	removeElementFromSegmentList(list, curr);
 
-	printf("# Getting string representation of segment list #\n");
+	printf("# Segmentlist to string #\n");
 
 	strlist = segmentListToString(list);
 
@@ -59,7 +67,7 @@ int main(void) {
 
 	cleanSegmentList(list);
 
-	printf("# Getting string representation of segment list #\n");
+	printf("# Segmentlist to string #\n");
 
 	strlist = segmentListToString(list);
 

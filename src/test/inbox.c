@@ -24,17 +24,17 @@ int main(void) {
 
 	inbox = createInbox(ISN, WNDSIZE);
 
-	puts("# Inbox to string #");
+	printf("# Inbox to string #\n");
 
 	strinbox = inboxToString(inbox);
 
-	printf("%s\n", strinbox);
+	printf("%s\n\n", strinbox);
 
 	free(strinbox);
 
 	while (1) {
 
-		puts("# Submitting your segment to inbox (type 'quit' to exit test) #");
+		printf("# Submitting your segment to inbox (type 'quit' to exit test) #\n");
 
 		input = getUserInput("[CTRL]>");
 
@@ -77,15 +77,15 @@ int main(void) {
 
 		submitSegmentToInbox(inbox, sgm);
 
-		puts("# Inbox to string #");
+		printf("# Inbox to string #\n");
 
 		strinbox = inboxToString(inbox);
 
-		printf("%s\n", strinbox);
+		printf("%s\n\n", strinbox);
 
 		free(strinbox);
 
-		puts("# Reading user buffer from inbox (type 0 to read nothing) #");
+		printf("# Reading user buffer from inbox (type 0 to read nothing) #\n");
 
 		input = getUserInput("[RCVSIZE]>");
 
@@ -93,19 +93,24 @@ int main(void) {
 
 		free(input);
 
-		if (rcvsize != 0) {
+		userbuff = readUserBuffer(inbox, rcvsize);
 
-			userbuff = readInboxBuffer(inbox, rcvsize);
+		printf("%s\n", userbuff);
 
-			printf("%s\n", userbuff);
+		free(userbuff);
 
-			free(userbuff);
-		}
+		printf("# Inbox to string #\n");
 
-		puts("");
+		strinbox = inboxToString(inbox);
+
+		printf("%s\n\n", strinbox);
+
+		free(strinbox);
+
+		printf("\n");
 	}			
 
-	puts("# Freeing inbox #");
+	printf("# Freeing inbox #\n");
 
 	freeInbox(inbox);	
 

@@ -17,10 +17,9 @@ typedef struct Inbox {
 	uint32_t wndb;
 	uint32_t wnde;
 	uint32_t wnds;
-	SegmentList *sgmbuff;		
+	SegmentList *sgmbuff;	
+	Buffer *waitbuff;	
 	Buffer *userbuff;
-	uint8_t push;
-	uint32_t pushsize;
 	pthread_mutex_t *inbox_mtx;
 	pthread_cond_t *inbox_cnd;
 } Inbox;
@@ -31,7 +30,7 @@ void freeInbox(Inbox *inbox);
 
 void submitSegmentToInbox(Inbox *inbox, const Segment sgm);
 
-char *readInboxBuffer(Inbox *inbox, const size_t size);
+char *readUserBuffer(Inbox *inbox, const size_t size);
 
 char *inboxToString(Inbox *inbox);
 

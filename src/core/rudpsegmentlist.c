@@ -132,12 +132,13 @@ void removeElementFromSegmentList(SegmentList *list, SegmentListElement *elem) {
 char *segmentListToString(SegmentList *list) {
 	SegmentListElement *curr = NULL;
 	char *strlist = NULL;
+	char *strsgms = NULL;
 	char *strsgm = NULL;
 
-	if (!(strlist = malloc(sizeof(char) * list->size * (RUDP_SGMSO + 1) + 1)))
+	if (!(strsgms = malloc(sizeof(char) * (list->size * (RUDP_SGMSO + 1) + 1))))
 		ERREXIT("Cannot allocate memory for string representation of segment list.");
 
-	strlist[0] = '\0';
+	strsgms[0] = '\0';
 
 	curr = list->head;
 
@@ -145,14 +146,22 @@ char *segmentListToString(SegmentList *list) {
 
 		strsgm = segmentToString(*(curr->segment));
 		
-		strcat(strlist, strsgm);
+		strcat(strsgms, strsgm);
 
-		strcat(strlist, "\n");
+		if (curr->next)
+			strcat(strsgms, "\n");
 
 		free(strsgm);
 
 		curr = curr->next;
 	}
 
+	if (!(strlist = malloc(sizeof(char) * (25 + strlen(strsgms) + 1))))
+		ERREXIT("Cannot allocate memory for string representation of segment list.");
+
+	sprintf(strlist, "size:%u content:%s%s", list->size, ((list->size > 0) ? "\n" : ""), strsgms);
+
+	free(strsgms);
+	
 	return strlist;
 }

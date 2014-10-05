@@ -21,6 +21,8 @@ Inbox *createInbox(const uint32_t wndb, const uint32_t wnds) {
 
 	inbox->sgmbuff = createSegmentList();
 
+	inbox->waitbuff = createBuffer();
+
 	inbox->userbuff = createBuffer();
 
 	inbox->wndb = wndb;
@@ -28,8 +30,6 @@ Inbox *createInbox(const uint32_t wndb, const uint32_t wnds) {
 	inbox->wnde = RUDP_NXTSEQN(wndb, wnds * RUDP_PLDS);
 
 	inbox->wnds = wnds;
-
-	inbox->push = 0;
 
 	return inbox;
 }
@@ -41,6 +41,8 @@ void freeInbox(Inbox *inbox) {
 	destroyConditionVariable(inbox->inbox_cnd);
 
 	freeSegmentList(inbox->sgmbuff);
+
+	freeBuffer(inbox->waitbuff);
 
 	freeBuffer(inbox->userbuff);
 
@@ -58,11 +60,14 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 			inbox->wnde = RUDP_NXTSEQN(inbox->wnde, sgm.hdr.plds);
 
 			if (sgm.hdr.plds > 0)
-				writeToBuffer(inbox->userbuff, sgm.pld, sgm.hdr.plds);
+				writeToBuffer(inbox->waitbuff, sgm.pld, sgm.hdr.plds);
 
 			if (sgm.hdr.ctrl & RUDP_PSH) {
-				inbox->push = 1;
-				inbox->pushsize = inbox->userbuff->csize;
+				char *userdata = readFromBuffer(inbox->waitbuff, inbox->waitbuff->csize);
+
+				writeToBuffer(inbox->userbuff, userdata, strlen(userdata));
+
+				free(userdata);
 			}
 
 			int flag = 1;
@@ -83,11 +88,14 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 						inbox->wnde = RUDP_NXTSEQN(inbox->wnde, curr->segment->hdr.plds);
 
 						if (curr->segment->hdr.plds > 0)
-							writeToBuffer(inbox->userbuff, curr->segment->pld, curr->segment->hdr.plds);
+							writeToBuffer(inbox->waitbuff, curr->segment->pld, curr->segment->hdr.plds);
 
 						if (curr->segment->hdr.ctrl & RUDP_PSH) {
-							inbox->push = 1;
-							inbox->pushsize = inbox->userbuff->csize;
+							char *userdata = readFromBuffer(inbox->waitbuff, inbox->waitbuff->csize);
+
+							writeToBuffer(inbox->userbuff, userdata, strlen(userdata));
+
+							free(userdata);
 						}
 
 						removeElementFromSegmentList(inbox->sgmbuff, curr);
@@ -107,13 +115,10 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 	}
 }
 
-char *readInboxBuffer(Inbox *inbox, const size_t size) {
+char *readUserBuffer(Inbox *inbox, const size_t size) {
 	char *msg = NULL;
-	size_t sizeToRead;
 
-	sizeToRead = (size < inbox->pushsize) ? size : inbox->pushsize;
-
-	msg = readFromBuffer(inbox->userbuff, sizeToRead);
+	msg = readFromBuffer(inbox->userbuff, size);
 
 	return msg;
 }
@@ -121,18 +126,23 @@ char *readInboxBuffer(Inbox *inbox, const size_t size) {
 char *inboxToString(Inbox *inbox) {
 	char *strinbox = NULL;
 	char *strsgmbuff = NULL;
+	char *strwaitbuff = NULL;
 	char *struserbuff = NULL;
 
 	strsgmbuff = segmentListToString(inbox->sgmbuff);
 
+	strwaitbuff = bufferToString(inbox->waitbuff);
+
 	struserbuff = bufferToString(inbox->userbuff);	
 
-	if (!(strinbox = malloc(sizeof(char) * (102 + strlen(strsgmbuff) + strlen(struserbuff) + 1))))
+	if (!(strinbox = malloc(sizeof(char) * (94 + strlen(strsgmbuff) + strlen(strwaitbuff) + strlen(struserbuff) + 1))))
 		ERREXIT("Cannot allocate memory for inbox string representation.");
 
-	sprintf(strinbox, "wndb:%u wnde:%u wnds:%u psh:%u pshsize:%u\nsgmbuff:\n%s\nuserbuff:\n%s", inbox->wndb, inbox->wnde, inbox->wnds, inbox->push, inbox->pushsize, strsgmbuff, struserbuff);
+	sprintf(strinbox, "[slwindow] wndb:%u wnde:%u wnds:%u\n[sgmsbuff] %s\n[waitbuff] %s\n[userbuff] %s", inbox->wndb, inbox->wnde, inbox->wnds, strsgmbuff, strwaitbuff, struserbuff);
 
 	free(strsgmbuff);
+
+	free(strwaitbuff);
 
 	free(struserbuff);	
 
