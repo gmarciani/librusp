@@ -6,6 +6,8 @@ CC = gcc
 
 CFLAGS = -g -Wall -O1
 
+PFLAGS = -pg
+
 
 # Sources
 
@@ -39,7 +41,7 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
 
 # Tests
 
-test: setup sender receiver outbox inbox segmentlist segment timer buffer bitmask thread
+test: setup sender receiver outbox inbox segmentlist segment timer buffer random 
 
 sender: $(TESTDIR)/sender.c
 	$(CC) $(CFLAGS) $(TESTDIR)/sender.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -65,11 +67,8 @@ timer: $(TESTDIR)/timer.c
 buffer: $(TESTDIR)/buffer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@
 
-bitmask: $(TESTDIR)/bitmask.c
-	$(CC) $(CFLAGS) $(TESTDIR)/bitmask.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@
-
-thread: $(TESTDIR)/thread.c
-	$(CC) $(CFLAGS) $(TESTDIR)/thread.c -lpthread -o $(BINDIR)/$(TESTPREFIX)$@
+random: $(TESTDIR)/random.c
+	$(CC) $(CFLAGS) $(TESTDIR)/random.c $(UTILDIR)/mathutil.h $(UTILDIR)/mathutil.c -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*

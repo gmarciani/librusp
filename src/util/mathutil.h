@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 #include <sys/time.h>
+
+#define MAX_UINT32 4294967295
 
 uint32_t getRandom32(void);
 

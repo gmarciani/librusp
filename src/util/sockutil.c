@@ -1,6 +1,6 @@
 #include "sockutil.h"
 
-static double SOCK_DROP = 0; // [0, 1]
+static double SOCK_DROP = 0.0; // [0, 1]
 
 /* SOCKET CREATION */
 
