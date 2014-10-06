@@ -15,7 +15,7 @@ typedef struct SegmentListElement {
 } SegmentListElement;
 
 typedef struct SegmentList {
-	uint32_t size;
+	uint32_t size;	
 	SegmentListElement *head;
 	SegmentListElement *tail;
 } SegmentList;

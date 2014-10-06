@@ -94,3 +94,9 @@ void signalConditionVariable(pthread_cond_t *cnd) {
 	if (pthread_cond_signal(cnd) != 0) 
 		ERREXIT("Cannot signal condition variable.");
 }
+
+void broadcastConditionVariable(pthread_cond_t *cnd) {
+
+	if (pthread_cond_broadcast(cnd) != 0) 
+		ERREXIT("Cannot broadcast condition variable.");
+}

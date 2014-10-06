@@ -4,8 +4,8 @@
 #include "../core/rudpsegment.h"
 #include "../util/stringutil.h"
 
-#define ISN	0
-#define WNDSIZE 5
+#define WNDB 0
+#define WNDS 5
 
 int main(void) {
 	Inbox *inbox = NULL;
@@ -20,9 +20,9 @@ int main(void) {
 	char *strinbox = NULL;
 	size_t rcvsize;
 
-	printf("# Creating inbox with isn=%u wnds=%u #\n", (uint32_t) ISN, (uint32_t) WNDSIZE);
+	printf("# Creating inbox with wndb=%u wnds=%u #\n", (uint32_t) WNDB, (uint32_t) WNDS);
 
-	inbox = createInbox(ISN, WNDSIZE);
+	inbox = createInbox(WNDB, WNDS);
 
 	printf("# Inbox to string #\n");
 
@@ -93,7 +93,7 @@ int main(void) {
 
 		free(input);
 
-		userbuff = readUserBuffer(inbox, rcvsize);
+		userbuff = readInboxUserBuffer(inbox, rcvsize);
 
 		printf("%s\n", userbuff);
 

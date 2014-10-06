@@ -82,7 +82,7 @@ void rudpClose(const ConnectionId connid) {
 
 /* COMMUNICATION */
 
-void rudpSend(const ConnectionId connid, const char *msg) {
+void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	Connection *conn = NULL;
 
 	conn = getConnectionById(connid);
@@ -90,7 +90,7 @@ void rudpSend(const ConnectionId connid, const char *msg) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection.");	
 
-	writeOutboxMessage(conn, msg);
+	writeOutboxMessage(conn, msg, size);
 }
 
 char *rudpReceive(const ConnectionId connid, const size_t size) {

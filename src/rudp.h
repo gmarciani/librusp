@@ -20,7 +20,7 @@ void rudpClose(const ConnectionId connid);
 
 /* COMMUNICATIONS */
 
-void rudpSend(const ConnectionId connid, const char *msg);
+void rudpSend(const ConnectionId connid, const char *msg, const size_t size);
 
 char *rudpReceive(const ConnectionId connid, const size_t size);
 

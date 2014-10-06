@@ -30,7 +30,7 @@ void freeInbox(Inbox *inbox);
 
 void submitSegmentToInbox(Inbox *inbox, const Segment sgm);
 
-char *readUserBuffer(Inbox *inbox, const size_t size);
+char *readInboxUserBuffer(Inbox *inbox, const size_t size);
 
 char *inboxToString(Inbox *inbox);
 

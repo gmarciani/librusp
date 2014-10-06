@@ -2,12 +2,16 @@
 #include <stdio.h>
 #include "../rudp.h"
 
+#define MSGSIZE 108
+#define NUM_ECHOS 100
+
 int main(int argc, char **argv) {
 	ConnectionId lconn, aconn;
 	struct sockaddr_in laddr, aaddr, caddr;
 	char *strladdr = NULL;
 	char *straaddr = NULL;
 	char *strcaddr = NULL;
+	char *rcvdata = NULL;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage %s [server-port]\n", argv[0]);
@@ -23,13 +27,11 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	printf("# Listening connection created with id: %d #\n", lconn);
+	printf("# Connection created in pool and listening with id: %d #\n", lconn);
 
 	printf("# Getting local address of listening connection #\n");	
 
 	laddr = rudpGetLocalAddress(lconn);
-
-	printf("# Getting string representation of local address of listening connection #\n");
 
 	strladdr = addressToString(laddr);
 
@@ -41,13 +43,11 @@ int main(int argc, char **argv) {
 
 	aconn = rudpAccept(lconn);
 
-	printf("# Connection accepted and established with id: %d #\n", aconn);
+	printf("# Connection accepted, created in pool and established with id: %d #\n", aconn);
 
 	printf("# Getting local address of established connection #\n");	
 
 	aaddr = rudpGetLocalAddress(aconn);
-
-	printf("# Getting string representation of local address of established connection #\n");
 
 	straaddr = addressToString(aaddr);
 
@@ -59,21 +59,36 @@ int main(int argc, char **argv) {
 
 	caddr = rudpGetPeerAddress(aconn);
 
-	printf("# Getting string representation of peer address of established connection #\n");
-
 	strcaddr = addressToString(caddr);	
 
 	printf("%s\n", strcaddr);	
 
 	free(strcaddr);
 
-	printf("# Disconnecting established connection #\n");
-
-	rudpDisconnect(aconn);
-
 	printf("# Closing listening connection #\n");
 
 	rudpClose(lconn);
+
+	printf("# Echoing (%d times) data (%d bytes a time) on established connection #\n", NUM_ECHOS, MSGSIZE);
+
+	int i = 0;
+
+	for (i = 0; i < NUM_ECHOS; i++) {
+
+		rcvdata = rudpReceive(aconn, MSGSIZE);
+
+		printf("[RCVD]>%s\n", rcvdata);
+
+		rudpSend(aconn, rcvdata, strlen(rcvdata));
+
+		printf("[SENT]>%s\n", rcvdata);
+
+		free(rcvdata);
+	}	
+
+	printf("# Disconnecting established connection #\n");
+
+	rudpDisconnect(aconn);
 
 	exit(EXIT_SUCCESS);
 }

@@ -55,11 +55,6 @@ char *readUnconnectedSocket(const int sock, struct sockaddr_in *sndaddr, const s
 
 	buff[rcvd] = '\0';
 
-	if (getRandomBit(SOCK_DROP)) {
-		free(buff);
-		return NULL;
-	}
-
 	return buff;
 }
 
@@ -87,11 +82,6 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 	}
 
 	buff[rcvd] = '\0';
-
-	if (getRandomBit(SOCK_DROP)) {
-		free(buff);
-		return NULL;
-	}
 
 	return buff;
 }

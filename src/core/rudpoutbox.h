@@ -16,7 +16,6 @@
 
 typedef struct OutboxElement {
 	uint8_t status;
-	uint8_t transn;
 	Segment *segment;
 	struct OutboxElement *prev;
 	struct OutboxElement *next;
@@ -38,6 +37,8 @@ typedef struct Outbox {
 Outbox *createOutbox(const uint32_t isn, const uint32_t wnds);
 
 void freeOutbox(Outbox *outbox);
+
+void writeOutboxUserBuffer(Outbox *outbox, const char *msg, const size_t size);
 
 void submitSegmentToOutbox(Outbox *outbox, const Segment sgm);
 

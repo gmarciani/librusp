@@ -2,9 +2,14 @@
 #include <stdio.h>
 #include "../rudp.h"
 
+#define MSG "Hy folks! I'm Jack, and I hope you will enjoy RUDP: the new reliable transport protocol built on top of UDP!"
+#define MSGSIZE 108
+#define NUM_ECHOS 100
+
 int main(int argc, char **argv) {
 	ConnectionId conn;
 	struct sockaddr_in caddr, saddr;
+	char *rcvdata = NULL;
 	char *strcaddr = NULL;
 	char *strsaddr = NULL;
 
@@ -22,13 +27,11 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	printf("# Connection established with id: %d #\n", conn);
+	printf("# Connection created in pool and established with id: %d #\n", conn);
 
 	printf("# Getting local address of established connection #\n");
 
 	caddr = rudpGetLocalAddress(conn);
-
-	printf("# Getting string representation of local address of established connection #\n");
 
 	strcaddr = addressToString(caddr);
 
@@ -40,13 +43,35 @@ int main(int argc, char **argv) {
 
 	saddr = rudpGetPeerAddress(conn);
 
-	printf("# Getting string representation of peer address of established connection #\n");
-
 	strsaddr = addressToString(saddr);	
 	
 	printf("%s\n", strsaddr);
 
 	free(strsaddr);
+
+	printf("# Sending (%d times) data (%d bytes a time) on established connection: %s #\n", NUM_ECHOS, MSGSIZE, MSG);
+
+	int i;
+
+	for (i = 0; i < NUM_ECHOS; i++) {
+		
+		rudpSend(conn, MSG, MSGSIZE);
+
+		printf("[SENT]>%s\n", MSG);
+
+		rcvdata = rudpReceive(conn, MSGSIZE);
+
+		printf("[RCVD]>%s\n", rcvdata);
+
+		if (strcmp(rcvdata, MSG) != 0) {
+			
+			fprintf(stderr, "ECHO FAILED!\n");
+
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	printf("ECHO SUCCEED!\n");
 
 	printf("# Disconnecting established connection #\n");
 

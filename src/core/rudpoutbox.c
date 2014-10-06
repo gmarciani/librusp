@@ -71,6 +71,23 @@ void freeOutbox(Outbox *outbox) {
 	free(outbox);
 }
 
+void writeOutboxUserBuffer(Outbox *outbox, const char *msg, const size_t size) {
+	Stream *stream = NULL;
+	char *portion = NULL;
+	int i;
+
+	portion = stringNDuplication(msg, size);
+
+	stream = createStream(portion);
+
+	for (i = 0; i < stream->size; i++)
+		submitSegmentToOutbox(outbox, stream->segments[i]);
+
+	free(portion);
+
+	freeStream(stream);
+}
+
 void submitSegmentToOutbox(Outbox *outbox, const Segment sgm) {
 	OutboxElement *new = NULL;
 

@@ -1,6 +1,6 @@
 #include "rudpconnection.h"
 
-static int RUDP_CONN_DEBUG = 1;
+static int RUDP_CONN_DEBUG = 0;
 
 /* CONNECTIONS POOL */
 
@@ -103,8 +103,6 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 	char *ssynack = NULL;
 	char *sacksynack = NULL;
 	int asock;	
-	uint32_t seqn;
-	uint32_t ackn;	
 
 	if (getConnectionState(lconn) != RUDP_CONN_LIST)
 		ERREXIT("Cannot accept connection: connection not listening.");
@@ -115,6 +113,9 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 			ssyn = readUnconnectedSocket(lconn->record->sock, &caddr, RUDP_SGMS);			
 
+			if (!ssyn)
+				continue;
+			
 			syn = deserializeSegment(ssyn);
 
 			if (RUDP_CONN_DEBUG)
@@ -126,21 +127,15 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setConnectionState(lconn, RUDP_CONN_SYNR);
 
-		seqn = getRandom32();
-
-		ackn = RUDP_NXTSEQN(syn.hdr.seqn, 0);	
-
 		asock = openSocket();
 
 		setSocketConnected(asock, caddr);	
 
 		setSocketTimeout(asock, ON_READ, RUDP_TIMEO_ACK);
 
-		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, seqn, ackn, NULL);	
+		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, getRandom32(), RUDP_NXTSEQN(syn.hdr.seqn, syn.hdr.plds), NULL);	
 
 		ssynack = serializeSegment(synack);
-
-		seqn = RUDP_NXTSEQN(seqn, 0);
 
 		int synackretrans = 0;
 
@@ -165,16 +160,16 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 				free(sacksynack);			
 
 				if ((acksynack.hdr.ctrl == RUDP_ACK) &
-					(acksynack.hdr.seqn == ackn) &
-					(acksynack.hdr.ackn == seqn)) {
+					(acksynack.hdr.seqn == RUDP_NXTSEQN(syn.hdr.seqn, syn.hdr.plds)) &
+					(acksynack.hdr.ackn == RUDP_NXTSEQN(synack.hdr.seqn, synack.hdr.plds))) {
 
 					free(ssynack);
 		
 					aconn = createConnection();						
 
-					aconn->record->outbox = createOutbox(seqn, RUDP_WNDSIZE);
+					aconn->record->outbox = createOutbox(RUDP_NXTSEQN(synack.hdr.seqn, synack.hdr.plds), RUDP_WNDSIZE);
 
-					aconn->record->inbox = createInbox(ackn, RUDP_WNDSIZE);
+					aconn->record->inbox = createInbox(RUDP_NXTSEQN(acksynack.hdr.seqn, acksynack.hdr.plds), RUDP_WNDSIZE);
 
 					aconn->record->sock = asock;
 
@@ -218,9 +213,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 	char *ssyn = NULL;
 	char *ssynack = NULL;
 	char *sacksynack = NULL;
-	int asock;
-	uint32_t seqn;
-	uint32_t ackn;	
+	int asock;	
 
 	if (getConnectionState(conn) != RUDP_CONN_CLOS)
 		ERREXIT("Cannot synchronize connection: connection not closed.");
@@ -236,15 +229,9 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 		if (RUDP_CONN_DEBUG)
 			printf("Connection attempt: %d.\n", connattempts);	
 
-		seqn = getRandom32();
-
-		ackn = 0;				
-
-		syn = createSegment(RUDP_SYN, 0, 0, seqn, ackn, NULL);
+		syn = createSegment(RUDP_SYN, 0, 0, getRandom32(), 0, NULL);
 
 		ssyn = serializeSegment(syn);	
-
-		seqn = RUDP_NXTSEQN(seqn, 0);
 
 		int synretrans = 0;
 
@@ -269,7 +256,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 					printInSegment(aaddr, synack);
 
 				if ((synack.hdr.ctrl == (RUDP_SYN | RUDP_ACK)) &
-					(synack.hdr.ackn == seqn)) {
+					(synack.hdr.ackn == RUDP_NXTSEQN(syn.hdr.seqn, syn.hdr.plds))) {
 
 					setConnectionState(conn, RUDP_CONN_SYNR);
 
@@ -277,13 +264,9 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 					setSocketConnected(asock, aaddr);
 
-					ackn = RUDP_NXTSEQN(synack.hdr.seqn, 0);
-
-					acksynack = createSegment(RUDP_ACK, 0, 0, seqn, ackn, NULL);
+					acksynack = createSegment(RUDP_ACK, 0, 0, RUDP_NXTSEQN(syn.hdr.seqn, syn.hdr.plds), RUDP_NXTSEQN(synack.hdr.seqn, synack.hdr.plds), NULL);
 
 					sacksynack = serializeSegment(acksynack);
-
-					seqn = RUDP_NXTSEQN(seqn, 0);
 
 					writeConnectedSocket(asock, sacksynack);
 
@@ -292,9 +275,9 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 					free(sacksynack);				
 
-					conn->record->outbox = createOutbox(seqn, RUDP_WNDSIZE);
+					conn->record->outbox = createOutbox(RUDP_NXTSEQN(acksynack.hdr.seqn, acksynack.hdr.plds), RUDP_WNDSIZE);
 
-					conn->record->inbox = createInbox(ackn, RUDP_WNDSIZE);
+					conn->record->inbox = createInbox(RUDP_NXTSEQN(synack.hdr.seqn, synack.hdr.plds), RUDP_WNDSIZE);
 
 					conn->record->sock = asock;
 
@@ -418,29 +401,24 @@ void setConnectionState(Connection *conn, const uint8_t state) {
 
 /* MESSAGE COMMUNICATION */
 
-void writeOutboxMessage(Connection *conn, const char *msg) {
-	Stream *stream = NULL;
-	int i;
+void writeOutboxMessage(Connection *conn, const char *msg, const size_t size) {
 
 	if (getConnectionState(conn) != RUDP_CONN_ESTA)
 		ERREXIT("Cannot write message to outbox: connection not established.");
 
-	stream = createStream(msg);
-
 	lockMutex(conn->record->outbox->outbox_mtx);
 
-	while (conn->record->outbox->size != 0)
+	while (conn->record->outbox->size != 0) {
+		//puts("wait for submission.");
 		waitConditionVariable(conn->record->outbox->outbox_cnd, conn->record->outbox->outbox_mtx);
+	}		
 
-	for (i = 0; i < stream->size; i++)
-		submitSegmentToOutbox(conn->record->outbox, stream->segments[i]);
+	writeOutboxUserBuffer(conn->record->outbox, msg, size);
 
-	unlockMutex(conn->record->outbox->outbox_mtx);
-
-	lockMutex(conn->record->outbox->outbox_mtx);
-
-	while (conn->record->outbox->size != 0)
+	while (conn->record->outbox->size != 0) {
+		//puts("wait for transmission.");
 		waitConditionVariable(conn->record->outbox->outbox_cnd, conn->record->outbox->outbox_mtx);
+	}
 
 	unlockMutex(conn->record->outbox->outbox_mtx);
 }
@@ -453,10 +431,12 @@ char *readInboxMessage(Connection *conn, const size_t size) {
 
 	lockMutex(conn->record->inbox->inbox_mtx);
 
-	while (conn->record->inbox->userdata == 0)
+	while (conn->record->inbox->userbuff->csize == 0) {
+		//puts("wait for something to read.");
 		waitConditionVariable(conn->record->inbox->inbox_cnd, conn->record->inbox->inbox_mtx);
+	}
 	
-	msg = readInboxBuffer(conn->record->inbox, size);	
+	msg = readInboxUserBuffer(conn->record->inbox, size);	
 
 	unlockMutex(conn->record->inbox->inbox_mtx);
 	
@@ -465,8 +445,9 @@ char *readInboxMessage(Connection *conn, const size_t size) {
 
 static void *managerLoop(void *arg) {
 	ConnectionRecord *connrec = (ConnectionRecord *) arg;
-	Segment sgm;
+	Segment sgm, acksgm;
 	char *ssgm = NULL;
+	char *sacksgm = NULL;
 
 	while (1) {
 
@@ -479,11 +460,36 @@ static void *managerLoop(void *arg) {
 			if (RUDP_CONN_DEBUG)
 				printInSegment(getSocketPeer(connrec->sock), sgm);
 
+			if (sgm.hdr.plds != 0) {
+
+				acksgm = createSegment(RUDP_ACK, 0, 0, 0, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds), NULL);
+
+				sacksgm = serializeSegment(acksgm);
+
+				writeConnectedSocket(connrec->sock, sacksgm);
+
+				if (RUDP_CONN_DEBUG)
+					printOutSegment(getSocketPeer(connrec->sock), acksgm);
+
+				free(sacksgm);
+			}
+
+			lockMutex(connrec->outbox->outbox_mtx);
+
+			if (sgm.hdr.ctrl & RUDP_ACK)
+				submitAckToOutbox(connrec->outbox, sgm.hdr.ackn);
+
+			unlockMutex(connrec->outbox->outbox_mtx);			
+
 			lockMutex(connrec->inbox->inbox_mtx);
 
 			submitSegmentToInbox(connrec->inbox, sgm);
 
+			//printf("INBOX %s\n", inboxToString(connrec->inbox));
+
 			unlockMutex(connrec->inbox->inbox_mtx);
+
+			signalConditionVariable(connrec->inbox->inbox_cnd);
 		}
 	}
 
@@ -503,14 +509,6 @@ static void timeoutHandler(union sigval arg) {
 	if (retransno != 0) {
 		
 		for (i = 0; i < retransno; i++) {
-
-			retrans[i].hdr.ctrl |= RUDP_ACK;
-
-			lockMutex(connrec->inbox->inbox_mtx);
-
-			retrans[i].hdr.ackn = connrec->inbox->lastackn;
-
-			unlockMutex(connrec->inbox->inbox_mtx);
 			
 			ssgm = serializeSegment(retrans[i]);			
 
@@ -525,5 +523,7 @@ static void timeoutHandler(union sigval arg) {
 
 	free(retrans);
 
-	unlockMutex(connrec->outbox->outbox_mtx);	
+	unlockMutex(connrec->outbox->outbox_mtx);
+
+	signalConditionVariable(connrec->outbox->outbox_cnd);	
 }

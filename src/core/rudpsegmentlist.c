@@ -16,11 +16,14 @@ SegmentList *createSegmentList(void) {
 }
 
 void freeSegmentList(SegmentList *list) {
+
 	cleanSegmentList(list);
+
 	free(list);
 }
 
 void cleanSegmentList(SegmentList *list) {
+
 	while (list->head)
 		removeElementFromSegmentList(list, list->head);
 }

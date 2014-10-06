@@ -2,28 +2,49 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "../core/rudpoutbox.h"
-#include "../core/rudpsegment.h"
 #include "../util/stringutil.h"
 
-#define ISN	4294967280
-#define WNDSIZE 3
+#define WNDB 0
+#define WNDS 5
 
 int main(void) {
-	Stream *stream = NULL;
 	Outbox *outbox = NULL;
-	Segment *retrans = NULL;
 	uint32_t ackn;
-	uint32_t retransno;
 	char *input = NULL;
 	char *stroutbox = NULL;
-	char *strsgm = NULL;
-	int i;
 
-	printf("# Creating Outbox with isn=%u wnds=%u #\n", (uint32_t) ISN, (uint32_t) WNDSIZE);
+	printf("# Creating Outbox with wndb=%u wnds=%u #\n", (uint32_t) WNDB, (uint32_t) WNDS);
 
-	outbox = createOutbox(ISN, WNDSIZE);
+	outbox = createOutbox(WNDB, WNDS);
 
-	puts("# Outbox to string #");
+	printf("# Outbox to string #\n");
+
+	stroutbox = outboxToString(outbox);
+
+	printf("%s\n", stroutbox);
+
+	free(stroutbox);
+
+	printf("# Submitting user message to outbox (type 'quit' to exit test) #\n");
+
+	input = getUserInput("[DATA]>");
+
+	if (strcmp(input, "quit") == 0) {	
+
+		free(input);
+
+		printf("# Freeing outbox #\n");
+
+		freeOutbox(outbox);	
+
+		exit(EXIT_SUCCESS);
+	}
+
+	writeOutboxUserBuffer(outbox, input, strlen(input));
+
+	free(input);
+
+	printf("# Outbox to string #\n");
 
 	stroutbox = outboxToString(outbox);
 
@@ -33,45 +54,26 @@ int main(void) {
 
 	while (1) {
 
-		puts("# Submitting your input message to outbox (type 'quit' to exit test) #");
+		printf("# Submitting your ACKs to outbox (type 'quit' to exit test) #\n");
 
-		input = getUserInput("[TO SEND]>");
+		input = getUserInput("[ACK]>");
 
-		if (strcmp(input, "quit") == 0) {		
-			free(input);
+		if (strcmp(input, "quit") == 0) {
+
+			free(input);			
+
 			break;
-		}
+		}	
 
-		printf("# Creating stream of segments (MAX_PLD:%d) #\n", RUDP_PLDS);
+		ackn = (uint32_t) strtoul(input, NULL, 10);
 
-		stream = createStream(input);
+		free(input);
 
-		puts("# Submitting stream of segments to outbox #");
+		printf("# Submitting ACK %u to outbox #\n", ackn);
+	
+		submitAckToOutbox(outbox, ackn);
 
-		for (i = 0; i < stream->size; i++) {
-
-			submitSegmentToOutbox(outbox, stream->segments[i]);
-
-			puts("# Submitting segment to outbox #");
-
-			strsgm = segmentToString(stream->segments[i]);
-
-			printf("%s\n", strsgm);
-
-			free(strsgm);
-
-			puts("# Outbox to string #");
-
-			stroutbox = outboxToString(outbox);
-
-			printf("%s\n", stroutbox);
-
-			free(stroutbox);
-		}
-
-		freeStream(stream);
-
-		puts("# Outbox to string #");
+		printf("# Outbox to string #\n");
 
 		stroutbox = outboxToString(outbox);
 
@@ -79,60 +81,10 @@ int main(void) {
 
 		free(stroutbox);
 
-		free(input);
+		printf("\n");
+	}
 
-		while (1) {
-
-			puts("# Submitting you ACK to outbox (quit stop submitting ACKs) #");
-
-			input = getUserInput("[ACK]>");
-
-			if (strcmp(input, "quit") == 0) {
-
-				free(input);			
-
-				break;
-			}	
-
-			ackn = (uint32_t) strtoul(input, NULL, 10);
-
-			free(input);
-
-			printf("# Submitting ACK %u to outbox #\n", ackn);
-		
-			submitAckToOutbox(outbox, ackn);
-
-			puts("# Outbox to string #");
-
-			stroutbox = outboxToString(outbox);
-
-			printf("%s\n", stroutbox);
-
-			free(stroutbox);
-
-			puts("# Retrieving segment to retransmit #");
-
-			retrans = getRetransmittableSegments(outbox, &retransno);
-
-			printf("There are %u segments to retransmit\n", retransno);
-
-			for (i = 0; i < retransno; i++) {
-				strsgm = segmentToString(retrans[i]);
-
-				printf("%s\n", strsgm);
-
-				free(strsgm);
-			}
-
-			free(retrans);
-
-			puts("");
-		}
-
-		puts("");
-	}			
-
-	puts("# Freeing outbox #");
+	printf("# Freeing outbox #\n");
 
 	freeOutbox(outbox);	
 

@@ -53,6 +53,8 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 
 	if (sgm.hdr.seqn >= inbox->wndb && sgm.hdr.seqn <= inbox->wnde) {
 
+		//puts("sgm inside inbox window");
+
 		if (sgm.hdr.seqn == inbox->wndb) {
 			
 			inbox->wndb = RUDP_NXTSEQN(inbox->wndb, sgm.hdr.plds);
@@ -66,6 +68,10 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 				char *userdata = readFromBuffer(inbox->waitbuff, inbox->waitbuff->csize);
 
 				writeToBuffer(inbox->userbuff, userdata, strlen(userdata));
+
+				//puts("user buffer written");
+
+				signalConditionVariable(inbox->inbox_cnd);
 
 				free(userdata);
 			}
@@ -95,6 +101,10 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 
 							writeToBuffer(inbox->userbuff, userdata, strlen(userdata));
 
+							//puts("user buffer written");
+
+							signalConditionVariable(inbox->inbox_cnd);
+
 							free(userdata);
 						}
 
@@ -115,7 +125,7 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 	}
 }
 
-char *readUserBuffer(Inbox *inbox, const size_t size) {
+char *readInboxUserBuffer(Inbox *inbox, const size_t size) {
 	char *msg = NULL;
 
 	msg = readFromBuffer(inbox->userbuff, size);

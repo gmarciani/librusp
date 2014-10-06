@@ -86,7 +86,7 @@ void setConnectionState(Connection *conn, const uint8_t state);
 
 /* MESSAGE COMMUNICATION */
 
-void writeOutboxMessage(Connection *conn, const char *msg);
+void writeOutboxMessage(Connection *conn, const char *msg, const size_t size);
 
 char *readInboxMessage(Connection *conn, const size_t size);
 

@@ -39,4 +39,6 @@ void waitConditionVariable(pthread_cond_t *cnd, pthread_mutex_t *mtx);
 
 void signalConditionVariable(pthread_cond_t *cnd);
 
+void broadcastConditionVariable(pthread_cond_t *cnd);
+
 #endif /* THREADUTIL_H_ */

@@ -6,7 +6,6 @@
 
 int main(void) {
 	SegmentList *list = NULL;
-	SegmentListElement *curr = NULL;
 	Segment sgm;
 	char *strlist = NULL;
 	int i;
@@ -15,7 +14,7 @@ int main(void) {
 
 	list = createSegmentList();
 
-	printf("# Segmentlist to string #\n");
+	printf("# Segment list to string #\n");
 
 	strlist = segmentListToString(list);
 
@@ -27,10 +26,9 @@ int main(void) {
 
 	for (i = NUM_ELEMENTS; i > 0; i--) {
 	
-		sgm = createSegment(RUDP_ACK, 0, 0, i, 0, NULL);
+		sgm = createSegment(RUDP_ACK, 0, 0, i, i, "Hello");
 
 		addSegmentToSegmentList(list, sgm);
-
 	}
 
 	printf("# Segmentlist to string #\n");
@@ -41,21 +39,13 @@ int main(void) {
 
 	free(strlist);
 
-	printf("# Removing segment with sequence number 6 from segment list #\n");
+	printf("# Removing segments with minimum and maximum sequence number #\n");
 
-	curr = list->head;
+	removeElementFromSegmentList(list, list->head);
 
-	while (curr) {
-		
-		if (curr->segment->hdr.seqn == 6)
-			break;
+	removeElementFromSegmentList(list, list->tail);	
 
-		curr = curr->next;
-	}
-
-	removeElementFromSegmentList(list, curr);
-
-	printf("# Segmentlist to string #\n");
+	printf("# Segment list to string #\n");
 
 	strlist = segmentListToString(list);
 
@@ -67,7 +57,7 @@ int main(void) {
 
 	cleanSegmentList(list);
 
-	printf("# Segmentlist to string #\n");
+	printf("# Segment list to string #\n");
 
 	strlist = segmentListToString(list);
 
