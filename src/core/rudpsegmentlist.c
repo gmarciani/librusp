@@ -34,10 +34,7 @@ void addSegmentToSegmentList(SegmentList *list, const Segment sgm) {
 	if (!(new = malloc(sizeof(SegmentListElement))))
 		ERREXIT("Cannot allocate memory for new segment list element.");
 
-	if (!(new->segment = malloc(sizeof(Segment))))
-		ERREXIT("Cannot allocate memory for segment in new segment list element.");
-
-	memcpy(new->segment, &sgm, sizeof(Segment));
+	new->segment = sgm;
 
 	if (list->size == 0) {
 
@@ -49,17 +46,7 @@ void addSegmentToSegmentList(SegmentList *list, const Segment sgm) {
 
 		list->tail = new;
 
-	} else if (list->head->segment->hdr.seqn > new->segment->hdr.seqn) {			
-
-		new->prev = NULL;
-
-		new->next = list->head;
-
-		list->head->prev = new;
-
-		list->head = new;
-
-	} else if (list->tail->segment->hdr.seqn < new->segment->hdr.seqn) {
+	} else {
 
 		new->prev = list->tail;
 
@@ -68,28 +55,7 @@ void addSegmentToSegmentList(SegmentList *list, const Segment sgm) {
 		list->tail->next = new;
 
 		list->tail = new;
-
-	} else {
-
-		SegmentListElement *curr = list->head;
-
-		while (curr) {
-
-			if (curr->segment->hdr.seqn > new->segment->hdr.seqn)
-				break;
-
-			curr = curr->next;
-		}	
-
-		new->next = curr;
-
-		new->prev = curr->prev;
-
-		curr->prev->next = new;
-
-		curr->prev = new;
-
-	}
+	} 
 
 	list->size++;
 }
@@ -125,8 +91,6 @@ void removeElementFromSegmentList(SegmentList *list, SegmentListElement *elem) {
 
 	}
 
-	free(elem->segment);
-
 	free(elem);
 
 	list->size--;
@@ -147,7 +111,7 @@ char *segmentListToString(SegmentList *list) {
 
 	while (curr) {
 
-		strsgm = segmentToString(*(curr->segment));
+		strsgm = segmentToString(curr->segment);
 		
 		strcat(strsgms, strsgm);
 

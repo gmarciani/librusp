@@ -34,8 +34,9 @@
 #define RUDP_CONN_SYNS (uint8_t) 2
 #define RUDP_CONN_SYNR (uint8_t) 3
 #define RUDP_CONN_ESTA (uint8_t) 4
-#define RUDP_CONN_FINS (uint8_t) 5	
-#define RUDP_CONN_FINR (uint8_t) 6
+#define RUDP_CONN_CLSW (uint8_t) 5
+#define RUDP_CONN_FINS (uint8_t) 6	
+#define RUDP_CONN_FINR (uint8_t) 7
 
 #define RUDP_TIMEO_ACK (uint64_t) 2000000000
 

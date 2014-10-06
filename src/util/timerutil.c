@@ -12,55 +12,29 @@ timer_t createTimer(void (*handler) (union sigval), void *arg) {
 
 	event.sigev_value.sival_ptr = arg;	
 
-	if (timer_create(CLOCK_REALTIME, &event, &timerid) != 0) {
-
-		fprintf(stderr, "Cannot create timer.\n");
-
-		exit(EXIT_FAILURE);
-	}
+	if (timer_create(CLOCK_REALTIME, &event, &timerid) != 0) 
+		ERREXIT("Cannot create timer.");
 
 	return timerid;
 }
 
 void freeTimer(const timer_t timerid) {
-	if (timer_delete(timerid) != 0) {
 
-		fprintf(stderr, "Cannot delete timer.\n");
-
-		exit(EXIT_FAILURE);
-	}
+	if (timer_delete(timerid) != 0)
+		ERREXIT("Cannot delete timer.");
 }
 
-void setTimer(const timer_t timerid, const uint64_t nanos, const uint8_t mode) {
+void setTimer(const timer_t timerid, const uint64_t nanos, const uint64_t inanos) {
 	struct itimerspec timerspec;
 
 	timerspec.it_value.tv_sec = (time_t) ceil(nanos / 1000000000);
 
 	timerspec.it_value.tv_nsec = (long) (nanos % 1000000000);
 
-	if (mode == TIMER_ONCE) {
-		
-		timerspec.it_interval.tv_sec = (time_t) 0;
-	
-		timerspec.it_interval.tv_nsec = (long) 0;
+	timerspec.it_interval.tv_sec = (time_t) ceil(inanos / 1000000000);
 
-	} else if (mode == TIMER_PERIODIC) {
+	timerspec.it_interval.tv_nsec = (long) (inanos % 1000000000);
 
-		timerspec.it_interval.tv_sec = timerspec.it_value.tv_sec;
-	
-		timerspec.it_interval.tv_nsec = timerspec.it_value.tv_nsec;
-		
-	} else {
-
-		fprintf(stderr, "Cannot recognize timer mode.\n");
-
-		exit(EXIT_FAILURE);
-	}	
-
-	if (timer_settime(timerid, 0, (const struct itimerspec *) &timerspec, NULL) != 0) {
-
-		fprintf(stderr, "Cannot set timer.\n");
-
-		exit(EXIT_FAILURE);
-	}
+	if (timer_settime(timerid, 0, (const struct itimerspec *) &timerspec, NULL) != 0)
+		ERREXIT("Cannot set timer.");
 }

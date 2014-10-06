@@ -16,7 +16,7 @@
 
 typedef struct OutboxElement {
 	uint8_t status;
-	Segment *segment;
+	Segment segment;
 	struct OutboxElement *prev;
 	struct OutboxElement *next;
 } OutboxElement;

@@ -1,6 +1,6 @@
 #include "sockutil.h"
 
-static double SOCK_DROP = 0.0; // [0, 1]
+static double SOCK_DROP = 0.3;
 
 /* SOCKET CREATION */
 
@@ -42,7 +42,6 @@ char *readUnconnectedSocket(const int sock, struct sockaddr_in *sndaddr, const s
 	if (!(buff = malloc(sizeof(char) * (rcvsize + 1))))
 		ERREXIT("Cannot allocate memory for reading unconnected socket.");
 
-
 	if ((rcvd = recvfrom(sock, buff, rcvsize, 0, (struct sockaddr *)sndaddr, &socksize)) == -1) {
 
 		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
@@ -60,8 +59,16 @@ char *readUnconnectedSocket(const int sock, struct sockaddr_in *sndaddr, const s
 
 void writeConnectedSocket(const int sock, const char *buff) {
 
-	if (write(sock, buff, strlen(buff)) == -1)
-		ERREXIT("Cannot write connected socket.");
+	errno = 0;
+	if (write(sock, buff, strlen(buff)) == -1) {
+
+		if ((errno == EPIPE) | (errno == EINVAL))
+			return;
+
+		fprintf(stderr, "Cannot write connected socket: %s\n", strerror(errno));
+
+		exit(EXIT_FAILURE);		
+	}
 }
 
 char *readConnectedSocket(const int sock, const size_t rcvsize) {
@@ -71,17 +78,28 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 	if (!(buff = malloc(sizeof(char) * (rcvsize + 1))))
 		ERREXIT("Cannot allocate memory for reading connected socket.");
 
+	errno = 0;
 	if ((rcvd = read(sock, buff, rcvsize)) == -1) {
 
-		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
+		if ((errno == EWOULDBLOCK) | (errno == EAGAIN) | (errno = EPIPE) | (errno == EINVAL)) {
+
 			free(buff);
+
 			return NULL;
 		}
 
-		ERREXIT("Cannot read connected socket.");
+		fprintf(stderr, "Cannot read connected socket: %s\n", strerror(errno));
+
+		exit(EXIT_FAILURE);
 	}
 
 	buff[rcvd] = '\0';
+
+	if (getRandomBit(SOCK_DROP)) {
+		free(buff);
+		printf("Packet Dropping\n");
+		return NULL;
+	}
 
 	return buff;
 }

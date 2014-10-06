@@ -13,11 +13,13 @@ int main(void) {
 	char *input = NULL;
 	char *stroutbox = NULL;
 
-	printf("# Creating Outbox with wndb=%u wnds=%u #\n", (uint32_t) WNDB, (uint32_t) WNDS);
+	printf("# Creating Outbox (wndb=%u wnds=%u)\n", (uint32_t) WNDB, (uint32_t) WNDS);
 
 	outbox = createOutbox(WNDB, WNDS);
 
-	printf("# Outbox to string #\n");
+	printf("Outbox created\n");
+
+	printf("# Outbox to string:\n");
 
 	stroutbox = outboxToString(outbox);
 
@@ -25,7 +27,7 @@ int main(void) {
 
 	free(stroutbox);
 
-	printf("# Submitting user message to outbox (type 'quit' to exit test) #\n");
+	printf("# Submitting user message to outbox (type 'quit' to exit test):\n");
 
 	input = getUserInput("[DATA]>");
 
@@ -44,7 +46,7 @@ int main(void) {
 
 	free(input);
 
-	printf("# Outbox to string #\n");
+	printf("# Outbox to string:\n");
 
 	stroutbox = outboxToString(outbox);
 
@@ -54,7 +56,7 @@ int main(void) {
 
 	while (1) {
 
-		printf("# Submitting your ACKs to outbox (type 'quit' to exit test) #\n");
+		printf("# Submitting your ACKs to outbox (type 'quit' to exit test):\n");
 
 		input = getUserInput("[ACK]>");
 
@@ -69,11 +71,13 @@ int main(void) {
 
 		free(input);
 
-		printf("# Submitting ACK %u to outbox #\n", ackn);
+		printf("# Submitting ACK %u to outbox\n", ackn);
 	
 		submitAckToOutbox(outbox, ackn);
 
-		printf("# Outbox to string #\n");
+		printf("ACK submitted\n");
+
+		printf("# Outbox to string:\n");
 
 		stroutbox = outboxToString(outbox);
 
@@ -84,9 +88,11 @@ int main(void) {
 		printf("\n");
 	}
 
-	printf("# Freeing outbox #\n");
+	printf("# Freeing outbox\n");
 
 	freeOutbox(outbox);	
+
+	printf("Outbox freed\n");
 
 	exit(EXIT_SUCCESS);
 }

@@ -10,13 +10,12 @@
 #include <signal.h>
 #include <math.h>
 
-#define TIMER_ONCE		0
-#define TIMER_PERIODIC 	1	
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 timer_t createTimer(void (*handler) (union sigval), void *arg);
 
 void freeTimer(const timer_t timerid);
 
-void setTimer(const timer_t timerid, const uint64_t nanos, const uint8_t mode);
+void setTimer(const timer_t timerid, const uint64_t nanos, const uint64_t inanos);
 
 #endif /* TIMERUTIL_H_ */

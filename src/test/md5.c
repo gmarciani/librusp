@@ -12,7 +12,7 @@ int main(void) {
 
 	hash = getMD5(STRING);
 
-	printf("Hash: %u\n", hash);
+	printf("%u\n", hash);
  
 	exit(EXIT_SUCCESS);
 }

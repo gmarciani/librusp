@@ -65,13 +65,13 @@ timer: $(TESTDIR)/timer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 buffer: $(TESTDIR)/buffer.c
-	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 md5: $(TESTDIR)/md5.c
-	$(CC) $(CFLAGS) $(TESTDIR)/md5.c $(UTILDIR)/mathutil.h $(UTILDIR)/mathutil.c -o $(BINDIR)/$(TESTPREFIX)$@ -lm -lssl -lcrypto
+	$(CC) $(CFLAGS) $(TESTDIR)/md5.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 random: $(TESTDIR)/random.c
-	$(CC) $(CFLAGS) $(TESTDIR)/random.c $(UTILDIR)/mathutil.h $(UTILDIR)/mathutil.c -o $(BINDIR)/$(TESTPREFIX)$@ -lm
+	$(CC) $(CFLAGS) $(TESTDIR)/random.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*

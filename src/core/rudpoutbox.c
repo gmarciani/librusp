@@ -45,16 +45,10 @@ void freeOutbox(Outbox *outbox) {
 
 	while (curr) {
 
-		if (curr->prev) {
-
-			free(curr->prev->segment);
-
+		if (curr->prev)
 			free(curr->prev);
-		}
 
 		if (curr == outbox->tail) {
-
-			free(curr->segment);
 
 			free(curr);
 
@@ -94,16 +88,13 @@ void submitSegmentToOutbox(Outbox *outbox, const Segment sgm) {
 	if (!(new = malloc(sizeof(OutboxElement))))
 		ERREXIT("Cannot allocate memory for outbox element insertion.");
 
-	if (!(new->segment = malloc(sizeof(Segment))))
-		ERREXIT("Cannot allocate memory for outbox segment insertion.");
+	new->segment = sgm;
+
+	new->segment.hdr.seqn = outbox->nextseqn;
 
 	new->status = RUDP_UNACKED;	
 
-	new->segment = memcpy(new->segment, &sgm, sizeof(Segment));
-
-	new->segment->hdr.seqn = outbox->nextseqn;
-
-	outbox->nextseqn = RUDP_NXTSEQN(outbox->nextseqn, new->segment->hdr.plds);
+	outbox->nextseqn = RUDP_NXTSEQN(outbox->nextseqn, new->segment.hdr.plds);
 
 	if (outbox->size == 0) {
 
@@ -153,19 +144,21 @@ void submitAckToOutbox(Outbox *outbox, const uint32_t ackn) {
 			if (curr == outbox->wnde->next)
 				break;	
 	
-		if (ackn == RUDP_NXTSEQN(curr->segment->hdr.seqn, curr->segment->hdr.plds)) {
+		if (ackn == RUDP_NXTSEQN(curr->segment.hdr.seqn, curr->segment.hdr.plds)) {
 
 			curr->status = RUDP_ACKED;
 
 			slideOutboxWindow(outbox);
-
+//
+			signalConditionVariable(outbox->outbox_cnd);
+//
 			break;
 		}
 
 		curr = curr->next;
 	}
 
-	signalConditionVariable(outbox->outbox_cnd);
+	//signalConditionVariable(outbox->outbox_cnd);
 }
 
 Segment *getRetransmittableSegments(Outbox *outbox, uint32_t *retransno) {
@@ -187,8 +180,10 @@ Segment *getRetransmittableSegments(Outbox *outbox, uint32_t *retransno) {
 
 		if (curr->status == RUDP_UNACKED) {
 
-			if (!memcpy(retrans + *retransno, curr->segment, sizeof(Segment))) 
-				ERREXIT("Cannot copy segment from outbox to retransmittable segments.");
+			retrans[*retransno] = curr->segment;
+
+			/*if (!memcpy(retrans + *retransno, curr->segment, sizeof(Segment))) 
+				ERREXIT("Cannot copy segment from outbox to retransmittable segments.");*/
 
 			*retransno += 1;
 		}
@@ -225,7 +220,7 @@ char *outboxToString(Outbox *outbox) {
 		else
 			strcat(stroutbox, "U ");
 
-		strsgm = segmentToString(*(curr->segment));
+		strsgm = segmentToString(curr->segment);
 
 		strcat(stroutbox, strsgm);
 
@@ -240,6 +235,7 @@ char *outboxToString(Outbox *outbox) {
 }
 
 static void slideOutboxWindow(Outbox *outbox) {
+
 	while (outbox->wndb) {
 
 		if (outbox->wndb->status != RUDP_ACKED)
@@ -260,7 +256,6 @@ static void slideOutboxWindow(Outbox *outbox) {
 		} else {
 
 			outbox->wnde = outbox->wnde->next;
-
 		}
 
 		if (outbox->wndb != NULL)
@@ -298,8 +293,6 @@ static void removeOutboxElement(Outbox *outbox, OutboxElement *elem) {
 
 		elem->next->prev = elem->prev;		
 	}
-
-	free(elem->segment);
 
 	free(elem);
 

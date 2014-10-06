@@ -3,9 +3,11 @@
 #include "../rudp.h"
 
 #define MSGSIZE 108
-#define NUM_ECHOS 100
+#define NUM_ECHOS 1000
 
-int main(int argc, char **argv) {
+#define PORT 55000
+
+int main(void) {
 	ConnectionId lconn, aconn;
 	struct sockaddr_in laddr, aaddr, caddr;
 	char *strladdr = NULL;
@@ -13,23 +15,18 @@ int main(int argc, char **argv) {
 	char *strcaddr = NULL;
 	char *rcvdata = NULL;
 
-	if (argc != 2) {
-		fprintf(stderr, "Usage %s [server-port]\n", argv[0]);
-		exit(EXIT_FAILURE);
-	}
+	printf("# Opening listening connection on port: %d\n", PORT);
 
-	printf("# Opening listening connection on port: %d #\n", atoi(argv[1]));
-
-	lconn = rudpListen(atoi(argv[1]));
+	lconn = rudpListen(PORT);
 
 	if (lconn == -1) {
-		fprintf(stderr, "# Cannot open listening connection on port %d #\n", atoi(argv[1]));
+		fprintf(stderr, "Cannot open listening connection on port %d\n", PORT);
 		exit(EXIT_FAILURE);
 	}
 
-	printf("# Connection created in pool and listening with id: %d #\n", lconn);
+	printf("Connection created in pool and listening with id: %d\n", lconn);
 
-	printf("# Getting local address of listening connection #\n");	
+	printf("# Getting local address of listening connection\n");	
 
 	laddr = rudpGetLocalAddress(lconn);
 
@@ -39,13 +36,13 @@ int main(int argc, char **argv) {
 
 	free(strladdr);
 
-	printf("# Accepting incoming connection #\n");
+	printf("# Accepting incoming connection\n");
 
 	aconn = rudpAccept(lconn);
 
-	printf("# Connection accepted, created in pool and established with id: %d #\n", aconn);
+	printf("Connection accepted, created in pool and established with id: %d\n", aconn);
 
-	printf("# Getting local address of established connection #\n");	
+	printf("# Getting local address of established connection\n");	
 
 	aaddr = rudpGetLocalAddress(aconn);
 
@@ -55,7 +52,7 @@ int main(int argc, char **argv) {
 
 	free(straaddr);
 
-	printf("# Getting peer address of established connection #\n");	
+	printf("# Getting peer address of established connection\n");	
 
 	caddr = rudpGetPeerAddress(aconn);
 
@@ -65,15 +62,19 @@ int main(int argc, char **argv) {
 
 	free(strcaddr);
 
-	printf("# Closing listening connection #\n");
+	printf("# Closing listening connection\n");
 
 	rudpClose(lconn);
 
-	printf("# Echoing (%d times) data (%d bytes a time) on established connection #\n", NUM_ECHOS, MSGSIZE);
+	printf("Listening connection closed\n");
 
-	int i = 0;
+	printf("# Echoing (%d times) data (%d bytes a time) on established connection\n", NUM_ECHOS, MSGSIZE);
+
+	long i = 0;
 
 	for (i = 0; i < NUM_ECHOS; i++) {
+		
+		printf("echo %ld\n", i);
 
 		rcvdata = rudpReceive(aconn, MSGSIZE);
 
@@ -81,14 +82,16 @@ int main(int argc, char **argv) {
 
 		rudpSend(aconn, rcvdata, strlen(rcvdata));
 
-		printf("[SENT]>%s\n", rcvdata);
+		printf("[SENT]>%s\n\n", rcvdata);
 
 		free(rcvdata);
 	}	
 
-	printf("# Disconnecting established connection #\n");
+	/*printf("# Disconnecting established connection\n");
 
 	rudpDisconnect(aconn);
+
+	printf("Connection disconnected\n");*/
 
 	exit(EXIT_SUCCESS);
 }

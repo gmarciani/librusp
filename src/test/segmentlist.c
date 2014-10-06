@@ -10,11 +10,11 @@ int main(void) {
 	char *strlist = NULL;
 	int i;
 
-	printf("# Creating segment list #\n");
+	printf("# Creating segment list\n");
 
 	list = createSegmentList();
 
-	printf("# Segment list to string #\n");
+	printf("# Segment list to string\n");
 
 	strlist = segmentListToString(list);
 
@@ -22,7 +22,7 @@ int main(void) {
 
 	free(strlist);
 
-	printf("# Adding %d segments to segment list #\n", NUM_ELEMENTS);
+	printf("# Adding %d segments to segment list\n", NUM_ELEMENTS);
 
 	for (i = NUM_ELEMENTS; i > 0; i--) {
 	
@@ -31,7 +31,9 @@ int main(void) {
 		addSegmentToSegmentList(list, sgm);
 	}
 
-	printf("# Segmentlist to string #\n");
+	printf("Added to segment list\n");
+
+	printf("# Segmentlist to string:\n");
 
 	strlist = segmentListToString(list);
 
@@ -39,13 +41,17 @@ int main(void) {
 
 	free(strlist);
 
-	printf("# Removing segments with minimum and maximum sequence number #\n");
+	printf("# Removing head and tail:\n");
 
 	removeElementFromSegmentList(list, list->head);
 
+	printf("Head removed\n");
+
 	removeElementFromSegmentList(list, list->tail);	
 
-	printf("# Segment list to string #\n");
+	printf("Tail removed\n");
+
+	printf("# Segment list to string:\n");
 
 	strlist = segmentListToString(list);
 
@@ -53,11 +59,13 @@ int main(void) {
 
 	free(strlist);
 
-	printf("# Cleaning segment list #\n");
+	printf("# Cleaning segment list\n");
 
 	cleanSegmentList(list);
 
-	printf("# Segment list to string #\n");
+	printf("Segment list cleaned\n");
+
+	printf("# Segment list to string:\n");
 
 	strlist = segmentListToString(list);
 
@@ -65,9 +73,11 @@ int main(void) {
 
 	free(strlist);
 
-	printf("# Freeing segment list #\n");
+	printf("# Freeing segment list\n");
 
 	freeSegmentList(list);
+
+	printf("Segment list freed\n");
 
 	exit(EXIT_SUCCESS);
 }

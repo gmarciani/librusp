@@ -9,7 +9,7 @@
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 typedef struct SegmentListElement {
-	Segment *segment;
+	Segment segment;
 	struct SegmentListElement *next;
 	struct SegmentListElement *prev;
 } SegmentListElement;

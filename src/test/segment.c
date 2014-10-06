@@ -11,29 +11,31 @@ int main(void) {
 	char *strstream = NULL;
 	int i;
 
-	printf("# Creating SYNACK segments (MAX_PLD=5) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s #\n", msg);
+	printf("# Creating SYNACK segments (PLDS=%d) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s #\n", RUDP_PLDS, msg);
 
 	sgmOne = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, msg);
 
 	strsgm = segmentToString(sgmOne);
 
-	printf("# Segment to string #\n");
+	printf("# Segment to string:\n");
 
 	printf("%s\n", strsgm);
 
 	free(strsgm);
 
-	printf("# Serialized segment #\n");	
+	printf("# Segment serialization\n");	
 
 	ssgm = serializeSegment(sgmOne);
 
 	printf("%s\n", ssgm);
 
-	printf("# Deserializing segment #\n");
+	printf("# Segment deserialization:\n");
 
 	sgmTwo = deserializeSegment(ssgm);
 
 	free(ssgm);
+
+	printf("# Segment matching\n");
 
 	if (sgmOne.hdr.vers == sgmTwo.hdr.vers &&
 		sgmOne.hdr.ctrl == sgmTwo.hdr.ctrl &&
@@ -64,11 +66,11 @@ int main(void) {
 
 	}
 
-	printf("# Creating stream of Segments (MAX_PLD=%d) with message=%s #\n", RUDP_PLDS, msg);
+	printf("# Creating stream (PLDS=%d) with message=%s #\n", RUDP_PLDS, msg);
 
 	stream = createStream(msg);
 
-	printf("# Stream of segments to string #\n");
+	printf("# Stream to string:\n");
 
 	strstream = streamToString(stream);
 
@@ -76,11 +78,13 @@ int main(void) {
 
 	free(strstream);
 
-	printf("# Cleaning stream of segments #\n");
+	printf("# Cleaning stream\n");
 
 	cleanStream(stream);
 
-	printf("# Stream of segments to string #\n");
+	printf("Stream cleaned\n");
+
+	printf("# Stream to string #\n");
 
 	strstream = streamToString(stream);
 
@@ -88,9 +92,11 @@ int main(void) {
 
 	free(strstream);
 
-	printf("# Freeing stream of segments #\n");
+	printf("# Freeing stream\n");
 
 	freeStream(stream);
+
+	printf("Stream freed\n");
 
 	exit(EXIT_SUCCESS);
 }

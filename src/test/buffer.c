@@ -9,11 +9,11 @@ int main(void) {
 	char *output = NULL;
 	size_t size;
 
-	printf("# Creating buffer #\n");
+	printf("# Creating buffer\n");
 
 	buff = createBuffer();
 
-	printf("# Getting buffer string representation #\n");
+	printf("# Buffer to string:\n");
 
 	strbuff = bufferToString(buff);
 
@@ -23,7 +23,7 @@ int main(void) {
 
 	while (1) {
 
-		printf("# Writing user input to buffer (type 'quit' to exit test) #\n");
+		printf("# Writing user input to buffer (type 'quit' to exit test):\n");
 
 		input = getUserInput("[DATA]>");
 
@@ -38,7 +38,7 @@ int main(void) {
 
 		free(input);
 
-		printf("# Getting buffer string representation #\n");
+		printf("# Buffer to string: #\n");
 
 		strbuff = bufferToString(buff);
 
@@ -46,7 +46,7 @@ int main(void) {
 
 		free(strbuff);
 
-		printf("# Reading from buffer #\n");
+		printf("# Reading from buffer:\n");
 
 		input = getUserInput("[SIZE]>");
 
@@ -60,7 +60,7 @@ int main(void) {
 
 		free(output);
 
-		printf("# Getting buffer string representation #\n");
+		printf("# Buffer to string:\n");
 
 		strbuff = bufferToString(buff);
 
@@ -71,9 +71,11 @@ int main(void) {
 		printf("\n");
 	}
 
-	printf("# Freeing buffer #\n");
+	printf("# Freeing buffer\n");
 
 	freeBuffer(buff);
+
+	printf("Buffer freed\n");
 
 	exit(EXIT_FAILURE);
 }

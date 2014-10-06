@@ -53,8 +53,6 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 
 	if (sgm.hdr.seqn >= inbox->wndb && sgm.hdr.seqn <= inbox->wnde) {
 
-		//puts("sgm inside inbox window");
-
 		if (sgm.hdr.seqn == inbox->wndb) {
 			
 			inbox->wndb = RUDP_NXTSEQN(inbox->wndb, sgm.hdr.plds);
@@ -68,8 +66,6 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 				char *userdata = readFromBuffer(inbox->waitbuff, inbox->waitbuff->csize);
 
 				writeToBuffer(inbox->userbuff, userdata, strlen(userdata));
-
-				//puts("user buffer written");
 
 				signalConditionVariable(inbox->inbox_cnd);
 
@@ -85,23 +81,22 @@ void submitSegmentToInbox(Inbox *inbox, const Segment sgm) {
 
 				while (curr) {
 
-					if (curr->segment->hdr.seqn == inbox->wndb) {
+					if (curr->segment.hdr.seqn == inbox->wndb) {
 		
 						flag = 1;
 						
-						inbox->wndb = RUDP_NXTSEQN(inbox->wndb, curr->segment->hdr.plds);
+						inbox->wndb = RUDP_NXTSEQN(inbox->wndb, curr->segment.hdr.plds);
 
-						inbox->wnde = RUDP_NXTSEQN(inbox->wnde, curr->segment->hdr.plds);
+						inbox->wnde = RUDP_NXTSEQN(inbox->wnde, curr->segment.hdr.plds);
 
-						if (curr->segment->hdr.plds > 0)
-							writeToBuffer(inbox->waitbuff, curr->segment->pld, curr->segment->hdr.plds);
+						if (curr->segment.hdr.plds > 0)
+							writeToBuffer(inbox->waitbuff, curr->segment.pld, curr->segment.hdr.plds);
 
-						if (curr->segment->hdr.ctrl & RUDP_PSH) {
+						if (curr->segment.hdr.ctrl & RUDP_PSH) {
+
 							char *userdata = readFromBuffer(inbox->waitbuff, inbox->waitbuff->csize);
 
 							writeToBuffer(inbox->userbuff, userdata, strlen(userdata));
-
-							//puts("user buffer written");
 
 							signalConditionVariable(inbox->inbox_cnd);
 

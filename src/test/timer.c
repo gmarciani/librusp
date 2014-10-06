@@ -15,28 +15,54 @@ int main(void) {
 	timer_t timerid;
 	int count = 0;
 
-	printf("# Creating timer #\n");
+	printf("# Creating timer\n");
 
 	timerid = createTimer(timeoutFunc, &count);
 
-	printf("# Setting periodic timer expiration: %llu nanoseconds #\n", (long long) tvnsec);
+	printf("# Setting timer once expiration: (only) first timeout: %llu nanos\n", (long long) tvnsec);
 
-	setTimer(timerid, tvnsec, TIMER_PERIODIC);
+	setTimer(timerid, tvnsec, 0);
+
+	pthread_mutex_lock(&mtx);
+
+	while(count < 1)
+		pthread_cond_wait(&cnd, &mtx);
+
+	pthread_mutex_unlock(&mtx);	
+
+	printf("# Setting timer periodic expiration: first timeout: %llu nanos periodic timeout: %llu \n", (long long) tvnsec, (long long) 2 * tvnsec);
+
+	setTimer(timerid, tvnsec, 2 * tvnsec);
 
 	pthread_mutex_lock(&mtx);
 
 	while(count < 5)
 		pthread_cond_wait(&cnd, &mtx);
 
-	printf("# Disarming timer #\n");
+	pthread_mutex_unlock(&mtx);	
 
-	setTimer(timerid, 0, 0);
+	printf("# Setting timer periodic expiration: periodic timeout: %llu \n", (long long) tvnsec);
+
+	setTimer(timerid, tvnsec, tvnsec);
+
+	pthread_mutex_lock(&mtx);
+
+	while(count < 10)
+		pthread_cond_wait(&cnd, &mtx);
 
 	pthread_mutex_unlock(&mtx);	
 
-	printf("# Freeing timer #\n");
+	printf("# Disarming timer\n");
+
+	setTimer(timerid, 0, 0);
+
+	printf("Timer disarmed\n");
+
+	printf("# Freeing timer\n");
 
 	freeTimer(timerid);
+
+	printf("Timer freed\n");
 	
 	exit(EXIT_SUCCESS);
 }
