@@ -164,6 +164,8 @@ void submitAckToOutbox(Outbox *outbox, const uint32_t ackn) {
 
 		curr = curr->next;
 	}
+
+	signalConditionVariable(outbox->outbox_cnd);
 }
 
 Segment *getRetransmittableSegments(Outbox *outbox, uint32_t *retransno) {
