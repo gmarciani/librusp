@@ -26,7 +26,7 @@ TESTPREFIX = test_
 
 # Dependencies
 
-PROTOCOL_LIBS = -lpthread -lrt -lm
+PROTOCOL_LIBS = -lpthread -lrt -lm -lcrypto -lssl
 
 PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
 
@@ -41,7 +41,7 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
 
 # Tests
 
-test: setup sender receiver outbox inbox segmentlist segment timer buffer random 
+test: setup sender receiver outbox inbox segmentlist segment timer buffer md5 random 
 
 sender: $(TESTDIR)/sender.c
 	$(CC) $(CFLAGS) $(TESTDIR)/sender.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -67,8 +67,11 @@ timer: $(TESTDIR)/timer.c
 buffer: $(TESTDIR)/buffer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(UTILDIR)/stringutil.h $(UTILDIR)/stringutil.c -o $(BINDIR)/$(TESTPREFIX)$@
 
+md5: $(TESTDIR)/md5.c
+	$(CC) $(CFLAGS) $(TESTDIR)/md5.c $(UTILDIR)/mathutil.h $(UTILDIR)/mathutil.c -o $(BINDIR)/$(TESTPREFIX)$@ -lm -lssl -lcrypto
+
 random: $(TESTDIR)/random.c
-	$(CC) $(CFLAGS) $(TESTDIR)/random.c $(UTILDIR)/mathutil.h $(UTILDIR)/mathutil.c -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $(TESTDIR)/random.c $(UTILDIR)/mathutil.h $(UTILDIR)/mathutil.c -o $(BINDIR)/$(TESTPREFIX)$@ -lm
 
 clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*

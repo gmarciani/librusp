@@ -10,6 +10,10 @@ static int CONNPOOL_NEXTID = 0;
 
 static pthread_mutex_t connpool_mtx = PTHREAD_MUTEX_INITIALIZER;
 
+/* ISN */
+
+static uint32_t getISN(const struct sockaddr_in laddr, const struct sockaddr_in paddr);
+
 /* CONNECTION */
 
 static void *managerLoop(void *arg);
@@ -133,7 +137,7 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setSocketTimeout(asock, ON_READ, RUDP_TIMEO_ACK);
 
-		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, getRandom32(), RUDP_NXTSEQN(syn.hdr.seqn, syn.hdr.plds), NULL);	
+		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, getISN(getSocketLocal(asock), getSocketPeer(asock)), RUDP_NXTSEQN(syn.hdr.seqn, syn.hdr.plds), NULL);	
 
 		ssynack = serializeSegment(synack);
 
@@ -229,7 +233,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 		if (RUDP_CONN_DEBUG)
 			printf("Connection attempt: %d.\n", connattempts);	
 
-		syn = createSegment(RUDP_SYN, 0, 0, getRandom32(), 0, NULL);
+		syn = createSegment(RUDP_SYN, 0, 0, getISN(getSocketLocal(asock), laddr), 0, NULL);
 
 		ssyn = serializeSegment(syn);	
 
@@ -408,17 +412,13 @@ void writeOutboxMessage(Connection *conn, const char *msg, const size_t size) {
 
 	lockMutex(conn->record->outbox->outbox_mtx);
 
-	while (conn->record->outbox->size != 0) {
-		//puts("wait for submission.");
+	while (conn->record->outbox->size != 0)
 		waitConditionVariable(conn->record->outbox->outbox_cnd, conn->record->outbox->outbox_mtx);
-	}		
 
 	writeOutboxUserBuffer(conn->record->outbox, msg, size);
 
-	while (conn->record->outbox->size != 0) {
-		//puts("wait for transmission.");
+	while (conn->record->outbox->size != 0)
 		waitConditionVariable(conn->record->outbox->outbox_cnd, conn->record->outbox->outbox_mtx);
-	}
 
 	unlockMutex(conn->record->outbox->outbox_mtx);
 }
@@ -431,16 +431,22 @@ char *readInboxMessage(Connection *conn, const size_t size) {
 
 	lockMutex(conn->record->inbox->inbox_mtx);
 
-	while (conn->record->inbox->userbuff->csize == 0) {
-		//puts("wait for something to read.");
+	while (conn->record->inbox->userbuff->csize == 0)
 		waitConditionVariable(conn->record->inbox->inbox_cnd, conn->record->inbox->inbox_mtx);
-	}
 	
 	msg = readInboxUserBuffer(conn->record->inbox, size);	
 
 	unlockMutex(conn->record->inbox->inbox_mtx);
 	
 	return msg;
+}
+
+static uint32_t getISN(const struct sockaddr_in laddr, const struct sockaddr_in paddr) {
+	uint32_t isn;
+
+	isn = (getMD5(addressToString(laddr)) + getMD5(addressToString(paddr)) % clock() + getRandom32()) % RUDP_MAXSEQN;
+	
+	return isn;	
 }
 
 static void *managerLoop(void *arg) {
@@ -484,8 +490,6 @@ static void *managerLoop(void *arg) {
 			lockMutex(connrec->inbox->inbox_mtx);
 
 			submitSegmentToInbox(connrec->inbox, sgm);
-
-			//printf("INBOX %s\n", inboxToString(connrec->inbox));
 
 			unlockMutex(connrec->inbox->inbox_mtx);
 

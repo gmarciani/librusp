@@ -20,3 +20,21 @@ uint8_t getRandomBit(const double onprob) {
 
 	return random;
 }
+
+uint32_t getMD5(const char *input) {
+	unsigned char hash128[MD5_DIGEST_LENGTH];
+	char strhash32[MD5_DIGEST_LENGTH + 1];
+	uint32_t hash32;
+	int i;
+ 
+  	MD5((const unsigned char *)input, strlen(input), hash128);
+
+	for (i = 0; i < MD5_DIGEST_LENGTH; i++)
+		sprintf(strhash32 + i, "%d", hash128[i]);
+
+	strhash32[i] = '\0';
+
+	hash32 = (uint32_t) strtoull(strhash32, NULL, 10) % MAX_UINT32;
+ 
+	return hash32;
+}

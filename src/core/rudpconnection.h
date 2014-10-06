@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <sys/times.h>
 #include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
