@@ -2,101 +2,101 @@
 #include <stdio.h>
 #include "../core/rudpsegment.h"
 
+#define MSG "Hello World! I'm happy! Stay hungry, stay foolish, folks!"
+
+#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+
 int main(void) {
-	Stream *stream = NULL;
-	Segment sgmOne, sgmTwo;
-	char *strsgm = NULL;
+	Segment sgmone, sgmtwo;
 	char *ssgm = NULL;
-	char *msg = "Hello World! I'm happy! Stay hungry, stay foolish, folks!";
-	char *strstream = NULL;
-	int i;
+	uint32_t wndb, wnde, seqn;
 
-	printf("# Creating SYNACK segments (PLDS=%d) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s #\n", RUDP_PLDS, msg);
+	printf("# Creating SYNACK segments (PLDS=%d) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s\n", RUDP_PLDS, MSG);
 
-	sgmOne = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, msg);
+	sgmone = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, MSG);
 
-	strsgm = segmentToString(sgmOne);
+	printf("SUCCESS\n");	
 
-	printf("# Segment to string:\n");
+	printf("# Segment to string\n");
 
-	printf("%s\n", strsgm);
-
-	free(strsgm);
-
-	printf("# Segment serialization\n");	
-
-	ssgm = serializeSegment(sgmOne);
+	ssgm = segmentToString(sgmone);
 
 	printf("%s\n", ssgm);
 
-	printf("# Segment deserialization:\n");
+	free(ssgm);
 
-	sgmTwo = deserializeSegment(ssgm);
+	printf("# Serializing/Deserializing segment\n");
+
+	ssgm = serializeSegment(sgmone);
+
+	sgmtwo = deserializeSegment(ssgm);
 
 	free(ssgm);
 
-	printf("# Segment matching\n");
+	if (!isEqualSegment(sgmone, sgmtwo))
+		ERREXIT("FAILURE");
 
-	if (sgmOne.hdr.vers == sgmTwo.hdr.vers &&
-		sgmOne.hdr.ctrl == sgmTwo.hdr.ctrl &&
-		sgmOne.hdr.urgp == sgmTwo.hdr.urgp &&
-		sgmOne.hdr.plds == sgmTwo.hdr.plds &&
-		sgmOne.hdr.wnds == sgmTwo.hdr.wnds &&
-		sgmOne.hdr.seqn == sgmTwo.hdr.seqn &&
-		sgmOne.hdr.ackn == sgmTwo.hdr.ackn) {
+	printf("SUCCESS\n");
 
-		printf("Header match SUCCESS!\n");
+	printf("# Matching sequence number inside window\n");
 
-		for (i = 0; i < sgmOne.hdr.plds; i++) {
+	wndb = 0;
+	wnde = 2097152;
+	seqn = 80;
 
-			if (sgmOne.pld[i] != sgmTwo.pld[i]) {
-
-				printf("Payload match FAILURE!\n");
-
-				exit(EXIT_FAILURE);
-
-			}
+	while (seqn != 79) {
+		
+		if (matchSequenceAgainstWindow(wndb, wnde, seqn) != 0) {
+			printf("wndb:%u wnde:%u seqn:%u\n", wndb, wnde, seqn);
+			ERREXIT("MATCHING FAILURE: sequence should be inside window.");
 		}
 
-		printf("Payload match SUCCESS!\n");
-
-	} else {
-
-		printf("Header match FAILURE\n");
-
+		wndb = RUDP_NXTSEQN(wndb, 1);
+		wnde = RUDP_NXTSEQN(wnde, 1);
+		seqn = RUDP_NXTSEQN(seqn, 1);
 	}
 
-	printf("# Creating stream (PLDS=%d) with message=%s #\n", RUDP_PLDS, msg);
+	printf("SUCCESS\n");
 
-	stream = createStream(msg);
+	printf("# Matching sequence number before window\n");
 
-	printf("# Stream to string:\n");
+	wndb = 500;
+	wnde = 2097652;
+	seqn = 80;
 
-	strstream = streamToString(stream);
+	while (seqn != 79) {		
+		
+		if (matchSequenceAgainstWindow(wndb, wnde, seqn) != -1) {
+			printf("wndb:%u wnde:%u seqn:%u\n", wndb, wnde, seqn);
+			ERREXIT("FAILURE: sequence should be before window.");
+		}
 
-	printf("%s\n", strstream);
+		wndb = RUDP_NXTSEQN(wndb, 1);
+		wnde = RUDP_NXTSEQN(wnde, 1);
+		seqn = RUDP_NXTSEQN(seqn, 1);
+	}
 
-	free(strstream);
+	printf("SUCCESS\n");
 
-	printf("# Cleaning stream\n");
+	printf("# Matching sequence number after window\n");
 
-	cleanStream(stream);
+	wndb = 500;
+	wnde = 2097652;
+	seqn = 2107152;
 
-	printf("Stream cleaned\n");
+	while (seqn != 2107151) {
+		
+		if (matchSequenceAgainstWindow(wndb, wnde, seqn) != 1) {
+			printf("wndb:%u wnde:%u seqn:%u\n", wndb, wnde, seqn);	
+			ERREXIT("MATCHING FAILURE: sequence should be after window.");
+		}
 
-	printf("# Stream to string #\n");
+		wndb = RUDP_NXTSEQN(wndb, 1);
+		wnde = RUDP_NXTSEQN(wnde, 1);
+		seqn = RUDP_NXTSEQN(seqn, 1);
+	}
 
-	strstream = streamToString(stream);
+	printf("SUCCESS\n");
 
-	printf("%s\n", strstream);
-
-	free(strstream);
-
-	printf("# Freeing stream\n");
-
-	freeStream(stream);
-
-	printf("Stream freed\n");
-
-	exit(EXIT_SUCCESS);
+	exit(EXIT_SUCCESS);	
 }

@@ -6,8 +6,7 @@ const static size_t RUDP_HDRF_SIZE[RUDP_HDRF] = {3, 3, 5, 5, 5, 10, 10};
 
 Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wnds, unsigned long seqn, unsigned long ackn, const char *pld) {
 	Segment sgm;
-	size_t pldsize = 0;
-	int i;
+	size_t plds = 0;
 
 	sgm.hdr.vers = RUDP_VERS;
 
@@ -23,16 +22,14 @@ Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wn
 
 	if (pld) {
 
-		pldsize = (strlen(pld) < RUDP_PLDS) ? strlen(pld) : RUDP_PLDS;
+		plds = (strlen(pld) < RUDP_PLDS) ? strlen(pld) : RUDP_PLDS;
 
-		for (i = 0; i < pldsize; i++)
-			sgm.pld[i] = pld[i];
-
+		memcpy(sgm.pld, pld, sizeof(char) * plds);
 	}
 
-	sgm.pld[pldsize] = '\0';
+	sgm.pld[plds] = '\0';
 
-	sgm.hdr.plds = pldsize;
+	sgm.hdr.plds = plds;
 
 	return sgm;	
 }
@@ -41,7 +38,7 @@ Segment deserializeSegment(const char *ssgm) {
 	Segment sgm;
 	char *hdr = NULL;
 	char **hdrfields = NULL;
-	size_t pldsize;
+	size_t plds;
 	int i;
 
 	hdr = stringNDuplication(ssgm, RUDP_HDRS);
@@ -62,12 +59,11 @@ Segment deserializeSegment(const char *ssgm) {
 
 	sgm.hdr.ackn = (uint32_t) (strtoul(hdrfields[6], NULL, 10) % RUDP_MAXSEQN);
 
-	pldsize = (sgm.hdr.plds < RUDP_PLDS) ? sgm.hdr.plds : RUDP_PLDS;
+	plds = (sgm.hdr.plds < RUDP_PLDS) ? sgm.hdr.plds : RUDP_PLDS;
 
-	for (i = 0; i < pldsize; i++)
-		sgm.pld[i] = *(ssgm + RUDP_HDRS + i);
+	memcpy(sgm.pld, ssgm + RUDP_HDRS, sizeof(char) * plds);
 
-	sgm.pld[i] = '\0';	
+	sgm.pld[plds] = '\0';	
 
 	for (i = 0; i < RUDP_HDRF; i++)
 		free(hdrfields[i]);
@@ -88,6 +84,27 @@ char *serializeSegment(const Segment sgm) {
 	sprintf(ssgm, "%03u%03u%05u%05u%05u%010u%010u%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, sgm.pld);
 
 	return ssgm;
+}
+
+int isEqualSegment(const Segment sgmone, const Segment sgmtwo) {
+	return (sgmone.hdr.vers == sgmtwo.hdr.vers &&
+			sgmone.hdr.ctrl == sgmtwo.hdr.ctrl &&
+			sgmone.hdr.urgp == sgmtwo.hdr.urgp &&
+			sgmone.hdr.plds == sgmtwo.hdr.plds &&
+			sgmone.hdr.wnds == sgmtwo.hdr.wnds &&
+			sgmone.hdr.seqn == sgmtwo.hdr.seqn &&
+			sgmone.hdr.ackn == sgmtwo.hdr.ackn &&
+			strcmp(sgmone.pld, sgmtwo.pld) == 0);
+}
+
+int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const uint32_t seqn) {
+	if ((wndb < wnde && seqn >= wndb && seqn <= wnde) ||
+		(wndb > wnde && (seqn >= wndb || seqn <= wnde))) 
+		return 0;
+	else if (wndb - seqn <= (RUDP_MAXSEQN / 2))
+		return -1;
+	else
+		return 1;
 }
 
 char *segmentToString(const Segment sgm) {
@@ -147,7 +164,7 @@ void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm) {
 	free(strsgm);
 }
 
-/* STREAM */
+/* STREAM 
 
 Stream *createStream(const char *msg) {
 	Stream *stream = NULL;
@@ -212,12 +229,7 @@ Stream *createStream(const char *msg) {
 }
 
 void freeStream(Stream *stream) {
-	cleanStream(stream);
 
-	free(stream);
-}
-
-void cleanStream(Stream *stream) {
 	if (stream->segments)
 		free(stream->segments);
 
@@ -226,6 +238,8 @@ void cleanStream(Stream *stream) {
 	stream->size = 0;
 
 	stream->len = 0;
+
+	free(stream);
 }
 
 char *streamToString(Stream *stream) {
@@ -251,4 +265,4 @@ char *streamToString(Stream *stream) {
 	}
 
 	return strstream;
-}
+}*/

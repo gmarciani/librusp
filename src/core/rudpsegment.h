@@ -13,14 +13,14 @@
 
 #define RUDP_HDRF 7
 #define RUDP_HDRS 41
-#define RUDP_PLDS 10
+#define RUDP_PLDS 500
 #define RUDP_SGMS (RUDP_HDRS + RUDP_PLDS)
 
 #define RUDP_SGMSO (RUDP_SGMS + 46)
 
 #define RUDP_MAXSEQN (uint32_t) 4294967295
 
-#define RUDP_NXTSEQN(a, b) ((a) + ((b == 0) ? 1 : (b))) % RUDP_MAXSEQN
+#define RUDP_NXTSEQN(a, b) (((a) + (b)) % RUDP_MAXSEQN)
 
 #define RUDP_NUL 0b00000000
 #define RUDP_SYN 0b00000001
@@ -49,11 +49,11 @@ typedef struct Segment {
 	char 	pld[RUDP_PLDS + 1];
 } Segment;
 
-typedef struct Stream {
+/*typedef struct Stream {
 	Segment 	*segments;
 	uint32_t 	size;
 	uint32_t 	len;
-} Stream;
+} Stream;*/
 
 /* SEGMENT */
 
@@ -63,20 +63,22 @@ Segment deserializeSegment(const char *ssgm);
 
 char *serializeSegment(const Segment sgm);
 
+int isEqualSegment(const Segment sgmone, const Segment sgmtwo);
+
+int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const uint32_t seqn);
+
 char *segmentToString(const Segment sgm);
 
 void printInSegment(const struct sockaddr_in sndaddr, const Segment sgm);
 
 void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm);
 
-/* STREAM */
+/* STREAM 
 
 Stream *createStream(const char *msg);
 
 void freeStream(Stream *stream);
 
-void cleanStream(Stream *stream);
-
-char *streamToString(Stream *stream);
+char *streamToString(Stream *stream);*/
 
 #endif /* _RUDPSEGMENT_H_ */
