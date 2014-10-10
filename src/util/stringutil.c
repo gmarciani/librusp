@@ -5,110 +5,87 @@
 Buffer *createBuffer(void) {
 	Buffer *buff = NULL;
 
-	if (!(buff = malloc(sizeof(Buffer))) ||
-		!(buff->content = malloc(sizeof(char))))
+	if (!(buff = malloc(sizeof(Buffer))))
 		ERREXIT("Cannot allocate memory for buffer.");
 
-	buff->csize = 0;
+	memset(buff, 0, sizeof(Buffer));
 
-	buff->bsize = 1;
+	if (!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
+		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
+		ERREXIT("Cannot allocate memory for buffer resources.");
+
+	initializeMutex(buff->mtx);
+
+	initializeConditionVariable(buff->cnd);
+
+	buff->size = 0;
 
 	return buff;
 }
 
 void freeBuffer(Buffer *buff) {
-	
-	free(buff->content);
 
-	buff->csize = 0;
+	destroyMutex(buff->mtx);
 
-	buff->bsize = 0;
+	destroyConditionVariable(buff->cnd);
+
+	buff->size = 0;
 
 	free(buff);
 }
 
-char *getBuffer(Buffer *buff, const size_t size) {
+char *lookBuffer(Buffer *buff, const size_t size) {
 	char *str = NULL;
-	size_t sizeToCopy, i;
+	size_t sizeToCopy;
 
-	sizeToCopy = (size < buff->csize) ? size : buff->csize;
+	sizeToCopy = (size < buff->size) ? size : buff->size;
 
 	if (!(str = malloc(sizeof(char) * (sizeToCopy + 1))))
 		ERREXIT("Cannot allocate memory for buffer get.");
 
-	for (i = 0; i < sizeToCopy; i++) 
-		str[i] = buff->content[i];
+	memcpy(str, buff->content, sizeof(char) * sizeToCopy);
 
 	str[sizeToCopy] = '\0';
 
 	return str;
 }
 
-char *readFromBuffer(Buffer *buff, const size_t size) {
+char *readBuffer(Buffer *buff, const size_t size) {
 	char *str = NULL;
 	size_t sizeToCopy;
 
-	sizeToCopy = (size < buff->csize) ? size : buff->csize;
+	sizeToCopy = (size < buff->size) ? size : buff->size;
 
-	str = getBuffer(buff, sizeToCopy);
+	str = lookBuffer(buff, sizeToCopy);
 
-	if (sizeToCopy != 0) {
+	if (sizeToCopy != 0)
+		memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->size - sizeToCopy));
 
-		memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->csize - sizeToCopy));
-
-		buff->csize -= sizeToCopy;
-
-		if (buff->csize <= (buff->bsize / 4)) {
-
-			buff->bsize /= 2;
-
-			if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
-				ERREXIT("Cannot reallocate memory for buffer.");
-		}
-	}
+	buff->size -= sizeToCopy;
 
 	return str;
 }
 
-void writeToBuffer(Buffer *buff, const char *str, const size_t size) {
-	size_t i;
+void writeBuffer(Buffer *buff, const char *str, const size_t size) {
 
 	if (size == 0)
 		return;
 
-	if ((buff->csize + size) >= (buff->bsize / 2)) {
+	memcpy(buff->content + buff->size, str, sizeof(char) * size);
 
-		if ((buff->csize + size) * 2 <= BUFFER_DHBREAKPOINT) {
-			
-			buff->bsize = (buff->csize + size) * 2;
-
-			if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
-				ERREXIT("Cannot reallocate memory for buffer.");	
-		} else {
-
-			buff->bsize = (buff->csize + size < BUFFER_DHBREAKPOINT) ? BUFFER_DHBREAKPOINT : buff->csize + size;
-
-			if (!(buff->content = realloc(buff->content, sizeof(char) * buff->bsize)))
-				ERREXIT("Cannot reallocate memory for buffer.");
-		}		
-	}
-
-	for (i = 0 ; i < size; i++) 
-		buff->content[buff->csize + i] = str[i];
-
-	buff->csize += size;
+	buff->size += size;
 }
 
 char *bufferToString(Buffer *buff) {
 	char *strbuff = NULL;
 	char *strcontent = NULL;
 
-	strcontent = getBuffer(buff, buff->csize);
+	strcontent = lookBuffer(buff, buff->size);
 
-	if (!(strbuff = malloc(sizeof(char) * (43 + strlen(strcontent) + 1))))
+	if (!(strbuff = malloc(sizeof(char) * (25 + strlen(strcontent) + 1))))
 		ERREXIT("Cannot allocate memory for buffer string representation.");
 
-	sprintf(strbuff, "bsize:%zu csize:%zu content:%s", buff->bsize, buff->csize, strcontent);
+	sprintf(strbuff, "csize:%zu content:%s", buff->size, strcontent);
 
 	free(strcontent);
 
@@ -119,16 +96,16 @@ char *bufferToString(Buffer *buff) {
 
 char *stringDuplication(const char *src) {
 	char *dest = NULL;
-	size_t srcSize;
+	size_t sizeToCopy;
 
-	srcSize = strlen(src);
+	sizeToCopy = strlen(src);
 
-	if (!(dest = malloc(sizeof(char) * (srcSize + 1))))
+	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1))))
 		ERREXIT("Cannot allocate memory for string duplication.");
 
-	dest[0] = '\0';
-	
-	dest = strcat(dest, src);
+	memcpy(dest, src, sizeof(char) * sizeToCopy);
+
+	dest[sizeToCopy] = '\0';
 
 	return dest;
 }
@@ -145,34 +122,36 @@ char *stringNDuplication(const char *src, const size_t size) {
 	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1))))
 		ERREXIT("Cannot allocate memory for string n duplication.");
 
-	dest[0] = '\0';
-	
-	dest = strncat(dest, src, sizeToCopy);
+	memcpy(dest, src, sizeof(char) * sizeToCopy);
+
+	dest[sizeToCopy] = '\0';
 
 	return dest;
 }
 
-char *stringConcatenation(const char *srcOne, const char *srcTwo) {
+char *stringConcatenation(const char *srcone, const char *srctwo) {
 	char *dest = NULL;
-	size_t srcSize;
+	size_t srcones, srctwos;
 
-	srcSize = strlen(srcOne) + strlen(srcTwo);
+	srcones = strlen(srcone);
 
-	if (!(dest = malloc(sizeof(char) * (srcSize + 1))))
+	srctwos = strlen(srctwo);
+
+	if (!(dest = malloc(sizeof(char) * (srcones + srctwos + 1))))
 		ERREXIT("Cannot allocate memory for string concatenation.");
 
-	dest[0] = '\0';
+	memcpy(dest, srcone, srcones);
 
-	dest = strcat(dest, srcOne);
+	memcpy(dest + srcones, srctwo, srctwos);
 
-	dest = strcat(dest, srcTwo);
+	dest[srcones + srctwos] = '\0';
 
 	return dest;
 }
 
 /* STRING SPLITTING */
 
-char **splitStringByDelimiter(const char *src, const char *delim, int *numSubstr) {
+char **splitStringByDelimiter(const char *src, const char *delim, int *substrs) {
 	char **substr = NULL;
 	char *temp = NULL;
 	char *token = NULL;
@@ -182,12 +161,12 @@ char **splitStringByDelimiter(const char *src, const char *delim, int *numSubstr
 	if (!(substr = malloc(sizeof(char *))))
 		ERREXIT("Cannot allocate memory for string split by delimiter.");
 
-	for (token = strtok(temp, delim), *numSubstr = 0; token != NULL; token = strtok(NULL, delim)) {	
-		*numSubstr += 1;
-		if (!(substr = realloc(substr, sizeof(char *) * *numSubstr)))
+	for (token = strtok(temp, delim), *substrs = 0; token != NULL; token = strtok(NULL, delim)) {	
+		*substrs += 1;
+		if (!(substr = realloc(substr, sizeof(char *) * *substrs)))
 			ERREXIT("Cannot reallocate memory for string split by delimiter.");
 
-		substr[*numSubstr - 1] = stringDuplication(token);
+		substr[*substrs - 1] = stringDuplication(token);
 	}
 
 	free(temp);
@@ -195,7 +174,7 @@ char **splitStringByDelimiter(const char *src, const char *delim, int *numSubstr
 	return substr;
 }
 
-char **splitStringNByDelimiter(const char *src, const char *delim, const int numSubstr) {
+char **splitStringNByDelimiter(const char *src, const char *delim, const int substrs) {
 	char **substr = NULL;
 	char *temp, *tempp = NULL;
 	char *delimMatch = NULL;
@@ -208,7 +187,7 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 
 	tempp = temp;
 
-	if (!(substr = malloc(sizeof(char *) * numSubstr))) 
+	if (!(substr = malloc(sizeof(char *) * substrs))) 
 		ERREXIT("Cannot allocate memory for string split by n delimiter.");
 
 	for (delimMatch = strstr(temp, delim); delimMatch != NULL; delimMatch = strstr(temp, delim)) {	
@@ -221,7 +200,7 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 
 		temp = delimMatch + delimSize;
 
-		if (effNumSubstr + 1 == numSubstr)
+		if (effNumSubstr + 1 == substrs)
 			break;
 	}
 	
@@ -229,7 +208,7 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 
 	substr[effNumSubstr - 1] = stringDuplication(temp);
 
-	for (i = effNumSubstr; i < numSubstr; i++)
+	for (i = effNumSubstr; i < substrs; i++)
 		substr[i] = stringDuplication("");
 
 	free(tempp);
@@ -237,32 +216,32 @@ char **splitStringNByDelimiter(const char *src, const char *delim, const int num
 	return substr;
 }
 
-char **splitStringBySize(const char *src, const size_t size, int *numSubstr) {
+char **splitStringBySize(const char *src, const size_t size, int *substrs) {
 	char **substr;
 	size_t srcsize;
 	int i;
 
 	srcsize = strlen(src);
 
-	*numSubstr = (srcsize % size == 0) ? (srcsize / size) : ((srcsize / size) + 1);
+	*substrs = (srcsize % size == 0) ? (srcsize / size) : ((srcsize / size) + 1);
 
-	if (!(substr = malloc(sizeof(char *) * *numSubstr)))
+	if (!(substr = malloc(sizeof(char *) * *substrs)))
 		ERREXIT("Cannot allocate memory for string split by size.");
 	
-	for (i = 0; i < *numSubstr; i++)
+	for (i = 0; i < *substrs; i++)
 		substr[i] = stringNDuplication(src + (i * size), size);
 
 	return substr;
 }
 
-char **splitStringBySection(const char *src, const size_t *ssize, const int numsubstr) {
+char **splitStringBySection(const char *src, const size_t *ssize, const int substrs) {
 	char **substr;
 	int processed, i;
 
-	if (!(substr = malloc(sizeof(char *) * numsubstr)))
+	if (!(substr = malloc(sizeof(char *) * substrs)))
 		ERREXIT("Cannot allocate memory for string split by section.");
 
-	for (i = 0, processed = 0; i < numsubstr; i++, processed += ssize[i-1])
+	for (i = 0, processed = 0; i < substrs; i++, processed += ssize[i-1])
 		substr[i] = stringNDuplication(src + processed, ssize[i]);
 
 	return substr;
@@ -270,34 +249,43 @@ char **splitStringBySection(const char *src, const size_t *ssize, const int nums
 
 /* ARRAY (DE)SERIALIZATION */
 
-char *arraySerialization(char **array, const int numItems, const char *delim) {
+char *arraySerialization(char **array, const int items, const char *delim) {
 	char *sarray;
-	size_t sarraysize = 0;
-	int i;
+	size_t sarrays, elems, delims;
+	int i, j;
 
-	for (i = 0; i < numItems; i++)
-		sarraysize += (strlen(array[i]) + 1);
+	delims = strlen(delim);
 
-	if (!(sarray = malloc(sizeof(char) * (sarraysize + 1))))
+	sarrays = 0;
+
+	for (i = 0; i < items; i++)
+		sarrays += (strlen(array[i]) + delims);
+
+	if (!(sarray = malloc(sizeof(char) * (sarrays + 1))))
 		ERREXIT("Cannot allocate memory for array serialization.");
 
-	sarray[0] = '\0';
+	j = 0;
 
-	for (i = 0; i < numItems; i++) {
+	for (i = 0; i < items; i++) {
 
-		sarray = strcat(sarray, array[i]);
+		elems = strlen(array[i]);
 
-		if (i == (numItems -1))
-			break;
+		memcpy(sarray + j, array[i], sizeof(char) * elems);
 
-		sarray = strcat(sarray, delim);
+		j += elems;
+
+		memcpy(sarray + j, delim, sizeof(char) * delims);
+
+		j += delims;
 	}
+
+	sarray[j] = '\0';
 
 	return sarray;
 }
 
-char **arrayDeserialization(const char *sarray, const char *delim, int *numItems) {
-	return splitStringByDelimiter(sarray, delim, numItems);
+char **arrayDeserialization(const char *sarray, const char *delim, int *items) {
+	return splitStringByDelimiter(sarray, delim, items);
 }
 
 /* VARIOUS */
