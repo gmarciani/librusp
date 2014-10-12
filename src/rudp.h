@@ -30,6 +30,4 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid);
 
 struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid);
 
-void setSegmentDrop(const double dropprob);
-
 #endif /* _RUDP_H_ */

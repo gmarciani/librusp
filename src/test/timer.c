@@ -3,7 +3,8 @@
 #include <pthread.h>
 #include "../util/timerutil.h"
 
-static uint64_t tvnsec = 2000000000; // 2 seconds
+#define TIMEOLONG (uint64_t) 2000000000
+#define TIMEONOW (uint64_t) 1000
 
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 
@@ -19,9 +20,11 @@ int main(void) {
 
 	timerid = createTimer(timeoutFunc, &count);
 
-	printf("# Setting timer once expiration: (only) first timeout: %llu nanos\n", (long long) tvnsec);
+	printf("Timer created\n");
 
-	setTimer(timerid, tvnsec, 0);
+	printf("# Setting timer once expiration: (only) first timeout: %lu nanos\n", TIMEOLONG);
+
+	setTimer(timerid, TIMEOLONG, 0);
 
 	pthread_mutex_lock(&mtx);
 
@@ -30,9 +33,9 @@ int main(void) {
 
 	pthread_mutex_unlock(&mtx);	
 
-	printf("# Setting timer periodic expiration: first timeout: %llu nanos periodic timeout: %llu \n", (long long) tvnsec, (long long) 2 * tvnsec);
+	printf("# Setting timer periodic expiration: first timeout: %lu nanos periodic timeout: %lu \n", TIMEONOW, TIMEOLONG);
 
-	setTimer(timerid, tvnsec, 2 * tvnsec);
+	setTimer(timerid, TIMEONOW, TIMEOLONG);
 
 	pthread_mutex_lock(&mtx);
 
@@ -41,9 +44,9 @@ int main(void) {
 
 	pthread_mutex_unlock(&mtx);	
 
-	printf("# Setting timer periodic expiration: periodic timeout: %llu \n", (long long) tvnsec);
+	printf("# Setting timer periodic expiration: periodic timeout: %lu \n", TIMEOLONG);
 
-	setTimer(timerid, tvnsec, tvnsec);
+	setTimer(timerid, TIMEOLONG, TIMEOLONG);
 
 	pthread_mutex_lock(&mtx);
 

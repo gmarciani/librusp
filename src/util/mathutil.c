@@ -16,7 +16,7 @@ uint32_t getRandom32(void) {
 uint8_t getRandomBit(const double onprob) {
 	uint8_t random;
 
-	random = rand() <  onprob * ((double)RAND_MAX + 1.0);
+	random = rand() <  onprob * ((double) RAND_MAX + 1.0);
 
 	return random;
 }

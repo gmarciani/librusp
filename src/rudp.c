@@ -90,7 +90,7 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection.");	
 
-	writeOutboxMessage(conn, msg, size);
+	writeMessage(conn, msg, size);
 }
 
 char *rudpReceive(const ConnectionId connid, const size_t size) {
@@ -102,7 +102,7 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection.");
 
-	msg = readInboxMessage(conn, size);
+	msg = readMessage(conn, size);
 
 	return msg;
 }
@@ -118,7 +118,7 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection.");
 
-	addr = getSocketLocal(conn->record->sock);
+	addr = getSocketLocal(conn->sock);
 
 	return addr;
 }
@@ -132,11 +132,7 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection.");
 
-	addr = getSocketPeer(conn->record->sock);
+	addr = getSocketPeer(conn->sock);
 
 	return addr;
-}
-
-void setSegmentDrop(const double dropprob) {
-	setSocketDrop(dropprob);
 }

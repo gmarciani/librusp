@@ -54,6 +54,6 @@ struct sockaddr_in getSocketPeer(const int sock);
 
 /* UTILITY */
 
-void setSocketDrop(const double drop);
+void setDropRate(const double droprate);
 
 #endif /* SOCKUTIL_H_ */

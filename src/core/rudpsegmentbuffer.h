@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "rudpsegment.h"
+#include "../util/threadutil.h"
 #include "../util/timerutil.h"
 
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
@@ -21,6 +23,8 @@ typedef struct SegmentBuffer {
 	uint32_t size;	
 	SegmentBufferElement *head;
 	SegmentBufferElement *tail;
+	pthread_mutex_t *mtx;
+	pthread_cond_t *cnd;
 } SegmentBuffer;
 
 SegmentBuffer *createSegmentBuffer(void);
@@ -50,15 +54,19 @@ typedef struct TSegmentBuffer {
 	uint32_t size;	
 	TSegmentBufferElement *head;
 	TSegmentBufferElement *tail;
+	pthread_mutex_t *mtx;
+	pthread_cond_t *cnd;
 } TSegmentBuffer;
 
 TSegmentBuffer *createTSegmentBuffer(void);
 
 void freeTSegmentBuffer(TSegmentBuffer *buff);
 
-TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const uint8_t status, const uint64_t nanos, void (*handler) (union sigval), void *arg, size_t argsize);
+TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const uint8_t status, const uint64_t nanos, const uint64_t inanos, void (*handler) (union sigval), void *arg, size_t argsize);
 
 TSegmentBufferElement *findTSegmentBuffer(TSegmentBuffer *buff, const uint32_t seqn);
+
+TSegmentBufferElement *findTSegmentBufferByAck(TSegmentBuffer *buff, const uint32_t ackn);
 
 void removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *elem);
 

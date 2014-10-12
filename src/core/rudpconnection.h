@@ -17,9 +17,8 @@
 #include <limits.h>
 #include <pthread.h>
 
-#include "rudpinbox.h"
-#include "rudpoutbox.h"
 #include "rudpsegment.h"
+#include "rudpsegmentbuffer.h"
 
 #include "../util/stringutil.h"
 #include "../util/mathutil.h"
@@ -29,67 +28,105 @@
 #include "../util/addrutil.h"
 #include "../util/sockutil.h"
 
-#define RUDP_CONN_CLOS (uint8_t) 0
-#define RUDP_CONN_LIST (uint8_t) 1
-#define RUDP_CONN_SYNS (uint8_t) 2
-#define RUDP_CONN_SYNR (uint8_t) 3
-#define RUDP_CONN_ESTA (uint8_t) 4
-#define RUDP_CONN_CLSW (uint8_t) 5
-#define RUDP_CONN_FINS (uint8_t) 6	
-#define RUDP_CONN_FINR (uint8_t) 7
+#define RUDP_CON_CLOS (uint8_t) 0
+#define RUDP_CON_LIST (uint8_t) 1
+#define RUDP_CON_SYNS (uint8_t) 2
+#define RUDP_CON_SYNR (uint8_t) 3
+#define RUDP_CON_ESTA (uint8_t) 4
+#define RUDP_CON_CLSW (uint8_t) 5
+#define RUDP_CON_FINS (uint8_t) 6	
+#define RUDP_CON_FINR (uint8_t) 7
 
-#define RUDP_TIMEO_ACK (uint64_t) 2000000000
+#define RUDP_CON_ATTS (uint8_t) 3
 
-#define RUDP_CONN_ATT (uint8_t) 3
+#define RUDP_CON_RETR (uint32_t) 3
+#define RUDP_CON_WNDS (uint32_t) 20
 
-#define RUDP_RETRANS (uint8_t)	3
-#define RUDP_WNDSIZE (uint8_t)	10
+#define RUDP_TIME_ACK (uint64_t) 1000000000
+#define RUDP_TIME_NOW (uint64_t) 100
 
+#define RUDP_SGM_NACK (uint8_t ) 0
+#define RUDP_SGM_YACK (uint8_t ) 1
+
+#ifndef ERREXIT
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+#endif
 
-/* CONNECTION */
+/* CONNECTION STRUCTURES */
 
 typedef int ConnectionId;
 
-typedef struct ConnectionRecord {
-	uint8_t state;
-	Outbox *outbox;
-	Inbox *inbox;
-	int sock;
-	timer_t	timer;
-	pthread_mutex_t *conn_mtx;
-	pthread_cond_t  *conn_cnd;
-} ConnectionRecord;
-
 typedef struct Connection {
-	uint8_t version;
 	ConnectionId connid;
-	ConnectionRecord *record;
-	pthread_t manager;
+
+	uint8_t state;
+	pthread_mutex_t *state_mtx;
+	pthread_cond_t  *state_cnd;	
+
+	pthread_mutex_t *sock_mtx;
+	int sock;
+
+	uint32_t sndwndb;
+	uint32_t sndwnde;
+	uint32_t sndnext;
+	uint64_t sndtime;
+	Buffer *sndbuff;
+	TSegmentBuffer *sndsgmbuff;
+	pthread_mutex_t *sndwnd_mtx;
+	pthread_mutex_t *sndnext_mtx;
+	pthread_t sender;
+
+	uint32_t rcvwndb;
+	uint32_t rcvwnde;	
+	Buffer *rcvbuff;	
+	SegmentBuffer *rcvsgmbuff;	
+	pthread_mutex_t *rcvwnd_mtx;
+	pthread_t receiver;
+		
 } Connection;
+
+/* CONNECTION */
 
 Connection *createConnection(void);
 
 Connection *getConnectionById(const ConnectionId connid);
 
+uint8_t getConnectionState(Connection *conn);
+
+void setConnectionState(Connection *conn, const uint8_t state);
+
+/* LISTENING */
+
 void setListeningConnection(Connection *conn, const struct sockaddr_in laddr);
+
+/* SYNCHRONIZATION */
+
+int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr);
 
 ConnectionId acceptSynchonization(Connection *lconn);
 
-int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr);
+/* DESYNCHRONIZATION */
 
 void desynchronizeConnection(Connection *conn);
 
 void destroyConnection(Connection *conn);
 
-uint8_t getConnectionState(Connection *conn);
-
-void setConnectionState(Connection *conn, const uint8_t state);
-
 /* MESSAGE COMMUNICATION */
 
-void writeOutboxMessage(Connection *conn, const char *msg, const size_t size);
+void writeMessage(Connection *conn, const char *msg, const size_t size);
 
-char *readInboxMessage(Connection *conn, const size_t size);
+char *readMessage(Connection *conn, const size_t size);
+
+/* CONNECTION THREADS */
+
+typedef struct SegmentObject {
+	Connection *conn;
+	Segment sgm;
+} SegmentObject;
+
+typedef struct AckObject {
+	Connection *conn;
+	uint32_t ackn;
+} AckObject;
 
 #endif /* _RUDPCONNECTION_H_ */

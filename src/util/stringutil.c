@@ -5,12 +5,8 @@
 Buffer *createBuffer(void) {
 	Buffer *buff = NULL;
 
-	if (!(buff = malloc(sizeof(Buffer))))
-		ERREXIT("Cannot allocate memory for buffer.");
-
-	memset(buff, 0, sizeof(Buffer));
-
-	if (!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
+	if (!(buff = malloc(sizeof(Buffer))) ||
+		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
 		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
 		ERREXIT("Cannot allocate memory for buffer resources.");
 
@@ -48,6 +44,10 @@ char *lookBuffer(Buffer *buff, const size_t size) {
 	str[sizeToCopy] = '\0';
 
 	return str;
+}
+
+void popBuffer(Buffer *buff, const size_t size) {
+
 }
 
 char *readBuffer(Buffer *buff, const size_t size) {

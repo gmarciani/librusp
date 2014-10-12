@@ -5,8 +5,14 @@
 SegmentBuffer *createSegmentBuffer(void) {
 	SegmentBuffer *buff = NULL;
 
-	if (!(buff = malloc(sizeof(SegmentBuffer))))
-		ERREXIT("Cannot allocate memory for segment buffer.");
+	if (!(buff = malloc(sizeof(SegmentBuffer))) ||
+		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
+		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
+		ERREXIT("Cannot allocate memory for timeout segment buffer resources.");
+
+	initializeMutex(buff->mtx);
+
+	initializeConditionVariable(buff->cnd);
 
 	buff->size = 0;
 	
@@ -21,6 +27,10 @@ void freeSegmentBuffer(SegmentBuffer *buff) {
 
 	while (buff->head)
 		removeSegmentBuffer(buff, buff->head);
+
+	destroyMutex(buff->mtx);
+
+	destroyConditionVariable(buff->cnd);
 
 	free(buff);
 }
@@ -158,8 +168,14 @@ char *segmentBufferToString(SegmentBuffer *buff) {
 TSegmentBuffer *createTSegmentBuffer(void) {
 	TSegmentBuffer *buff = NULL;
 
-	if (!(buff = malloc(sizeof(TSegmentBuffer))))
-		ERREXIT("Cannot allocate memory for timeout segment buffer.");
+	if (!(buff = malloc(sizeof(TSegmentBuffer))) ||
+		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
+		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
+		ERREXIT("Cannot allocate memory for timeout segment buffer resources.");
+
+	initializeMutex(buff->mtx);
+
+	initializeConditionVariable(buff->cnd);
 
 	buff->size = 0;
 	
@@ -175,10 +191,14 @@ void freeTSegmentBuffer(TSegmentBuffer *buff) {
 	while (buff->head)
 		removeTSegmentBuffer(buff, buff->head);
 
+	destroyMutex(buff->mtx);
+
+	destroyConditionVariable(buff->cnd);
+
 	free(buff);
 }
 
-TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const uint8_t status, const uint64_t nanos, void (*handler) (union sigval), void *arg, size_t argsize) {
+TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const uint8_t status, const uint64_t nanos, const uint64_t inanos, void (*handler) (union sigval), void *arg, size_t argsize) {
 
 	TSegmentBufferElement *new = NULL;
 
@@ -219,7 +239,7 @@ TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm
 
 	new->timer = createTimer(handler, new->timerarg);
 
-	setTimer(new->timer, nanos, nanos);
+	setTimer(new->timer, nanos, inanos);
 
 	return new;
 }
@@ -231,6 +251,25 @@ TSegmentBufferElement *findTSegmentBuffer(TSegmentBuffer *buff, const uint32_t s
 	while (curr) {
 
 		if (curr->segment.hdr.seqn == seqn) {
+			
+			trgt = curr;
+
+			break;
+		}
+
+		curr = curr->next;
+	}
+
+	return trgt;
+}
+
+TSegmentBufferElement *findTSegmentBufferByAck(TSegmentBuffer *buff, const uint32_t ackn) {
+	TSegmentBufferElement *curr = buff->head;
+	TSegmentBufferElement *trgt = NULL;
+
+	while (curr) {
+
+		if (ackn == RUDP_NXTSEQN(curr->segment.hdr.seqn, curr->segment.hdr.plds)) {
 			
 			trgt = curr;
 

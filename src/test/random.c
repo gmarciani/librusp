@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "../util/mathutil.h"
 
-#define NUMRAND (long) 10000
+#define NUMRAND (long) 100000
 
 static uint32_t RANDOM32[NUMRAND];
 

@@ -29,11 +29,13 @@ Buffer *createBuffer(void);
 
 void freeBuffer(Buffer *buff);
 
+char *lookBuffer(Buffer *buff, const size_t size);
+
+void popBuffer(Buffer *buff, const size_t size);
+
 char *readBuffer(Buffer *buff, const size_t size);
 
 void writeBuffer(Buffer *buff, const char *str, const size_t size);
-
-char *lookBuffer(Buffer *buff, const size_t size);
 
 char *bufferToString(Buffer *buff);
 

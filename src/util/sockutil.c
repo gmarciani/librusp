@@ -1,6 +1,6 @@
 #include "sockutil.h"
 
-static double SOCK_DROP = 0.3;
+static double DROPRATE = 0.0;
 
 /* SOCKET CREATION */
 
@@ -95,9 +95,9 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 
 	buff[rcvd] = '\0';
 
-	if (getRandomBit(SOCK_DROP)) {
+	if (getRandomBit(DROPRATE)) {
 		free(buff);
-		printf("Packet Dropping\n");
+		printf("Segment Dropped\n");
 		return NULL;
 	}
 
@@ -172,6 +172,6 @@ struct sockaddr_in getSocketPeer(const int sock) {
 
 /* UTILITY */
 
-void setSocketDrop(const double drop) {
-	SOCK_DROP = drop;
+void setDropRate(const double droprate) {
+	DROPRATE = droprate;
 }

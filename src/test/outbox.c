@@ -5,54 +5,36 @@
 #include "../util/stringutil.h"
 
 #define WNDB 0
-#define WNDS 5
+#define WNDS 10
+#define TIMEOUT 5000000000
+
+#define MSG "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+			\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 int main(void) {
 	Outbox *outbox = NULL;
-	uint32_t ackn;
 	char *input = NULL;
-	char *stroutbox = NULL;
+	uint32_t ackn;
 
-	printf("# Creating Outbox (wndb=%u wnds=%u)\n", (uint32_t) WNDB, (uint32_t) WNDS);
+	printf("# Creating Outbox (wndb:%u wnds:%u timeout:%lu)\n", (uint32_t) WNDB, (uint32_t) WNDS, (uint64_t) TIMEOUT);
 
-	outbox = createOutbox(WNDB, WNDS);
+	outbox = createOutbox(WNDB, WNDS, 1, TIMEOUT);
 
 	printf("Outbox created\n");
 
-	printf("# Outbox to string:\n");
-
-	stroutbox = outboxToString(outbox);
-
-	printf("%s\n", stroutbox);
-
-	free(stroutbox);
-
 	printf("# Submitting user message to outbox (type 'quit' to exit test):\n");
 
-	input = getUserInput("[DATA]>");
-
-	if (strcmp(input, "quit") == 0) {	
-
-		free(input);
-
-		printf("# Freeing outbox #\n");
-
-		freeOutbox(outbox);	
-
-		exit(EXIT_SUCCESS);
-	}
-
-	writeOutboxUserBuffer(outbox, input, strlen(input));
-
-	free(input);
-
-	printf("# Outbox to string:\n");
-
-	stroutbox = outboxToString(outbox);
-
-	printf("%s\n", stroutbox);
-
-	free(stroutbox);
+	writeOutboxUserBuffer(outbox, MSG, strlen(MSG));
+	
+	printf("Message submitted\n");
 
 	while (1) {
 
@@ -76,14 +58,6 @@ int main(void) {
 		submitAckToOutbox(outbox, ackn);
 
 		printf("ACK submitted\n");
-
-		printf("# Outbox to string:\n");
-
-		stroutbox = outboxToString(outbox);
-
-		printf("%s\n", stroutbox);
-
-		free(stroutbox);
 
 		printf("\n");
 	}

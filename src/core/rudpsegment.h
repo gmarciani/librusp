@@ -13,7 +13,7 @@
 
 #define RUDP_HDRF 7
 #define RUDP_HDRS 41
-#define RUDP_PLDS 500
+#define RUDP_PLDS 10
 #define RUDP_SGMS (RUDP_HDRS + RUDP_PLDS)
 
 #define RUDP_SGMSO (RUDP_SGMS + 46)
@@ -49,12 +49,6 @@ typedef struct Segment {
 	char 	pld[RUDP_PLDS + 1];
 } Segment;
 
-/*typedef struct Stream {
-	Segment 	*segments;
-	uint32_t 	size;
-	uint32_t 	len;
-} Stream;*/
-
 /* SEGMENT */
 
 Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wnds, unsigned long seqn, unsigned long ackn, const char *pld);
@@ -72,13 +66,5 @@ char *segmentToString(const Segment sgm);
 void printInSegment(const struct sockaddr_in sndaddr, const Segment sgm);
 
 void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm);
-
-/* STREAM 
-
-Stream *createStream(const char *msg);
-
-void freeStream(Stream *stream);
-
-char *streamToString(Stream *stream);*/
 
 #endif /* _RUDPSEGMENT_H_ */
