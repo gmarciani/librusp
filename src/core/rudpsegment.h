@@ -13,7 +13,7 @@
 
 #define RUDP_HDRF 7
 #define RUDP_HDRS 41
-#define RUDP_PLDS 10
+#define RUDP_PLDS 500
 #define RUDP_SGMS (RUDP_HDRS + RUDP_PLDS)
 
 #define RUDP_SGMSO (RUDP_SGMS + 46)

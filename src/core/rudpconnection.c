@@ -502,8 +502,6 @@ void writeMessage(Connection *conn, const char *msg, const size_t size) {
 		waitConditionVariable(conn->sndbuff->cnd, conn->sndbuff->mtx);
 
 	unlockMutex(conn->sndbuff->mtx);
-
-	puts("EVERYTHING DELIVERED");
 }
 
 char *readMessage(Connection *conn, const size_t size) {

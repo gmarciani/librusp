@@ -42,7 +42,7 @@
 #define RUDP_CON_RETR (uint32_t) 3
 #define RUDP_CON_WNDS (uint32_t) 20
 
-#define RUDP_TIME_ACK (uint64_t) 1000000000
+#define RUDP_TIME_ACK (uint64_t) 700000000
 #define RUDP_TIME_NOW (uint64_t) 100
 
 #define RUDP_SGM_NACK (uint8_t ) 0
