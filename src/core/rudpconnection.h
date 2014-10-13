@@ -28,25 +28,24 @@
 #include "../util/addrutil.h"
 #include "../util/sockutil.h"
 
-#define RUDP_CON_CLOS (uint8_t) 0
-#define RUDP_CON_LIST (uint8_t) 1
-#define RUDP_CON_SYNS (uint8_t) 2
-#define RUDP_CON_SYNR (uint8_t) 3
-#define RUDP_CON_ESTA (uint8_t) 4
-#define RUDP_CON_CLSW (uint8_t) 5
-#define RUDP_CON_FINS (uint8_t) 6	
-#define RUDP_CON_FINR (uint8_t) 7
+#define RUDP_CON_CLOS 0
+#define RUDP_CON_LIST 1
+#define RUDP_CON_SYNS 2
+#define RUDP_CON_SYNR 3
+#define RUDP_CON_ESTA 4
+#define RUDP_CON_CLSW 5
+#define RUDP_CON_FINS 6	
+#define RUDP_CON_FINR 7
 
-#define RUDP_CON_ATTS (uint8_t) 3
+#define RUDP_CON_ATTS 3
 
-#define RUDP_CON_RETR (uint32_t) 3
-#define RUDP_CON_WNDS (uint32_t) 20
+#define RUDP_CON_RETR 3
+#define RUDP_CON_WNDS 5
 
-#define RUDP_TIME_ACK (uint64_t) 700000000
-#define RUDP_TIME_NOW (uint64_t) 100
+#define RUDP_SAMPLRTT 1
 
-#define RUDP_SGM_NACK (uint8_t ) 0
-#define RUDP_SGM_YACK (uint8_t ) 1
+#define RUDP_SGM_NACK 0
+#define RUDP_SGM_YACK 1
 
 #ifndef ERREXIT
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
@@ -59,29 +58,32 @@ typedef int ConnectionId;
 typedef struct Connection {
 	ConnectionId connid;
 
-	uint8_t state;
+	int state;
 	pthread_mutex_t *state_mtx;
 	pthread_cond_t  *state_cnd;	
 
 	pthread_mutex_t *sock_mtx;
 	int sock;
 
+	long double extRTT;
+	long double devRTT;
+	long double timeout;
+	pthread_mutex_t *timeout_mtx;
+
 	uint32_t sndwndb;
 	uint32_t sndwnde;
 	uint32_t sndnext;
-	uint64_t sndtime;
 	Buffer *sndbuff;
 	TSegmentBuffer *sndsgmbuff;
-	pthread_mutex_t *sndwnd_mtx;
-	pthread_mutex_t *sndnext_mtx;
-	pthread_t sender;
+	pthread_t sndbufferizer;
+	pthread_t sndslider;
 
 	uint32_t rcvwndb;
 	uint32_t rcvwnde;	
 	Buffer *rcvbuff;	
 	SegmentBuffer *rcvsgmbuff;	
-	pthread_mutex_t *rcvwnd_mtx;
-	pthread_t receiver;
+	pthread_t rcvbufferizer;
+	pthread_t rcvslider;
 		
 } Connection;
 
@@ -91,9 +93,9 @@ Connection *createConnection(void);
 
 Connection *getConnectionById(const ConnectionId connid);
 
-uint8_t getConnectionState(Connection *conn);
+int getConnectionState(Connection *conn);
 
-void setConnectionState(Connection *conn, const uint8_t state);
+void setConnectionState(Connection *conn, const int state);
 
 /* LISTENING */
 
@@ -119,14 +121,9 @@ char *readMessage(Connection *conn, const size_t size);
 
 /* CONNECTION THREADS */
 
-typedef struct SegmentObject {
+typedef struct TimeoutObject {
 	Connection *conn;
-	Segment sgm;
-} SegmentObject;
-
-typedef struct AckObject {
-	Connection *conn;
-	uint32_t ackn;
-} AckObject;
+	TSegmentBufferElement *elem;
+} TimeoutObject;
 
 #endif /* _RUDPCONNECTION_H_ */

@@ -20,7 +20,8 @@ typedef struct Buffer {
 	char content[BUFFSIZE];
 	size_t size;
 	pthread_mutex_t *mtx;
-	pthread_cond_t *cnd;
+	pthread_cond_t *insert_cnd;
+	pthread_cond_t *remove_cnd;
 } Buffer;
 
 /* BUFFER MANAGEMENT */

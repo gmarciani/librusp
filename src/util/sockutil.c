@@ -96,8 +96,7 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 	buff[rcvd] = '\0';
 
 	if (getRandomBit(DROPRATE)) {
-		free(buff);
-		printf("Segment Dropped\n");
+		free(buff);;
 		return NULL;
 	}
 
@@ -119,12 +118,15 @@ void setSocketReusable(const int sock) {
 		ERREXIT("Cannot set socket reusable.");
 }
 
-void setSocketTimeout(const int sock, const uint8_t mode, const uint64_t nanos) {
+void setSocketTimeout(const int sock, const uint8_t mode, const long double value) {
+	struct timespec timerspec;
 	struct timeval timer;
 
-	timer.tv_sec = (time_t) ceil(nanos / 1000000000);
+	timerspec = getTimespec(value);
 
-  	timer.tv_usec = (suseconds_t) ceil((nanos % 1000000000) % 1000);
+	timer.tv_sec = (time_t) timerspec.tv_sec;
+
+  	timer.tv_usec = (suseconds_t) timerspec.tv_nsec * 1000;
 
 	if (mode == (ON_READ | ON_WRITE)) {
 

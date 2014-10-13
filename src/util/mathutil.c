@@ -6,9 +6,7 @@ uint32_t getRandom32(void) {
 
 	gettimeofday(&timestamp, NULL);
 
-	srand(time(NULL));
-
-	random = (uint32_t) ((rand() * timestamp.tv_sec + rand() * timestamp.tv_usec) % MAX_UINT32);
+	random = ((uint32_t) (drand48() * timestamp.tv_sec) + (uint32_t) (drand48() * timestamp.tv_usec)) % MAX_UINT32;
 
 	return random;
 }
@@ -16,7 +14,7 @@ uint32_t getRandom32(void) {
 uint8_t getRandomBit(const double onprob) {
 	uint8_t random;
 
-	random = rand() <  onprob * ((double) RAND_MAX + 1.0);
+	random = drand48() < onprob;
 
 	return random;
 }

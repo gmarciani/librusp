@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <errno.h>
 
+#include "timerutil.h"
 #include "mathutil.h"
 
 #define ON_READ		0b01
@@ -44,7 +45,7 @@ void setSocketConnected(const int sock, const struct sockaddr_in addr);
 
 void setSocketReusable(const int sock);
 
-void setSocketTimeout(const int sock, const uint8_t mode, const uint64_t nanos);
+void setSocketTimeout(const int sock, const uint8_t mode, const long double value);
 
 /* SOCKET END-POINTS */
 

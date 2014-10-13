@@ -1,6 +1,6 @@
 #include "rudpconnection.h"
 
-static int RUDP_CON_DEBUG = 1;
+static int RUDP_CON_DEBUG = 0;
 
 /* CONNECTIONS POOL */
 
@@ -16,25 +16,31 @@ static void deallocateConnectionInPool(Connection *conn);
 
 /* CONNECTION */
 
-static void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb);
+static void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb, const long double extRTT);
 
 static uint32_t getISN(const struct sockaddr_in laddr, const struct sockaddr_in paddr);
 
+static long double getTimeout(Connection *conn);
+
+static void setTimeout(Connection *conn, const long double sampleRTT);
+
 static void *acceptDesynchronization(void *arg);
+
+static void sendSegment(Connection *conn, const Segment sgm);
+
+static int receiveSegment(Connection *conn, Segment *sgm);
 
 /* CONNECTION THREADS */
 
-static void *senderLoop(void *arg);
+static void *sndBufferizerLoop(void *arg);
+
+static void *sndSliderLoop(void *arg);
 
 static void timeoutHandler(union sigval arg);
 
-static void *receiverLoop(void *arg);
+static void *rcvBufferizerLoop(void *arg);
 
-//static void *sendAck(void *arg);
-
-//static void *submitAck(void *arg);
-
-//static void *bufferizeSegment(void *arg);
+static void *rcvSliderLoop(void *arg);
 
 /* CONNECTIONS POOL */
 
@@ -108,9 +114,7 @@ Connection *createConnection(void) {
 		!(conn->state_mtx = malloc(sizeof(pthread_mutex_t))) ||
 		!(conn->state_cnd = malloc(sizeof(pthread_cond_t))) ||
 		!(conn->sock_mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(conn->sndwnd_mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(conn->sndnext_mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(conn->rcvwnd_mtx = malloc(sizeof(pthread_mutex_t))))
+		!(conn->timeout_mtx = malloc(sizeof(pthread_mutex_t))))
 		ERREXIT("Cannot allocate memory for connection resources.");
 
 	initializeMutex(conn->state_mtx);
@@ -119,11 +123,7 @@ Connection *createConnection(void) {
 
 	initializeMutex(conn->sock_mtx);
 
-	initializeMutex(conn->sndwnd_mtx);
-
-	initializeMutex(conn->sndnext_mtx);
-
-	initializeMutex(conn->rcvwnd_mtx);
+	initializeMutex(conn->timeout_mtx);
 
 	setConnectionState(conn, RUDP_CON_CLOS);
 
@@ -132,21 +132,25 @@ Connection *createConnection(void) {
 	return conn;
 }
 
-static void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb) {
+static void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb, const long double extRTT) {
 
 	conn->sock = sock;
 
-	setSocketTimeout(conn->sock, ON_READ, 0);
+	setSocketTimeout(conn->sock, ON_READ, 0.0);
 
 	setSocketConnected(conn->sock, paddr);	
+
+	conn->extRTT = extRTT;
+
+	conn->devRTT = 0.0;
+
+	conn->timeout = extRTT;
 
 	conn->sndwndb = sndwndb;
 
 	conn->sndwnde = sndwndb + (RUDP_PLDS * RUDP_CON_WNDS);
 
 	conn->sndnext = sndwndb;
-
-	conn->sndtime = RUDP_TIME_ACK;
 
 	conn->sndbuff = createBuffer();
 
@@ -160,13 +164,59 @@ static void setupConnection(Connection *conn, const int sock, const struct socka
 
 	conn->rcvsgmbuff = createSegmentBuffer();	
 
-	conn->sender = createThread(senderLoop, conn, THREAD_JOINABLE);
+	conn->sndbufferizer = createThread(sndBufferizerLoop, conn, THREAD_DETACHED);
 
-	conn->receiver = createThread(receiverLoop, conn, THREAD_JOINABLE);
+	conn->sndslider = createThread(sndSliderLoop, conn, THREAD_DETACHED);
+
+	conn->rcvbufferizer = createThread(rcvBufferizerLoop, conn, THREAD_DETACHED);
+
+	conn->rcvslider = createThread(rcvSliderLoop, conn, THREAD_DETACHED);
 }
 
-uint8_t getConnectionState(Connection *conn) {
-	uint8_t state;
+static uint32_t getISN(const struct sockaddr_in laddr, const struct sockaddr_in paddr) {
+	char *strladdr = NULL;
+	char *strpaddr = NULL;
+	uint32_t isn;
+
+	strladdr = addressToString(laddr);
+
+	strpaddr = addressToString(paddr);
+
+	isn = (((getMD5(strladdr) + getMD5(strpaddr)) % clock()) + getRandom32()) % RUDP_MAXSEQN;
+
+	free(strladdr);
+
+	free(strpaddr);
+	
+	return isn;	
+}
+
+static long double getTimeout(Connection *conn) {
+	long double timeout;
+
+	lockMutex(conn->timeout_mtx);
+
+	timeout = conn->timeout;
+
+	unlockMutex(conn->timeout_mtx);
+
+	return timeout;
+}
+
+static void setTimeout(Connection *conn, const long double sampleRTT) {
+	lockMutex(conn->timeout_mtx);
+
+	conn->extRTT = (0.875 * conn->extRTT) + (0.125 * sampleRTT);
+
+	conn->devRTT = (0.75 * conn->devRTT) + 0.25 * (labs(conn->extRTT - sampleRTT));
+
+	conn->timeout = conn->extRTT + 4 * conn->devRTT;
+
+	unlockMutex(conn->timeout_mtx);
+}
+
+int getConnectionState(Connection *conn) {
+	int state;
 
 	lockMutex(conn->state_mtx);
 
@@ -177,7 +227,7 @@ uint8_t getConnectionState(Connection *conn) {
 	return state;
 }
 
-void setConnectionState(Connection *conn, const uint8_t state) {
+void setConnectionState(Connection *conn, const int state) {
 
 	lockMutex(conn->state_mtx);
 
@@ -215,13 +265,15 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 	char *ssynack = NULL;
 	char *sacksynack = NULL;
 	int asock;	
+	struct timespec start, end;
+	long double sampleRTT;	
 
 	if (getConnectionState(conn) != RUDP_CON_CLOS)
 		ERREXIT("Cannot synchronize connection: connection not closed.");
 
 	asock = openSocket();
 
-	setSocketTimeout(asock, ON_READ, 3 * RUDP_TIME_ACK);
+	setSocketTimeout(asock, ON_READ, RUDP_SAMPLRTT);
 
 	int connattempts = 1;
 
@@ -240,6 +292,8 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 			synretrans++;
 
+			clock_gettime(CLOCK_MONOTONIC, &start);
+
 			writeUnconnectedSocket(asock, laddr, ssyn);		
 
 			if (RUDP_CON_DEBUG)
@@ -249,8 +303,15 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 			ssynack = readUnconnectedSocket(asock, &aaddr, RUDP_SGMS);
 
-			if (ssynack == NULL)
+			if (ssynack == NULL) {
+				if (RUDP_CON_DEBUG)
+					puts("SYNACK DROPPED");
 				continue;
+			}
+
+			clock_gettime(CLOCK_MONOTONIC, &end);
+
+			sampleRTT = getElapsed(start, end);
 
 			synack = deserializeSegment(ssynack);
 
@@ -277,7 +338,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 				free(sacksynack);					
 
-				setupConnection(conn, asock, aaddr, acksynack.hdr.seqn, acksynack.hdr.ackn);				
+				setupConnection(conn, asock, aaddr, acksynack.hdr.seqn, acksynack.hdr.ackn, sampleRTT);				
 
 				setConnectionState(conn, RUDP_CON_ESTA);
 
@@ -311,7 +372,9 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 	char *ssyn = NULL;
 	char *ssynack = NULL;
 	char *sacksynack = NULL;
-	int asock;	
+	int asock;
+	struct timespec start, end;
+	long double sampleRTT;
 
 	if (getConnectionState(lconn) != RUDP_CON_LIST)
 		ERREXIT("Cannot accept incoming connections: connection not listening.");
@@ -322,8 +385,11 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 			ssyn = readUnconnectedSocket(lconn->sock, &caddr, RUDP_SGMS);			
 
-			if (ssyn == NULL)
+			if (ssyn == NULL) {
+				if (RUDP_CON_DEBUG)
+					puts("SEGMENT DROPPED");
 				continue;
+			}				
 			
 			syn = deserializeSegment(ssyn);
 
@@ -338,7 +404,7 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		asock = openSocket();
 
-		setSocketTimeout(asock, ON_READ, RUDP_TIME_ACK);
+		setSocketTimeout(asock, ON_READ, RUDP_SAMPLRTT);
 	
 		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, 10/*getISN(getSocketLocal(asock), caddr)*/, RUDP_NXTSEQN(syn.hdr.seqn, 1), NULL); 
 
@@ -350,6 +416,8 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 			synackretrans++;
 
+			clock_gettime(CLOCK_MONOTONIC, &start);
+
 			writeUnconnectedSocket(asock, caddr, ssynack);			
 
 			if (RUDP_CON_DEBUG)
@@ -359,8 +427,15 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 			sacksynack = readUnconnectedSocket(asock, &caddr, RUDP_SGMS);
 
-			if (sacksynack == NULL) 
+			if (sacksynack == NULL) {
+				if (RUDP_CON_DEBUG)
+					puts("ACK SYNACK DROPPED");
 				continue;
+			}
+
+			clock_gettime(CLOCK_MONOTONIC, &end);
+
+			sampleRTT = getElapsed(start, end);
 
 			acksynack = deserializeSegment(sacksynack);				
 
@@ -379,7 +454,7 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 				setConnectionState(aconn, RUDP_CON_SYNS);
 
-				setupConnection(aconn, asock, caddr, acksynack.hdr.ackn, acksynack.hdr.seqn);
+				setupConnection(aconn, asock, caddr, acksynack.hdr.ackn, acksynack.hdr.seqn, sampleRTT);
 
 				setConnectionState(aconn, RUDP_CON_ESTA);
 
@@ -394,24 +469,6 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setConnectionState(lconn, RUDP_CON_LIST);	
 	}
-}
-
-static uint32_t getISN(const struct sockaddr_in laddr, const struct sockaddr_in paddr) {
-	char *strladdr = NULL;
-	char *strpaddr = NULL;
-	uint32_t isn;
-
-	strladdr = addressToString(laddr);
-
-	strpaddr = addressToString(paddr);
-
-	isn = (((getMD5(strladdr) + getMD5(strpaddr)) % clock()) + getRandom32()) % RUDP_MAXSEQN;
-
-	free(strladdr);
-
-	free(strpaddr);
-	
-	return isn;	
 }
 
 /* DESYNCHRONIZATION */
@@ -440,11 +497,7 @@ void destroyConnection(Connection *conn) {
 
 		destroyMutex(conn->sock_mtx);
 
-		destroyMutex(conn->sndwnd_mtx);
-
-		destroyMutex(conn->sndnext_mtx);
-
-		destroyMutex(conn->rcvwnd_mtx);
+		destroyMutex(conn->timeout_mtx);
 
 		closeSocket(conn->sock);
 
@@ -466,11 +519,7 @@ void destroyConnection(Connection *conn) {
 
 		destroyMutex(conn->sock_mtx);
 
-		destroyMutex(conn->sndwnd_mtx);
-
-		destroyMutex(conn->sndnext_mtx);
-
-		destroyMutex(conn->rcvwnd_mtx);
+		destroyMutex(conn->timeout_mtx);
 
 		closeSocket(conn->sock);
 	}	
@@ -488,20 +537,21 @@ void writeMessage(Connection *conn, const char *msg, const size_t size) {
 	lockMutex(conn->sndbuff->mtx);
 
 	while (conn->sndbuff->size != 0)
-		waitConditionVariable(conn->sndbuff->cnd, conn->sndbuff->mtx);
+		waitConditionVariable(conn->sndbuff->remove_cnd, conn->sndbuff->mtx);
 
 	writeBuffer(conn->sndbuff, msg, size);	
 
 	unlockMutex(conn->sndbuff->mtx);
 
-	signalConditionVariable(conn->sndbuff->cnd);
+	signalConditionVariable(conn->sndbuff->insert_cnd);
 
-	lockMutex(conn->sndbuff->mtx);
+	lockMutex(conn->sndsgmbuff->mtx);
 
-	while (conn->sndbuff->size != 0)
-		waitConditionVariable(conn->sndbuff->cnd, conn->sndbuff->mtx);
+	do 
+		waitConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx);
+	while (conn->sndsgmbuff->size != 0);
 
-	unlockMutex(conn->sndbuff->mtx);
+	unlockMutex(conn->sndsgmbuff->mtx);
 }
 
 char *readMessage(Connection *conn, const size_t size) {
@@ -513,116 +563,19 @@ char *readMessage(Connection *conn, const size_t size) {
 	lockMutex(conn->rcvbuff->mtx);
 
 	while (conn->rcvbuff->size < size)
-		waitConditionVariable(conn->rcvbuff->cnd, conn->rcvbuff->mtx);
+		waitConditionVariable(conn->rcvbuff->insert_cnd, conn->rcvbuff->mtx);
 	
 	msg = readBuffer(conn->rcvbuff, size);	
 
 	unlockMutex(conn->rcvbuff->mtx);
+
+	signalConditionVariable(conn->rcvbuff->remove_cnd);
 	
 	return msg;
 }
 
-/* CONNECTION THREADS */
-
-static void *senderLoop(void *arg) {
-	Connection *conn = (Connection *) arg;
-	TSegmentBufferElement *curr = NULL;
-	char *tochunk, **chunks, *ssgm = NULL;
-	int numchunks, i;
-	size_t toread;
-
-	while (getConnectionState(conn) != RUDP_CON_CLOS) {
-
-		lockMutex(conn->sndbuff->mtx);
-
-		while (conn->sndbuff->size == 0)
-			waitConditionVariable(conn->sndbuff->cnd, conn->sndbuff->mtx);
-
-		toread = (conn->sndbuff->size < (conn->sndwnde - conn->sndnext)) ? conn->sndbuff->size : (conn->sndwnde - conn->sndnext);
-
-		tochunk = lookBuffer(conn->sndbuff, toread);
-
-		unlockMutex(conn->sndbuff->mtx);	
-
-		chunks = splitStringBySize(tochunk, RUDP_PLDS, &numchunks);
-
-		lockMutex(conn->sndsgmbuff->mtx);		
-
-		lockMutex(conn->sndnext_mtx);
-
-		for (i = 0; i < numchunks; i++) {			
-			
-			Segment sgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, conn->rcvwndb, chunks[i]);
-
-			ssgm = serializeSegment(sgm);
-
-			lockMutex(conn->sock_mtx);
-
-			writeConnectedSocket(conn->sock, ssgm);
-
-			unlockMutex(conn->sock_mtx);
-
-			free(ssgm);
-
-			if (RUDP_CON_DEBUG)
-				printOutSegment(getSocketPeer(conn->sock), sgm);	
-
-			conn->sndnext = RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);			
-
-			SegmentObject sgmobj = {.conn = conn, .sgm = sgm};
-
-			addTSegmentBuffer(conn->sndsgmbuff, sgm, RUDP_SGM_NACK, RUDP_TIME_ACK, RUDP_TIME_ACK, timeoutHandler, &sgmobj, sizeof(SegmentObject));
-		}
-
-		unlockMutex(conn->sndnext_mtx);
-
-		while (conn->sndsgmbuff->head->status != RUDP_SGM_YACK)
-			waitConditionVariable(conn->sndsgmbuff->cnd, conn->sndsgmbuff->mtx);
-
-		puts("SNDWNDB ACKED: SLIDING SNDWND");
-
-		lockMutex(conn->sndbuff->mtx);
-
-		curr = conn->sndsgmbuff->head;
-
-		while (curr) {
-
-			if (curr->status != RUDP_SGM_YACK)
-				break;						
-
-			conn->sndwndb = RUDP_NXTSEQN(conn->sndwndb, curr->segment.hdr.plds);
-
-			conn->sndwnde = RUDP_NXTSEQN(conn->sndwnde, curr->segment.hdr.plds);
-
-			readBuffer(conn->sndbuff, curr->segment.hdr.plds);
-
-			removeTSegmentBuffer(conn->sndsgmbuff, curr);					
-
-			curr = curr->next;
-		}		
-
-		unlockMutex(conn->sndbuff->mtx);	
-
-		signalConditionVariable(conn->sndbuff->cnd);	
-
-		unlockMutex(conn->sndsgmbuff->mtx);		
-
-		broadcastConditionVariable(conn->sndsgmbuff->cnd);		
-	}
-
-	return NULL;
-}
-
-static void timeoutHandler(union sigval arg) {
-	SegmentObject *sgmobj = (SegmentObject *) arg.sival_ptr;
-	Connection *conn = sgmobj->conn;
-	Segment sgm = sgmobj->sgm;
+static void sendSegment(Connection *conn, const Segment sgm) {
 	char *ssgm = NULL;
-
-	if (getConnectionState(conn) == RUDP_CON_CLOS)
-		return;
-
-	sgm.hdr.ackn = conn->rcvwndb;
 
 	ssgm = serializeSegment(sgm);
 
@@ -632,33 +585,165 @@ static void timeoutHandler(union sigval arg) {
 
 	unlockMutex(conn->sock_mtx);
 
-	free(ssgm);
-
 	if (RUDP_CON_DEBUG)
 		printOutSegment(getSocketPeer(conn->sock), sgm);	
+
+	free(ssgm);
 }
 
-static void *receiverLoop(void *arg) {
+static int receiveSegment(Connection *conn, Segment *sgm) {
+	char *ssgm = NULL;
+
+	ssgm = readConnectedSocket(conn->sock, RUDP_SGMS);
+
+	if (!ssgm)
+		return -1;
+
+	*sgm = deserializeSegment(ssgm);
+
+	if (RUDP_CON_DEBUG)
+		printInSegment(getSocketPeer(conn->sock), *sgm);	
+
+	free(ssgm);	
+
+	return 0;
+}
+
+/* CONNECTION THREADS */
+
+static void *sndBufferizerLoop(void *arg) {
+	Connection *conn = (Connection *) arg;
+	char *pld = NULL;
+	long double timeout;
+
+	while (getConnectionState(conn) != RUDP_CON_CLOS) {
+
+		lockMutex(conn->sndbuff->mtx);
+
+		if (RUDP_CON_DEBUG)
+			printf("SNDWND AVAILABLE: %u\n", (conn->sndwnde - conn->sndnext));
+
+		while (conn->sndbuff->size == 0)
+			waitConditionVariable(conn->sndbuff->insert_cnd, conn->sndbuff->mtx);
+
+		lockMutex(conn->sndsgmbuff->mtx);		
+
+		while ((conn->sndwnde - conn->sndnext) < RUDP_PLDS)
+			waitConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx);
+
+		pld = readBuffer(conn->sndbuff, RUDP_PLDS);
+
+		unlockMutex(conn->sndbuff->mtx);	
+
+		Segment sgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, conn->rcvwndb, pld);
+
+		free(pld);
+
+		conn->sndnext = RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);	
+
+		TSegmentBufferElement *timeoutsgm = addTSegmentBuffer(conn->sndsgmbuff, sgm, RUDP_SGM_NACK);
+		
+		sendSegment(conn, sgm);
+
+		TimeoutObject timeoutobj = {.conn = conn, .elem = timeoutsgm};
+
+		timeout = getTimeout(conn);
+
+		setTSegmentBufferElementTimeout(timeoutsgm, timeout, timeout, timeoutHandler, &timeoutobj, sizeof(TimeoutObject));
+
+		unlockMutex(conn->sndsgmbuff->mtx);	
+
+		signalConditionVariable(conn->sndsgmbuff->insert_cnd);	
+	}
+
+	return NULL;
+}
+
+static void *sndSliderLoop(void *arg) {
+	Connection *conn = (Connection *) arg;
+	long double sampleRTT;
+
+	while (getConnectionState(conn) != RUDP_CON_CLOS) {
+
+		lockMutex(conn->sndsgmbuff->mtx);	
+
+		while (conn->sndsgmbuff->size == 0)
+			waitConditionVariable(conn->sndsgmbuff->insert_cnd, conn->sndsgmbuff->mtx);
+
+		while (conn->sndsgmbuff->head->status != RUDP_SGM_YACK)
+			waitConditionVariable(conn->sndsgmbuff->status_cnd, conn->sndsgmbuff->mtx);
+
+		conn->sndwndb = RUDP_NXTSEQN(conn->sndwndb, conn->sndsgmbuff->head->segment.hdr.plds);
+
+		conn->sndwnde = RUDP_NXTSEQN(conn->sndwnde, conn->sndsgmbuff->head->segment.hdr.plds);
+
+		if (RUDP_CON_DEBUG)
+			printf("SNDWND SLIDE: sndwndb:%u sndwnde:%u\n", conn->sndwndb, conn->sndwnde);	
+
+		sampleRTT = removeTSegmentBuffer(conn->sndsgmbuff, conn->sndsgmbuff->head);	
+
+		unlockMutex(conn->sndsgmbuff->mtx);	
+
+		if (sampleRTT != -1) {
+
+			setTimeout(conn, sampleRTT);
+
+			broadcastConditionVariable(conn->sndsgmbuff->remove_cnd);
+		}	
+	}	
+
+	return NULL;
+}
+
+static void timeoutHandler(union sigval arg) {
+	TimeoutObject *timeoutobj = (TimeoutObject *) arg.sival_ptr;
+	Connection *conn = NULL;
+	Segment sgm;
+	uint8_t sgmstatus;
+
+	if (!timeoutobj)
+		return;
+
+	conn = timeoutobj->conn;
+
+	if (!conn)
+		return;
+
+	lockMutex(conn->sndsgmbuff->mtx);
+
+	sgmstatus = timeoutobj->elem->status;
+
+	sgm = timeoutobj->elem->segment;
+
+//update future timeout?
+
+	unlockMutex(conn->sndsgmbuff->mtx);
+
+	if (sgmstatus == RUDP_SGM_YACK)
+		return;	
+
+	if (RUDP_CON_DEBUG)
+		printf("TIMEOUT %u\n", sgm.hdr.seqn);
+
+	sgm.hdr.ackn = conn->rcvwndb;
+
+	sendSegment(conn, sgm);
+}
+
+static void *rcvBufferizerLoop(void *arg) {
 	Connection *conn = (Connection *) arg;
 	Segment rcvsgm, acksgm;
-	char *srcvsgm, *sacksgm = NULL;
 	int rcvwndmatch;
 
 	while (getConnectionState(conn) != RUDP_CON_CLOS) {
 
-		srcvsgm = readConnectedSocket(conn->sock, RUDP_SGMS);
+		if (receiveSegment(conn, &rcvsgm) == -1) {
 
-		if (!srcvsgm) {
-			puts("SEGMENT DROPPED");
+			if (RUDP_CON_DEBUG)
+				puts("SEGMENT DROPPED");
+
 			continue;
-		}			
-
-		rcvsgm = deserializeSegment(srcvsgm);
-
-		free(srcvsgm);
-
-		if (RUDP_CON_DEBUG)
-			printInSegment(getSocketPeer(conn->sock), rcvsgm);
+		}
 
 		rcvwndmatch = matchSequenceAgainstWindow(conn->rcvwndb, conn->rcvwnde, rcvsgm.hdr.seqn);
 
@@ -667,24 +752,9 @@ static void *receiverLoop(void *arg) {
 			if (RUDP_CON_DEBUG)
 				printf("SEGMENT BEFORE WND: %u\n", rcvsgm.hdr.seqn);
 
-			lockMutex(conn->sndnext_mtx);
-
 			acksgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds), NULL);
 
-			unlockMutex(conn->sndnext_mtx);
-
-			sacksgm = serializeSegment(acksgm);
-
-			lockMutex(conn->sock_mtx);
-
-			writeConnectedSocket(conn->sock, sacksgm);
-
-			unlockMutex(conn->sock_mtx);
-
-			free(sacksgm);
-
-			if (RUDP_CON_DEBUG)
-				printOutSegment(getSocketPeer(conn->sock), acksgm);	
+			sendSegment(conn, acksgm);
 
 		} else if (rcvwndmatch == 0) {
 
@@ -693,70 +763,18 @@ static void *receiverLoop(void *arg) {
 
 			if (rcvsgm.hdr.plds != 0) {
 
-				lockMutex(conn->sndnext_mtx);
-
 				acksgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds), NULL);
 
-				unlockMutex(conn->sndnext_mtx);
-
-				sacksgm = serializeSegment(acksgm);
-
-				lockMutex(conn->sock_mtx);
-
-				writeConnectedSocket(conn->sock, sacksgm);
-
-				unlockMutex(conn->sock_mtx);
-
-				free(sacksgm);
-
-				if (RUDP_CON_DEBUG)
-					printOutSegment(getSocketPeer(conn->sock), acksgm);	
+				sendSegment(conn, acksgm);
 
 				lockMutex(conn->rcvsgmbuff->mtx);
 
 				addSegmentBuffer(conn->rcvsgmbuff, rcvsgm);
 
-				if (rcvsgm.hdr.seqn == conn->rcvwndb) {
-
-					lockMutex(conn->rcvbuff->mtx);
-
-					int flag = 1;
-
-					while (flag) {
-			
-						flag = 0;
-
-						SegmentBufferElement *curr = conn->rcvsgmbuff->head;
-
-						while (curr) {
-
-							if (curr->segment.hdr.seqn == conn->rcvwndb) {
-	
-								flag = 1;
-					
-								conn->rcvwndb = RUDP_NXTSEQN(conn->rcvwndb, curr->segment.hdr.plds);
-
-								conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, curr->segment.hdr.plds);
-
-								writeBuffer(conn->rcvbuff, curr->segment.pld, curr->segment.hdr.plds);
-
-								removeSegmentBuffer(conn->rcvsgmbuff, curr);
-
-								break;
-							}
-				
-							curr = curr->next;
-						}
-					}
-
-					unlockMutex(conn->rcvbuff->mtx);			
-
-					signalConditionVariable(conn->rcvbuff->cnd);
-				}	
-
 				unlockMutex(conn->rcvsgmbuff->mtx);
 
-				signalConditionVariable(conn->rcvsgmbuff->cnd);
+				if (rcvsgm.hdr.seqn == conn->rcvwndb)
+					signalConditionVariable(conn->rcvsgmbuff->insert_cnd);				
 			}
 
 			if (rcvsgm.hdr.ctrl & RUDP_ACK) {
@@ -769,150 +787,81 @@ static void *receiverLoop(void *arg) {
 
 					ackedelem->status = RUDP_SGM_YACK;
 
-					setTimer(ackedelem->timer, 0, 0);	
+					setTimer(ackedelem->timer, 0.0, 0.0);						
+
+					if (RUDP_CON_DEBUG)
+						printf("SEGMENT TIMEOUT DISARMED: %u\n", ackedelem->segment.hdr.seqn);	
+
+					signalConditionVariable(conn->sndsgmbuff->status_cnd);					
 				}
 
 				unlockMutex(conn->sndsgmbuff->mtx);
-
-				broadcastConditionVariable(conn->sndsgmbuff->cnd);
 			}			
 
 		} else {
 
 			if (RUDP_CON_DEBUG)
-				printf("SEGMENT DISCARDED: %u\n", rcvsgm.hdr.seqn);
-
-			continue;
+				printf("SEGMENT OUTSIDE WINDOW: %u\n", rcvsgm.hdr.seqn);
 		}	
 	}
 
 	return NULL;
 }
-/*
-static void *sendAck(void *arg) {
-	AckObject *ackobj = (AckObject *) arg;
-	Connection *conn = ackobj->conn;
-	uint32_t ackn = ackobj->ackn;
-	Segment acksgm;
-	char *sacksgm = NULL;
 
-	//lockMutex(conn->sndnext_mtx);
+static void *rcvSliderLoop(void *arg) {
+	Connection *conn = (Connection *) arg;
 
-	acksgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, ackn, NULL);
+	while (getConnectionState(conn) != RUDP_CON_CLOS) {
 
-	//unlockMutex(conn->sndnext_mtx);
+		lockMutex(conn->rcvsgmbuff->mtx);
 
-	sacksgm = serializeSegment(acksgm);
-
-	lockMutex(conn->sock_mtx);
-
-	writeConnectedSocket(conn->sock, sacksgm);
-
-	unlockMutex(conn->sock_mtx);
-
-	free(sacksgm);
-
-	if (RUDP_CON_DEBUG)
-		printOutSegment(getSocketPeer(conn->sock), acksgm);	
-
-	return NULL;
-}
-
-static void *submitAck(void *arg) {
-	AckObject *ackobj = (AckObject *) arg;
-	Connection *conn = ackobj->conn;
-	uint32_t ackn = ackobj->ackn;
-	//int sndwndbmatch = 0;
-
-	lockMutex(conn->sndsgmbuff->mtx);
-
-	TSegmentBufferElement *ackedelem = findTSegmentBufferByAck(conn->sndsgmbuff, ackn);
-
-	if (ackedelem) {
-
-		ackedelem->status = RUDP_SGM_YACK;
-
-		setTimer(ackedelem->timer, 0, 0);	
-	}
-
-	unlockMutex(conn->sndsgmbuff->mtx);
-
-	signalConditionVariable(conn->sndsgmbuff->cnd);
-
-	return NULL;
-}
-
-static void *bufferizeSegment(void *arg) {
-	SegmentObject *sgmobj = (SegmentObject *) arg;
-	Connection *conn = sgmobj->conn;
-	Segment sgm = sgmobj->sgm;
-	int rcvwndbmatch = 0;
-
-	lockMutex(conn->rcvsgmbuff->mtx);
-
-	addSegmentBuffer(conn->rcvsgmbuff, sgm);
-
-	//unlockMutex(conn->rcvsgmbuff->mtx);
-
-	//lockMutex(conn->rcvwnd_mtx);
-
-	rcvwndbmatch = (sgm.hdr.seqn == conn->rcvwndb);
-
-	//unlockMutex(conn->rcvwnd_mtx);
-
-	if (rcvwndbmatch) {
+		while (conn->rcvsgmbuff->size == 0)
+			waitConditionVariable(conn->rcvsgmbuff->insert_cnd, conn->rcvsgmbuff->mtx);
 
 		int flag = 1;
 
 		while (flag) {
-			
+
 			flag = 0;
 
 			SegmentBufferElement *curr = conn->rcvsgmbuff->head;
 
 			while (curr) {
 
-				//lockMutex(conn->rcvwnd_mtx);
+				if (curr->segment.hdr.seqn == conn->rcvwndb) {
 
-				rcvwndbmatch = curr->segment.hdr.seqn == conn->rcvwndb;
-
-				//unlockMutex(conn->rcvwnd_mtx);
-
-				if (rcvwndbmatch) {
-	
 					flag = 1;
 
-					//lockMutex(conn->rcvwnd_mtx);
-					
-					conn->rcvwndb = RUDP_NXTSEQN(conn->rcvwndb, curr->segment.hdr.plds);
-
-					conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, curr->segment.hdr.plds);
-
-					//unlockMutex(conn->rcvwnd_mtx);
-
-					//lockMutex(conn->rcvbuff->mtx);
+					lockMutex(conn->rcvbuff->mtx);
 
 					writeBuffer(conn->rcvbuff, curr->segment.pld, curr->segment.hdr.plds);
 
-					//unlockMutex(conn->rcvbuff->mtx);
+					unlockMutex(conn->rcvbuff->mtx);
 
-					//lockMutex(conn->rcvsgmbuff->mtx);
+					signalConditionVariable(conn->rcvbuff->insert_cnd);				
+
+					conn->rcvwndb = RUDP_NXTSEQN(conn->rcvwndb, curr->segment.hdr.plds);
+
+					conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, curr->segment.hdr.plds);	
 
 					removeSegmentBuffer(conn->rcvsgmbuff, curr);
 
-					//unlockMutex(conn->rcvsgmbuff->mtx);
+					char *b = lookBuffer(conn->rcvbuff, conn->rcvbuff->size);
+					
+					if (RUDP_CON_DEBUG)
+						printf("RCVBUFF: %s RCVDWND SLIDE: rcvwndb:%u rcvwnde:%u\n", b, conn->rcvwndb, conn->rcvwnde);
+
+					free(b);				
 
 					break;
 				}
-				
+	
 				curr = curr->next;
 			}
-		}			
+		}
 
-		signalConditionVariable(conn->rcvbuff->cnd);
+		unlockMutex(conn->rcvsgmbuff->mtx);						
 	}	
 
-	signalConditionVariable(conn->rcvsgmbuff->cnd);
-
 	return NULL;
-}*/
+}

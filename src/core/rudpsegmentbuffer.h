@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <sys/times.h>
 #include <pthread.h>
 #include "rudpsegment.h"
 #include "../util/threadutil.h"
@@ -20,11 +21,13 @@ typedef struct SegmentBufferElement {
 } SegmentBufferElement;
 
 typedef struct SegmentBuffer {
-	uint32_t size;	
+	long size;	
 	SegmentBufferElement *head;
 	SegmentBufferElement *tail;
 	pthread_mutex_t *mtx;
-	pthread_cond_t *cnd;
+	pthread_cond_t *insert_cnd;
+	pthread_cond_t *remove_cnd;
+	pthread_cond_t *status_cnd;
 } SegmentBuffer;
 
 SegmentBuffer *createSegmentBuffer(void);
@@ -42,7 +45,8 @@ char *segmentBufferToString(SegmentBuffer *buff);
 /* TIMEOUT SEGMENT BUFFER */
 
 typedef struct TSegmentBufferElement {
-	uint8_t status;
+	int status;
+	struct timespec addtime;
 	timer_t timer;
 	void *timerarg;
 	Segment segment;
@@ -51,24 +55,28 @@ typedef struct TSegmentBufferElement {
 } TSegmentBufferElement;
 
 typedef struct TSegmentBuffer {
-	uint32_t size;	
+	long size;	
 	TSegmentBufferElement *head;
 	TSegmentBufferElement *tail;
 	pthread_mutex_t *mtx;
-	pthread_cond_t *cnd;
+	pthread_cond_t *insert_cnd;
+	pthread_cond_t *remove_cnd;
+	pthread_cond_t *status_cnd;
 } TSegmentBuffer;
 
 TSegmentBuffer *createTSegmentBuffer(void);
 
 void freeTSegmentBuffer(TSegmentBuffer *buff);
 
-TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const uint8_t status, const uint64_t nanos, const uint64_t inanos, void (*handler) (union sigval), void *arg, size_t argsize);
+TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const int status);
+
+void setTSegmentBufferElementTimeout(TSegmentBufferElement *elem, const long double value, const long double ivalue, void (*handler) (union sigval), void *arg, size_t argsize);
 
 TSegmentBufferElement *findTSegmentBuffer(TSegmentBuffer *buff, const uint32_t seqn);
 
 TSegmentBufferElement *findTSegmentBufferByAck(TSegmentBuffer *buff, const uint32_t ackn);
 
-void removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *elem);
+long double removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *elem);
 
 char *tSegmentBufferToString(TSegmentBuffer *buff);
 

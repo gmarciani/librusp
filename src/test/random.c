@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "../util/mathutil.h"
 
-#define NUMRAND (long) 100000
+#define NUMRAND (long) 10000
 
 static uint32_t RANDOM32[NUMRAND];
 
@@ -55,9 +55,9 @@ int main(void) {
 
 	printf("ON Percentage:%f\n", ONPERC);
 
-	printf("# Generating %ld random bits (uniform ON: %f)\n", NUMRAND, 0.3);
+	printf("# Generating %ld random bits (uniform ON: %f)\n", NUMRAND, 0.03);
 
-	generateRandomBit(0.3);
+	generateRandomBit(0.03);
 
 	printf("# Analyzing generated random bits:\n");
 	

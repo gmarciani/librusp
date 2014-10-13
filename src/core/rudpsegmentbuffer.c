@@ -7,12 +7,18 @@ SegmentBuffer *createSegmentBuffer(void) {
 
 	if (!(buff = malloc(sizeof(SegmentBuffer))) ||
 		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
+		!(buff->insert_cnd = malloc(sizeof(pthread_cond_t))) ||
+		!(buff->remove_cnd = malloc(sizeof(pthread_cond_t))) ||
+		!(buff->status_cnd = malloc(sizeof(pthread_cond_t))))
 		ERREXIT("Cannot allocate memory for timeout segment buffer resources.");
 
 	initializeMutex(buff->mtx);
 
-	initializeConditionVariable(buff->cnd);
+	initializeConditionVariable(buff->insert_cnd);
+
+	initializeConditionVariable(buff->remove_cnd);
+
+	initializeConditionVariable(buff->status_cnd);
 
 	buff->size = 0;
 	
@@ -30,7 +36,11 @@ void freeSegmentBuffer(SegmentBuffer *buff) {
 
 	destroyMutex(buff->mtx);
 
-	destroyConditionVariable(buff->cnd);
+	destroyConditionVariable(buff->insert_cnd);
+
+	destroyConditionVariable(buff->remove_cnd);
+
+	destroyConditionVariable(buff->status_cnd);
 
 	free(buff);
 }
@@ -132,7 +142,7 @@ char *segmentBufferToString(SegmentBuffer *buff) {
 	if (!(strbuff = malloc(sizeof(char) * (25 + buff->size * (RUDP_SGMSO + 1) + 1))))
 		ERREXIT("Cannot allocate memory for string representation of segment buffer.");
 
-	sprintf(strbuff, "size:%u content:%s", buff->size, (buff->size == 0) ? "" : "\n");
+	sprintf(strbuff, "size:%ld content:%s", buff->size, (buff->size == 0) ? "" : "\n");
 
 	curr = buff->head;
 
@@ -170,12 +180,18 @@ TSegmentBuffer *createTSegmentBuffer(void) {
 
 	if (!(buff = malloc(sizeof(TSegmentBuffer))) ||
 		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
+		!(buff->insert_cnd = malloc(sizeof(pthread_cond_t))) ||
+		!(buff->remove_cnd = malloc(sizeof(pthread_cond_t))) ||
+		!(buff->status_cnd = malloc(sizeof(pthread_cond_t))))
 		ERREXIT("Cannot allocate memory for timeout segment buffer resources.");
 
 	initializeMutex(buff->mtx);
 
-	initializeConditionVariable(buff->cnd);
+	initializeConditionVariable(buff->insert_cnd);
+
+	initializeConditionVariable(buff->remove_cnd);
+
+	initializeConditionVariable(buff->status_cnd);
 
 	buff->size = 0;
 	
@@ -193,26 +209,28 @@ void freeTSegmentBuffer(TSegmentBuffer *buff) {
 
 	destroyMutex(buff->mtx);
 
-	destroyConditionVariable(buff->cnd);
+	destroyConditionVariable(buff->insert_cnd);
+
+	destroyConditionVariable(buff->remove_cnd);
+
+	destroyConditionVariable(buff->status_cnd);
 
 	free(buff);
 }
 
-TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const uint8_t status, const uint64_t nanos, const uint64_t inanos, void (*handler) (union sigval), void *arg, size_t argsize) {
-
+TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const int status) {
 	TSegmentBufferElement *new = NULL;
 
 	if (!(new = malloc(sizeof(TSegmentBufferElement))))
-		ERREXIT("Cannot allocate memory for new timeout segment buffer element.");
-
-	if (!(new->timerarg = malloc(argsize)))
-		ERREXIT("Cannot allocate memory for new timeout segment buffer element resources.");
+		ERREXIT("Cannot allocate memory for new timeout segment buffer element.");	
 
 	new->segment = sgm;
 
-	new->status = status;
+	new->status = status;	
 
-	memcpy(new->timerarg, arg, argsize);
+	clock_gettime(CLOCK_MONOTONIC, &(new->addtime));
+
+	new->timerarg = NULL;
 
 	if (buff->size == 0) {
 
@@ -237,11 +255,19 @@ TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm
 
 	buff->size++;
 
-	new->timer = createTimer(handler, new->timerarg);
-
-	setTimer(new->timer, nanos, inanos);
-
 	return new;
+}
+
+void setTSegmentBufferElementTimeout(TSegmentBufferElement *elem, const long double value, const long double ivalue, void (*handler) (union sigval), void *arg, size_t argsize) {
+
+	if (!(elem->timerarg = malloc(argsize)))
+		ERREXIT("Cannot allocate memory for segment buffer element timeout resources.");
+
+	memcpy(elem->timerarg, arg, argsize);
+
+	elem->timer = createTimer(handler, elem->timerarg);
+
+	setTimer(elem->timer, value, ivalue);
 }
 
 TSegmentBufferElement *findTSegmentBuffer(TSegmentBuffer *buff, const uint32_t seqn) {
@@ -282,10 +308,12 @@ TSegmentBufferElement *findTSegmentBufferByAck(TSegmentBuffer *buff, const uint3
 	return trgt;
 }
 
-void removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *elem) {
+long double removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *elem) {
+	struct timespec removetime;
+	long double elapsed;
 
 	if (!elem)
-		return;
+		return -1;
 
 	if ((elem == buff->head) && (elem == buff->tail)) {
 
@@ -313,15 +341,24 @@ void removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *elem) {
 
 	}
 
-	setTimer(elem->timer, 0, 0);
+	if (elem->timerarg != NULL) {
 
-	freeTimer(elem->timer);
+		freeTimer(elem->timer);
 
-	free(elem->timerarg);
+		//free(elem->timerarg);
+
+		//elem->timerarg = NULL;
+	}		
+
+	buff->size--;
+
+	clock_gettime(CLOCK_MONOTONIC, &removetime);
+
+	elapsed = getElapsed(elem->addtime, removetime);
 
 	free(elem);
 
-	buff->size--;
+	return elapsed;
 }
 
 char *tSegmentBufferToString(TSegmentBuffer *buff) {
@@ -332,7 +369,7 @@ char *tSegmentBufferToString(TSegmentBuffer *buff) {
 	if (!(strbuff = malloc(sizeof(char) * (25 + buff->size * (20 + RUDP_SGMSO + 1) + 1))))
 		ERREXIT("Cannot allocate memory for string representation of segment buffer.");
 
-	sprintf(strbuff, "size:%u content:%s", buff->size, (buff->size == 0) ? "" : "\n");
+	sprintf(strbuff, "size:%ld content:%s", buff->size, (buff->size == 0) ? "" : "\n");
 
 	curr = buff->head;
 

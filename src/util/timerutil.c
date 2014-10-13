@@ -19,22 +19,36 @@ timer_t createTimer(void (*handler) (union sigval), void *arg) {
 }
 
 void freeTimer(const timer_t timerid) {
-
 	if (timer_delete(timerid) != 0)
 		ERREXIT("Cannot delete timer.");
 }
 
-void setTimer(const timer_t timerid, const uint64_t nanos, const uint64_t inanos) {
-	struct itimerspec timerspec;
+void setTimer(const timer_t timerid, const long double value, const long double ivalue) {
+	struct itimerspec timeout;
 
-	timerspec.it_value.tv_sec = (time_t) ceil(nanos / 1000000000);
+	timeout.it_value = getTimespec(value);
 
-	timerspec.it_value.tv_nsec = (long) (nanos % 1000000000);
+	timeout.it_interval = getTimespec(ivalue);
 
-	timerspec.it_interval.tv_sec = (time_t) ceil(inanos / 1000000000);
-
-	timerspec.it_interval.tv_nsec = (long) (inanos % 1000000000);
-
-	if (timer_settime(timerid, 0, (const struct itimerspec *) &timerspec, NULL) != 0)
+	if (timer_settime(timerid, 0, &timeout, NULL) != 0)
 		ERREXIT("Cannot set timer.");
+}
+
+long double getElapsed(const struct timespec start, const struct timespec end) {
+	long double elapsed;
+
+	elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
+
+	return elapsed;
+}
+
+struct timespec getTimespec(const long double value) {
+	struct timespec time;
+
+	time.tv_sec = (time_t) value;
+
+	time.tv_nsec = (long) (value * 1000000000) % 1000000000;
+
+	return time;
+
 }

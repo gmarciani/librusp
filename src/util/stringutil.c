@@ -7,12 +7,15 @@ Buffer *createBuffer(void) {
 
 	if (!(buff = malloc(sizeof(Buffer))) ||
 		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(buff->cnd = malloc(sizeof(pthread_cond_t))))
+		!(buff->insert_cnd = malloc(sizeof(pthread_cond_t))) ||
+		!(buff->remove_cnd = malloc(sizeof(pthread_cond_t))))
 		ERREXIT("Cannot allocate memory for buffer resources.");
 
 	initializeMutex(buff->mtx);
 
-	initializeConditionVariable(buff->cnd);
+	initializeConditionVariable(buff->insert_cnd);
+
+	initializeConditionVariable(buff->remove_cnd);
 
 	buff->size = 0;
 
@@ -23,7 +26,9 @@ void freeBuffer(Buffer *buff) {
 
 	destroyMutex(buff->mtx);
 
-	destroyConditionVariable(buff->cnd);
+	destroyConditionVariable(buff->insert_cnd);
+
+	destroyConditionVariable(buff->remove_cnd);
 
 	buff->size = 0;
 

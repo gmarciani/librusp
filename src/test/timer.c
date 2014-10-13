@@ -3,8 +3,9 @@
 #include <pthread.h>
 #include "../util/timerutil.h"
 
-#define TIMEOLONG (uint64_t) 2000000000
-#define TIMEONOW (uint64_t) 1000
+#define TIMENONE (long double) 0.0
+#define TIMELONG (long double) 2.5
+#define TIMESHORT (long double) 0.5
 
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 
@@ -14,7 +15,11 @@ static void timeoutFunc(union sigval value);
 
 int main(void) {
 	timer_t timerid;
+	struct timespec start, end;
+	long double elapsed;
 	int count = 0;
+
+	clock_gettime(CLOCK_MONOTONIC, &start);
 
 	printf("# Creating timer\n");
 
@@ -22,9 +27,9 @@ int main(void) {
 
 	printf("Timer created\n");
 
-	printf("# Setting timer once expiration: (only) first timeout: %lu nanos\n", TIMEOLONG);
+	printf("# Setting timer once expiration: (only) first timeout: %LF secs \n", TIMELONG);
 
-	setTimer(timerid, TIMEOLONG, 0);
+	setTimer(timerid, TIMELONG, TIMENONE);
 
 	pthread_mutex_lock(&mtx);
 
@@ -33,9 +38,9 @@ int main(void) {
 
 	pthread_mutex_unlock(&mtx);	
 
-	printf("# Setting timer periodic expiration: first timeout: %lu nanos periodic timeout: %lu \n", TIMEONOW, TIMEOLONG);
+	printf("# Setting timer periodic expiration: first timeout: %LF secs, periodic timeout: %LF secs\n", TIMELONG, TIMESHORT);
 
-	setTimer(timerid, TIMEONOW, TIMEOLONG);
+	setTimer(timerid, TIMELONG, TIMESHORT);
 
 	pthread_mutex_lock(&mtx);
 
@@ -44,9 +49,9 @@ int main(void) {
 
 	pthread_mutex_unlock(&mtx);	
 
-	printf("# Setting timer periodic expiration: periodic timeout: %lu \n", TIMEOLONG);
+	printf("# Setting timer periodic expiration: periodic timeout: %LF secs\n", TIMELONG);
 
-	setTimer(timerid, TIMEOLONG, TIMEOLONG);
+	setTimer(timerid, TIMELONG, TIMELONG);
 
 	pthread_mutex_lock(&mtx);
 
@@ -57,7 +62,7 @@ int main(void) {
 
 	printf("# Disarming timer\n");
 
-	setTimer(timerid, 0, 0);
+	setTimer(timerid, TIMENONE, TIMENONE);
 
 	printf("Timer disarmed\n");
 
@@ -66,6 +71,14 @@ int main(void) {
 	freeTimer(timerid);
 
 	printf("Timer freed\n");
+
+	clock_gettime(CLOCK_MONOTONIC, &end);
+
+	elapsed = getElapsed(start, end);
+
+	printf("# Getting total elapsed time\n");
+
+	printf("%LF secs\n", elapsed);
 	
 	exit(EXIT_SUCCESS);
 }
