@@ -101,55 +101,33 @@ char *bufferToString(Buffer *buff) {
 
 char *stringDuplication(const char *src) {
 	char *dest = NULL;
-	size_t sizeToCopy;
 
-	sizeToCopy = strlen(src);
-
-	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1))))
-		ERREXIT("Cannot allocate memory for string duplication.");
-
-	memcpy(dest, src, sizeof(char) * sizeToCopy);
-
-	dest[sizeToCopy] = '\0';
+	if (!(dest = strdup(src)))
+		ERREXIT("Cannot duplicate string");
 
 	return dest;
 }
 
 char *stringNDuplication(const char *src, const size_t size) {
 	char *dest = NULL;
-	size_t srcSize;
-	size_t sizeToCopy;	
 
-	srcSize = strlen(src);
-
-	sizeToCopy = (srcSize >= size) ? size : srcSize;
-
-	if (!(dest = malloc(sizeof(char) * (sizeToCopy + 1))))
-		ERREXIT("Cannot allocate memory for string n duplication.");
-
-	memcpy(dest, src, sizeof(char) * sizeToCopy);
-
-	dest[sizeToCopy] = '\0';
+	if (!(dest = strndup(src, size)))
+		ERREXIT("Cannot n-duplicate string");
 
 	return dest;
 }
 
 char *stringConcatenation(const char *srcone, const char *srctwo) {
 	char *dest = NULL;
-	size_t srcones, srctwos;
 
-	srcones = strlen(srcone);
+	if (!(dest = malloc(sizeof(char) * (strlen(srcone) + strlen(srctwo) + 1))))
+		ERREXIT("Cannot allocate memory for string concatenation");
 
-	srctwos = strlen(srctwo);
+	dest[0] = '\0';
 
-	if (!(dest = malloc(sizeof(char) * (srcones + srctwos + 1))))
-		ERREXIT("Cannot allocate memory for string concatenation.");
+	strcat(dest, srcone);
 
-	memcpy(dest, srcone, srcones);
-
-	memcpy(dest + srcones, srctwo, srctwos);
-
-	dest[srcones + srctwos] = '\0';
+	strcat(dest, srctwo);
 
 	return dest;
 }

@@ -4,10 +4,9 @@
 
 CC = gcc
 
-CFLAGS = -g -Wall -O1
+CFLAGS = -g -Wall -O3
 
 PFLAGS = -pg
-
 
 # Sources
 
@@ -23,35 +22,36 @@ TESTDIR = src/test
 
 TESTPREFIX = test_
 
-
 # Dependencies
 
 PROTOCOL_LIBS = -lpthread -lrt -lm -lcrypto -lssl
 
 PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c) $(PROTOCOL_LIBS)
 
-PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsegmentbuffer.h rudpsegmentbuffer.c rudpsegment.h rudpsegment.c) $(PROTOCOL_UTILS)
+PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsgmbuffer.h rudpsgmbuffer.c rudptsgmbuffer.h rudptsgmbuffer.c rudpsgm.h rudpsgm.c rudpseqn.h rudpseqn.h rudpseqn.c) $(PROTOCOL_UTILS)
 
-PROTOCOL_CONNECTION = $(addprefix $(COREDIR)/, rudpconnection.h rudpconnection.c) $(PROTOCOL_SEGMENTS)
+PROTOCOL_CONNECTION = $(addprefix $(COREDIR)/, rudpconn.h rudpconn.c rudptimeo.h) $(PROTOCOL_SEGMENTS)
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
 
+# Targets
 
-# Tests
+all: createbindir echosnd echorcv tsgmbuffer sgmbuffer sgm timer buffer string math
 
-test: setup sender receiver segmentbuffer segment timer buffer md5 random seqn
+echosnd: $(TESTDIR)/echosnd.c
+	$(CC) $(CFLAGS) $(TESTDIR)/echosnd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
-sender: $(TESTDIR)/sender.c
-	$(CC) $(CFLAGS) $(TESTDIR)/sender.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+echorcv: $(TESTDIR)/echorcv.c
+	$(CC) $(CFLAGS) $(TESTDIR)/echorcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
-receiver: $(TESTDIR)/receiver.c
-	$(CC) $(CFLAGS) $(TESTDIR)/receiver.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+tsgmbuffer: $(TESTDIR)/tsgmbuffer.c
+	$(CC) $(CFLAGS) $(TESTDIR)/tsgmbuffer.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-segmentbuffer: $(TESTDIR)/segmentbuffer.c
-	$(CC) $(CFLAGS) $(TESTDIR)/segmentbuffer.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
+sgmbuffer: $(TESTDIR)/sgmbuffer.c
+	$(CC) $(CFLAGS) $(TESTDIR)/sgmbuffer.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-segment: $(TESTDIR)/segment.c
-	$(CC) $(CFLAGS) $(TESTDIR)/segment.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
+sgm: $(TESTDIR)/sgm.c
+	$(CC) $(CFLAGS) $(TESTDIR)/sgm.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 timer: $(TESTDIR)/timer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -59,20 +59,16 @@ timer: $(TESTDIR)/timer.c
 buffer: $(TESTDIR)/buffer.c
 	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-md5: $(TESTDIR)/md5.c
-	$(CC) $(CFLAGS) $(TESTDIR)/md5.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+string: $(TESTDIR)/string.c
+	$(CC) $(CFLAGS) $(TESTDIR)/string.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-random: $(TESTDIR)/random.c
-	$(CC) $(CFLAGS) $(TESTDIR)/random.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+math: $(TESTDIR)/math.c
+	$(CC) $(CFLAGS) $(TESTDIR)/math.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-seqn: $(TESTDIR)/seqn.c
-	$(CC) $(CFLAGS) $(TESTDIR)/seqn.c -o $(BINDIR)/$(TESTPREFIX)$@
-
-clean-test: 
+clean: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*
 
+# Utilities
 
-# Utility
-
-setup: 
+createbindir: 
 	mkdir -pv $(BINDIR)

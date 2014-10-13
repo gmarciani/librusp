@@ -27,7 +27,7 @@ http://gmarciani.com/portfolio/rudp/manual.
 
 `sudo make uninstall`
 
-> Clean everything
+## Clean everything
 
 `sudo make clean`
 

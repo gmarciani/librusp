@@ -1,48 +1,18 @@
-#ifndef _RUDPSEGMENTBUFFER_H_
-#define _RUDPSEGMENTBUFFER_H_
+#ifndef RUDPTSGMBUFFER_H_
+#define RUDPTSGMBUFFER_H_
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <sys/times.h>
 #include <pthread.h>
-#include "rudpsegment.h"
+#include "rudpsgm.h"
 #include "../util/threadutil.h"
 #include "../util/timerutil.h"
 
+#ifndef ERREXIT
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-
-/* NORMAL SEGMENT BUFFER */
-
-typedef struct SegmentBufferElement {
-	Segment segment;
-	struct SegmentBufferElement *next;
-	struct SegmentBufferElement *prev;
-} SegmentBufferElement;
-
-typedef struct SegmentBuffer {
-	long size;	
-	SegmentBufferElement *head;
-	SegmentBufferElement *tail;
-	pthread_mutex_t *mtx;
-	pthread_cond_t *insert_cnd;
-	pthread_cond_t *remove_cnd;
-	pthread_cond_t *status_cnd;
-} SegmentBuffer;
-
-SegmentBuffer *createSegmentBuffer(void);
-
-void freeSegmentBuffer(SegmentBuffer *buff);
-
-SegmentBufferElement *addSegmentBuffer(SegmentBuffer *buff, const Segment sgm);
-
-SegmentBufferElement *findSegmentBuffer(SegmentBuffer *buff, const uint32_t seqn);
-
-void removeSegmentBuffer(SegmentBuffer *buff, SegmentBufferElement *elem);
-
-char *segmentBufferToString(SegmentBuffer *buff);
-
-/* TIMEOUT SEGMENT BUFFER */
+#endif
 
 typedef struct TSegmentBufferElement {
 	int status;
@@ -72,7 +42,7 @@ TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm
 
 void setTSegmentBufferElementTimeout(TSegmentBufferElement *elem, const long double value, const long double ivalue, void (*handler) (union sigval), void *arg, size_t argsize);
 
-TSegmentBufferElement *findTSegmentBuffer(TSegmentBuffer *buff, const uint32_t seqn);
+TSegmentBufferElement *findTSegmentBufferBySequence(TSegmentBuffer *buff, const uint32_t seqn);
 
 TSegmentBufferElement *findTSegmentBufferByAck(TSegmentBuffer *buff, const uint32_t ackn);
 
@@ -80,4 +50,4 @@ long double removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *el
 
 char *tSegmentBufferToString(TSegmentBuffer *buff);
 
-#endif /* _RUDPSEGMENTBUFFER_H_ */
+#endif /* RUDPTSGMBUFFER_H_ */

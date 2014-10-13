@@ -1,28 +1,28 @@
 #include "mathutil.h"
 
-uint32_t getRandom32(void) {
-	uint32_t random;
+unsigned long getRandomUL(void) {
+	unsigned long random;
 	struct timeval timestamp;
 
 	gettimeofday(&timestamp, NULL);
 
-	random = ((uint32_t) (drand48() * timestamp.tv_sec) + (uint32_t) (drand48() * timestamp.tv_usec)) % MAX_UINT32;
+	random = ((unsigned long)(drand48() * timestamp.tv_sec) + (unsigned long)(drand48() * timestamp.tv_usec)) % ULONG_MAX;
 
 	return random;
 }
 
-uint8_t getRandomBit(const double onprob) {
-	uint8_t random;
+unsigned short getRandomBit(const double onprob) {
+	unsigned short random;
 
 	random = drand48() < onprob;
 
 	return random;
 }
 
-uint32_t getMD5(const char *input) {
+unsigned long getMD5(const char *input) {
 	unsigned char hash128[MD5_DIGEST_LENGTH];
 	char strhash32[MD5_DIGEST_LENGTH + 1];
-	uint32_t hash32;
+	unsigned long hash;
 	int i;
  
   	MD5((const unsigned char *)input, strlen(input), hash128);
@@ -32,7 +32,7 @@ uint32_t getMD5(const char *input) {
 
 	strhash32[i] = '\0';
 
-	hash32 = (uint32_t) strtoull(strhash32, NULL, 10) % MAX_UINT32;
+	hash = strtoull(strhash32, NULL, 10) % ULONG_MAX;
  
-	return hash32;
+	return hash;
 }

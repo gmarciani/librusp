@@ -1,5 +1,5 @@
-#ifndef _RUDPCONNECTION_H_
-#define _RUDPCONNECTION_H_
+#ifndef RUDPCONN_H_
+#define RUDPCONN_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,10 +16,10 @@
 #include <netdb.h>
 #include <limits.h>
 #include <pthread.h>
-
-#include "rudpsegment.h"
-#include "rudpsegmentbuffer.h"
-
+#include "rudpsgm.h"
+#include "rudpsgmbuffer.h"
+#include "rudptsgmbuffer.h"
+#include "rudptimeo.h"
 #include "../util/stringutil.h"
 #include "../util/mathutil.h"
 #include "../util/listutil.h"
@@ -40,7 +40,8 @@
 #define RUDP_CON_ATTS 3
 
 #define RUDP_CON_RETR 3
-#define RUDP_CON_WNDS 5
+
+#define RUDP_CON_WNDS ((RUDP_MAXSEQN / RUDP_PLDS) / 3)
 
 #define RUDP_SAMPLRTT 1
 
@@ -51,7 +52,7 @@
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 #endif
 
-/* CONNECTION STRUCTURES */
+/* CONNECTION STRUCTURE */
 
 typedef int ConnectionId;
 
@@ -67,8 +68,8 @@ typedef struct Connection {
 
 	long double extRTT;
 	long double devRTT;
-	long double timeout;
-	pthread_mutex_t *timeout_mtx;
+	long double timeo;
+	pthread_mutex_t *timeo_mtx;
 
 	uint32_t sndwndb;
 	uint32_t sndwnde;
@@ -83,8 +84,7 @@ typedef struct Connection {
 	Buffer *rcvbuff;	
 	SegmentBuffer *rcvsgmbuff;	
 	pthread_t rcvbufferizer;
-	pthread_t rcvslider;
-		
+	pthread_t rcvslider;		
 } Connection;
 
 /* CONNECTION */
@@ -126,4 +126,4 @@ typedef struct TimeoutObject {
 	TSegmentBufferElement *elem;
 } TimeoutObject;
 
-#endif /* _RUDPCONNECTION_H_ */
+#endif /* RUDPCONN_H_ */

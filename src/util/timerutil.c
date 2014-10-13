@@ -32,6 +32,7 @@ void setTimer(const timer_t timerid, const long double value, const long double 
 
 	if (timer_settime(timerid, 0, &timeout, NULL) != 0)
 		ERREXIT("Cannot set timer.");
+		
 }
 
 long double getElapsed(const struct timespec start, const struct timespec end) {

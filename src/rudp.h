@@ -1,10 +1,12 @@
 #ifndef _RUDP_H_
 #define _RUDP_H_
 
-#include "core/rudpconnection.h"
+#include "core/rudpconn.h"
 #include "util/sockutil.h"
 
+#ifndef ERREXIT
 #define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
+#endif
 
 /* CONNECTION */
 
