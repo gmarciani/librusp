@@ -31,20 +31,16 @@ static void *rcvSliderLoop(void *arg);
 Connection *createConnection(void) {
 	Connection *conn = NULL;
 
-	if (!(conn = malloc(sizeof(Connection))) ||
-		!(conn->state_mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(conn->state_cnd = malloc(sizeof(pthread_cond_t))) ||
-		!(conn->sock_mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(conn->timeo_mtx = malloc(sizeof(pthread_mutex_t))))
-		ERREXIT("Cannot allocate memory for connection resources.");
+	if (!(conn = malloc(sizeof(Connection))))
+		ERREXIT("Cannot allocate memory for connection.");
 
-	initializeMutex(conn->state_mtx);
+	conn->state_mtx = createMutex();
 
-	initializeConditionVariable(conn->state_cnd);
+	conn->state_cnd = createConditionVariable();
 
-	initializeMutex(conn->sock_mtx);
+	conn->sock_mtx = createMutex();
 
-	initializeMutex(conn->timeo_mtx);
+	conn->timeo_mtx = createMutex();
 
 	setConnectionState(conn, RUDP_CON_CLOS);
 

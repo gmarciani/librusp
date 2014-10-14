@@ -43,7 +43,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 	do {
 
-		syn = createSegment(RUDP_SYN, 0, 0, 0/*getISN(getSocketLocal(asock), laddr)*/, 0, NULL);
+		syn = createSegment(RUDP_SYN, 0, 0, 0, 0, NULL);
 
 		ssyn = serializeSegment(syn);	
 
@@ -76,8 +76,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 			free(ssynack);
 
-			if (RUDP_CON_DEBUG)
-				printInSegment(aaddr, synack);
+			DBGFUNC(DEBUG, printInSegment(aaddr, synack));
 
 			if ((synack.hdr.ctrl == (RUDP_SYN | RUDP_ACK)) &
 				(synack.hdr.ackn == RUDP_NXTSEQN(syn.hdr.seqn, 1))) {
@@ -92,8 +91,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 				writeUnconnectedSocket(asock, aaddr, sacksynack);
 
-				if (RUDP_CON_DEBUG)				
-					printOutSegment(aaddr, acksynack);
+				DBGFUNC(DEBUG, printOutSegment(aaddr, acksynack));
 
 				free(sacksynack);					
 
@@ -160,7 +158,7 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setSocketTimeout(asock, ON_READ, RUDP_SAMPLRTT);
 	
-		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, 10/*getISN(getSocketLocal(asock), caddr)*/, RUDP_NXTSEQN(syn.hdr.seqn, 1), NULL); 
+		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, 10, RUDP_NXTSEQN(syn.hdr.seqn, 1), NULL); 
 
 		ssynack = serializeSegment(synack);
 

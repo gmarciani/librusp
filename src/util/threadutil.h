@@ -22,7 +22,7 @@ void *joinThread(pthread_t tid);
 
 /* MUTEX */
 
-void initializeMutex(pthread_mutex_t *mtx);
+pthread_mutex_t *createMutex();
 
 void destroyMutex(pthread_mutex_t *mtx);
 
@@ -32,7 +32,7 @@ void unlockMutex(pthread_mutex_t *mtx);
 
 /* CONDITION VARIABLE */
 
-void initializeConditionVariable(pthread_cond_t *cnd);
+pthread_cond_t *createConditionVariable();
 
 void destroyConditionVariable(pthread_cond_t *cnd);
 

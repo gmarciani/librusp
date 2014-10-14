@@ -46,10 +46,16 @@ void *joinThread(pthread_t tid) {
 
 /* MUTEX */
 
-void initializeMutex(pthread_mutex_t *mtx) {
+pthread_mutex_t *createMutex() {
+	pthread_mutex_t *mtx = NULL;
+
+	if (!(mtx = malloc(sizeof(pthread_mutex_t))))
+		ERREXIT("Cannot allocate memory for mutex.");
 
 	if (pthread_mutex_init(mtx, NULL) != 0) 
 		ERREXIT("Cannot initialize mutex.");
+
+	return mtx;	
 }
 
 void destroyMutex(pthread_mutex_t *mtx) {
@@ -74,10 +80,16 @@ void unlockMutex(pthread_mutex_t *mtx) {
 
 /* CONDITION VARIABLE */
 
-void initializeConditionVariable(pthread_cond_t *cnd) {
-	
+pthread_cond_t *createConditionVariable() {
+	pthread_cond_t *cnd = NULL;
+
+	if (!(cnd = malloc(sizeof(pthread_cond_t))))
+		ERREXIT("Cannot allocate memory for condition variable.");
+
 	if (pthread_cond_init(cnd, NULL) != 0) 
 		ERREXIT("Cannot initialize condition variable.");
+
+	return cnd;	
 }
 
 void destroyConditionVariable(pthread_cond_t *cnd) {

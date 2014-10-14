@@ -5,17 +5,14 @@
 Buffer *createBuffer(void) {
 	Buffer *buff = NULL;
 
-	if (!(buff = malloc(sizeof(Buffer))) ||
-		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(buff->insert_cnd = malloc(sizeof(pthread_cond_t))) ||
-		!(buff->remove_cnd = malloc(sizeof(pthread_cond_t))))
-		ERREXIT("Cannot allocate memory for buffer resources.");
+	if (!(buff = malloc(sizeof(Buffer))))
+		ERREXIT("Cannot allocate memory for buffer.");
 
-	initializeMutex(buff->mtx);
+	buff->mtx = createMutex();
 
-	initializeConditionVariable(buff->insert_cnd);
+	buff->insert_cnd = createConditionVariable();
 
-	initializeConditionVariable(buff->remove_cnd);
+	buff->remove_cnd = createConditionVariable();
 
 	buff->size = 0;
 

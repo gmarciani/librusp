@@ -3,20 +3,16 @@
 TSegmentBuffer *createTSegmentBuffer(void) {
 	TSegmentBuffer *buff = NULL;
 
-	if (!(buff = malloc(sizeof(TSegmentBuffer))) ||
-		!(buff->mtx = malloc(sizeof(pthread_mutex_t))) ||
-		!(buff->insert_cnd = malloc(sizeof(pthread_cond_t))) ||
-		!(buff->remove_cnd = malloc(sizeof(pthread_cond_t))) ||
-		!(buff->status_cnd = malloc(sizeof(pthread_cond_t))))
-		ERREXIT("Cannot allocate memory for timeout segment buffer resources.");
+	if (!(buff = malloc(sizeof(TSegmentBuffer))))
+		ERREXIT("Cannot allocate memory for timeout segment buffer.");
 
-	initializeMutex(buff->mtx);
+	buff->mtx = createMutex();
 
-	initializeConditionVariable(buff->insert_cnd);
+	buff->insert_cnd = createConditionVariable();
 
-	initializeConditionVariable(buff->remove_cnd);
+	buff->remove_cnd = createConditionVariable();
 
-	initializeConditionVariable(buff->status_cnd);
+	buff->status_cnd = createConditionVariable();
 
 	buff->size = 0;
 	
