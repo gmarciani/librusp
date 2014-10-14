@@ -9,10 +9,7 @@
 #include "rudpsgm.h"
 #include "../util/threadutil.h"
 #include "../util/timerutil.h"
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
+#include "../util/macroutil.h"
 
 typedef struct SegmentBufferElement {
 	Segment segment;

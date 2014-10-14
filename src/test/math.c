@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "../util/mathutil.h"
+#include "../util/macroutil.h"
 
 #define STRING "Hy folks! I'm Jack. Let's us enjoy MD5!"
 #define NUMRAND 500000
@@ -9,10 +10,6 @@
 #define LONPROB 0.03
 #define MONPROB 0.30
 #define HONPROB 1.00
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 void generateRandomUL(void);
 

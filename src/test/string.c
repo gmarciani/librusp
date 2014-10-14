@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "../util/stringutil.h"
+#include "../util/macroutil.h"
 
 #define ITERATIONS 10000000
 
@@ -12,10 +13,6 @@
 #define STRINGSIZE strlen(STRING)
 
 #define STRINGSIZE2 strlen(STRING2)
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 static void duplicateString(void);
 

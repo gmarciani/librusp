@@ -96,7 +96,8 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 	buff[rcvd] = '\0';
 
 	if (getRandomBit(DROPRATE)) {
-		free(buff);;
+		free(buff);
+		printf("Segment dropped\n");
 		return NULL;
 	}
 
@@ -106,42 +107,46 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 /* SOCKET PROPERTIES */
 
 void setSocketConnected(const int sock, const struct sockaddr_in addr) {
+	errno = 0;
 
 	if (connect(sock, (const struct sockaddr *)&addr, sizeof(struct sockaddr_in)) == -1)
-		ERREXIT("Cannot set socket connected.");
+		ERREXIT("Cannot set socket connected: %s", strerror(errno));
 }
 
 void setSocketReusable(const int sock) {
 	int optval = 1;
 
+	errno = 0;
+
   	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int)) == -1)
-		ERREXIT("Cannot set socket reusable.");
+		ERREXIT("Cannot set socket reusable: %s", strerror(errno));
 }
 
 void setSocketTimeout(const int sock, const uint8_t mode, const long double value) {
-	struct timespec timerspec;
 	struct timeval timer;
 
-	timerspec = getTimespec(value);
-
-	timer.tv_sec = (time_t) timerspec.tv_sec;
-
-  	timer.tv_usec = (suseconds_t) timerspec.tv_nsec * 1000;
+	timer = getTimeval(value);
 
 	if (mode == (ON_READ | ON_WRITE)) {
+		
+		errno = 0;
 
   		if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO | SO_SNDTIMEO, (const void *)&timer, sizeof(timer)) < 0)
-			ERREXIT("Cannot set socket read timeout.");
+			ERREXIT("Cannot set socket read timeout: %s", strerror(errno));
 
 	} else if (mode == ON_READ) {
 
+		errno = 0;
+
   		if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const void *)&timer, sizeof(timer)) < 0)
-			ERREXIT("Cannot set socket read timeout.");
+			ERREXIT("Cannot set socket read timeout: %s", strerror(errno));
 
 	} else if (mode == ON_WRITE) {
 
+		errno = 0;
+
   		if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const void *)&timer, sizeof(timer)) < 0)
-      		ERREXIT("Cannot set socket write timeout.");
+      		ERREXIT("Cannot set socket write timeout: %s", strerror(errno));
 
 	} else {
 		
@@ -155,8 +160,10 @@ struct sockaddr_in getSocketLocal(const int sock) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 	struct sockaddr_in addr;
 
+	errno = 0;
+
 	if (getsockname(sock, (struct sockaddr *)&addr, &socksize) == -1)
-		ERREXIT("Cannot get socket local address.");
+		ERREXIT("Cannot get socket local address: %s", strerror(errno));
 
 	return addr;
 }
@@ -165,12 +172,13 @@ struct sockaddr_in getSocketPeer(const int sock) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 	struct sockaddr_in addr;
 
+	errno = 0;
+
 	if (getpeername(sock, (struct sockaddr *)&addr, &socksize) == -1)
-		ERREXIT("Cannot get socket peer address.");
+		ERREXIT("Cannot get socket peer address: %s", strerror(errno));
 
 	return addr;
 }
-
 
 /* UTILITY */
 

@@ -12,14 +12,12 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <errno.h>
-
 #include "timerutil.h"
 #include "mathutil.h"
+#include "macroutil.h"
 
 #define ON_READ		0b01
 #define ON_WRITE	0b10
-
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 /* SOCKET CREATION */
 

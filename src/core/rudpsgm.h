@@ -8,6 +8,7 @@
 #include "rudpseqn.h"
 #include "../util/addrutil.h"
 #include "../util/stringutil.h"
+#include "../util/macroutil.h"
 
 // Version
 #define RUDP_VERS 1
@@ -24,17 +25,13 @@
 #define RUDP_ERR 0b10000000
 
 // Payload size
-#define RUDP_PLDS 500
+#define RUDP_PLDS 5
 
 //Segment Lengths
 #define RUDP_HDRF 7
 #define RUDP_HDRS 41
 #define RUDP_SGMS (RUDP_HDRS + RUDP_PLDS)
 #define RUDP_SGMSO (RUDP_SGMS + 46)
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 typedef struct Header {
 	uint8_t 	vers;

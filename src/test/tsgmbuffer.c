@@ -5,16 +5,13 @@
 #include <time.h>
 #include "../core/rudptsgmbuffer.h"
 #include "../util/threadutil.h"
+#include "../util/macroutil.h"
 
 #define NUM_ELEMENTS 10
 #define ISN (uint32_t) 0
 #define PLD "Hello World!"
 #define STATUS 1
 #define TIMEOUT (long double) 10.0
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 static TSegmentBuffer *buff;
 

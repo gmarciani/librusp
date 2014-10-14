@@ -4,17 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <string.h>
-#include <unistd.h>
-#include <math.h>
-#include <sys/times.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <libconfig.h>
-#include <netdb.h>
-#include <limits.h>
 #include <pthread.h>
 #include "rudpsgm.h"
 #include "rudpsgmbuffer.h"
@@ -27,6 +16,7 @@
 #include "../util/timerutil.h"
 #include "../util/addrutil.h"
 #include "../util/sockutil.h"
+#include "../util/macroutil.h"
 
 #define RUDP_CON_CLOS 0
 #define RUDP_CON_LIST 1
@@ -47,10 +37,6 @@
 
 #define RUDP_SGM_NACK 0
 #define RUDP_SGM_YACK 1
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 /* CONNECTION STRUCTURE */
 
@@ -87,43 +73,41 @@ typedef struct Connection {
 	pthread_t rcvslider;		
 } Connection;
 
-/* CONNECTION */
-
-Connection *createConnection(void);
-
-Connection *getConnectionById(const ConnectionId connid);
-
-int getConnectionState(Connection *conn);
-
-void setConnectionState(Connection *conn, const int state);
-
-/* LISTENING */
-
-void setListeningConnection(Connection *conn, const struct sockaddr_in laddr);
-
-/* SYNCHRONIZATION */
-
-int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr);
-
-ConnectionId acceptSynchonization(Connection *lconn);
-
-/* DESYNCHRONIZATION */
-
-void desynchronizeConnection(Connection *conn);
-
-void destroyConnection(Connection *conn);
-
-/* MESSAGE COMMUNICATION */
-
-void writeMessage(Connection *conn, const char *msg, const size_t size);
-
-char *readMessage(Connection *conn, const size_t size);
-
-/* CONNECTION THREADS */
+/* TIMEOUT STRUCTURE */
 
 typedef struct TimeoutObject {
 	Connection *conn;
 	TSegmentBufferElement *elem;
 } TimeoutObject;
+
+/* CONNECTION */
+
+Connection *createConnection(void);
+
+void destroyConnection(Connection *conn);
+
+void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb, const long double extRTT);
+
+int getConnectionState(Connection *conn);
+
+void setConnectionState(Connection *conn, const int state);
+
+long double getTimeout(Connection *conn);
+
+void setTimeout(Connection *conn, const long double sampleRTT);
+
+/* SEGMENT I/O */
+
+void sendSegment(Connection *conn, const Segment sgm);
+
+int receiveSegment(Connection *conn, Segment *sgm);
+
+/* CONNECTIONS POOL */
+
+Connection *allocateConnectionInPool(Connection *conn);
+
+void deallocateConnectionInPool(Connection *conn);
+
+Connection *getConnectionById(const ConnectionId connid);
 
 #endif /* RUDPCONN_H_ */

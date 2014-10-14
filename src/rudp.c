@@ -28,7 +28,7 @@ ConnectionId rudpAccept(const ConnectionId lconnid) {
 	lconn = getConnectionById(lconnid);
 
 	if (!lconn)
-		ERREXIT("Cannot retrieve connection.");
+		ERREXIT("Cannot retrieve connection: %d", lconnid);
 
 	aconnid = acceptSynchonization(lconn);
 
@@ -64,7 +64,7 @@ void rudpDisconnect(const ConnectionId connid) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection.");	
+		ERREXIT("Cannot retrieve connection: %d", connid);	
 
 	desynchronizeConnection(conn);
 }
@@ -75,7 +75,7 @@ void rudpClose(const ConnectionId connid) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection.");	
+		ERREXIT("Cannot retrieve connection: %d", connid);	
 
 	destroyConnection(conn);
 }
@@ -88,7 +88,7 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection.");	
+		ERREXIT("Cannot retrieve connection: %d", connid);	
 
 	writeMessage(conn, msg, size);
 }
@@ -100,7 +100,7 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection.");
+		ERREXIT("Cannot retrieve connection: %d", connid);
 
 	msg = readMessage(conn, size);
 
@@ -116,7 +116,7 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection.");
+		ERREXIT("Cannot retrieve connection: %d", connid);
 
 	addr = getSocketLocal(conn->sock);
 
@@ -130,7 +130,7 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection.");
+		ERREXIT("Cannot retrieve connection: %d", connid);
 
 	addr = getSocketPeer(conn->sock);
 

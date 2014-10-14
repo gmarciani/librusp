@@ -10,16 +10,13 @@
 #include <arpa/inet.h>
 #include "../util/addrutil.h"
 #include "../util/mathutil.h"
+#include "../util/macroutil.h"
 
 #define RUDP_MAXSEQN (uint32_t) 4294967295
 
 #define RUDP_NXTSEQN(seqn, plds) (((seqn) + (plds)) % RUDP_MAXSEQN)
 
 #define RUDP_ISACKED(seqn, plds, ackn) ((ackn) == RUDP_NXTSEQN((seqn), (plds)))
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const uint32_t seqn);
 

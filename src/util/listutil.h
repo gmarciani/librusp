@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include "macroutil.h"
 
 #define LIST_INITIALIZER (List) {.size = 0, .head = NULL, .tail = NULL}
 

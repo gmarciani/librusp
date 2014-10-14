@@ -2,18 +2,20 @@
 #include <stdio.h>
 #include <pthread.h>
 #include "../util/timerutil.h"
+#include "../util/macroutil.h"
 
 #define NTIME 0.0L
-#define LTIME 1.5L
+#define LTIME 0.5L
+#define MTIME 1.5L
 #define HTIME 3.5L
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 static timer_t timerid;
 
 static int count;
+
+static void testTimespecConversion(void);
+
+static void testTimevalConversion(void);
 
 static void creation(void);
 
@@ -31,6 +33,10 @@ static void timeoutFunc(union sigval value);
 
 int main(void) {
 
+	testTimespecConversion();
+
+	testTimevalConversion();
+
 	creation();
 
 	setExpiration();
@@ -47,6 +53,104 @@ int main(void) {
 	deallocation();
 	
 	exit(EXIT_SUCCESS);
+}
+
+static void testTimespecConversion(void) {
+	struct timespec ts;
+
+	printf("# Converting from double to timespec: value %LF\n", NTIME);
+
+	ts = getTimespec(NTIME);
+
+	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
+
+	if (ts.tv_sec != 0 || ts.tv_nsec != 0)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	printf("# Converting from double to timespec: value %LF\n", LTIME);
+
+	ts = getTimespec(LTIME);
+
+	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
+
+	if (ts.tv_sec != 0 || ts.tv_nsec != 500000000)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	printf("# Converting from double to timespec: value %LF\n", MTIME);
+
+	ts = getTimespec(MTIME);
+
+	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
+
+	if (ts.tv_sec != 1 || ts.tv_nsec != 500000000)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	printf("# Converting from double to timespec: value %LF\n", HTIME);
+
+	ts = getTimespec(HTIME);
+
+	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
+
+	if (ts.tv_sec != 3 || ts.tv_nsec != 500000000)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	
+}
+
+static void testTimevalConversion(void) {
+	struct timeval tv;
+
+	printf("# Converting from double to timeval: value %LF\n", NTIME);
+
+	tv = getTimeval(NTIME);
+
+	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
+
+	if (tv.tv_sec != 0 || tv.tv_usec != 0)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	printf("# Converting from double to timeval: value %LF\n", LTIME);
+
+	tv = getTimeval(LTIME);
+
+	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
+
+	if (tv.tv_sec != 0 || tv.tv_usec != 500000)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	printf("# Converting from double to timeval: value %LF\n", MTIME);
+
+	tv = getTimeval(MTIME);
+
+	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
+
+	if (tv.tv_sec != 1 || tv.tv_usec != 500000)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
+
+	printf("# Converting from double to timeval: value %LF\n", HTIME);
+
+	tv = getTimeval(HTIME);
+
+	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
+
+	if (tv.tv_sec != 3 || tv.tv_usec != 500000)
+		ERREXIT("FAILURE");
+
+	printf("SUCCESS\n");
 }
 
 static void creation(void) {

@@ -43,17 +43,22 @@ void freeTSegmentBuffer(TSegmentBuffer *buff) {
 	free(buff);
 }
 
-TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const int status) {
+TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const int status, void (*handler) (union sigval), void *arg, size_t argsize) {
 	TSegmentBufferElement *new = NULL;
 
-	if (!(new = malloc(sizeof(TSegmentBufferElement))))
+	if (!(new = malloc(sizeof(TSegmentBufferElement))) ||
+		!(elem->timerarg = malloc(argsize)))
 		ERREXIT("Cannot allocate memory for new timeout segment buffer element.");	
 
-	new->segment = sgm;
+	new->segment = sgm;	
 
-	new->status = status;	
+	new->status = status;
 
-	new->timerarg = NULL;
+	memcpy(elem->timerarg, arg, argsize);
+
+	elem->timer = createTimer(handler, elem->timerarg);
+
+	clock_gettime(CLOCK_MONOTONIC, &(timeoutsgm->time));	
 
 	if (buff->size == 0) {
 
@@ -76,23 +81,9 @@ TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm
 		buff->tail = new;
 	} 	
 
-	buff->size++;
-
-	clock_gettime(CLOCK_MONOTONIC, &(new->addtime));
+	buff->size++;	
 
 	return new;
-}
-
-void setTSegmentBufferElementTimeout(TSegmentBufferElement *elem, const long double value, const long double ivalue, void (*handler) (union sigval), void *arg, size_t argsize) {
-
-	if (!(elem->timerarg = malloc(argsize)))
-		ERREXIT("Cannot allocate memory for segment buffer element timeout resources.");
-
-	memcpy(elem->timerarg, arg, argsize);
-
-	elem->timer = createTimer(handler, elem->timerarg);
-
-	setTimer(elem->timer, value, ivalue);
 }
 
 TSegmentBufferElement *findTSegmentBufferBySequence(TSegmentBuffer *buff, const uint32_t seqn) {
@@ -166,20 +157,17 @@ long double removeTSegmentBuffer(TSegmentBuffer *buff, TSegmentBufferElement *el
 
 	}
 
-	if (elem->timerarg != NULL) {
+	freeTimer(elem->timer);
 
-		freeTimer(elem->timer);
+	free(elem->timerarg);
 
-		//free(elem->timerarg);
-
-		//elem->timerarg = NULL;
-	}		
+	elem->timerarg = NULL;
 
 	buff->size--;
 
 	clock_gettime(CLOCK_MONOTONIC, &removetime);
 
-	elapsed = getElapsed(elem->addtime, removetime);
+	elapsed = getElapsed(elem->time, removetime);
 
 	free(elem);
 

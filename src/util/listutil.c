@@ -12,10 +12,8 @@ void cleanList(List *list) {
 void addElementToList(List *list, void *value) {
 	ListElement *new = NULL;
 
-	if (!(new = malloc(sizeof(ListElement)))) {
-		fprintf(stderr, "Cannot allocate memory for new list element.\n");
-		exit(EXIT_FAILURE);
-	}
+	if (!(new = malloc(sizeof(ListElement))))
+		ERREXIT("Cannot allocate memory for list element.");
 
 	new->value = value;
 

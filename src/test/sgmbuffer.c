@@ -5,14 +5,11 @@
 #include <time.h>
 #include "../core/rudpsgmbuffer.h"
 #include "../util/threadutil.h"
+#include "../util/macroutil.h"
 
 #define NUM_ELEMENTS 10
 #define ISN (uint32_t) 0
 #define PLD "Hello World!"
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 static SegmentBuffer *buff;
 

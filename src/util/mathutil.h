@@ -8,6 +8,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <openssl/md5.h>
+#include "macroutil.h"
 
 unsigned long getRandomUL(void);
 

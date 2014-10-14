@@ -12,15 +12,19 @@ timer_t createTimer(void (*handler) (union sigval), void *arg) {
 
 	event.sigev_value.sival_ptr = arg;	
 
+	errno = 0;
+
 	if (timer_create(CLOCK_REALTIME, &event, &timerid) != 0) 
-		ERREXIT("Cannot create timer.");
+		ERREXIT("Cannot create timer: %s", strerror(errno));
 
 	return timerid;
 }
 
 void freeTimer(const timer_t timerid) {
+	errno = 0;
+
 	if (timer_delete(timerid) != 0)
-		ERREXIT("Cannot delete timer.");
+		ERREXIT("Cannot delete timer: %s", strerror(errno));
 }
 
 void setTimer(const timer_t timerid, const long double value, const long double ivalue) {
@@ -30,8 +34,10 @@ void setTimer(const timer_t timerid, const long double value, const long double 
 
 	timeout.it_interval = getTimespec(ivalue);
 
+	errno = 0;
+
 	if (timer_settime(timerid, 0, &timeout, NULL) != 0)
-		ERREXIT("Cannot set timer.");
+		ERREXIT("Cannot set timer: %s", strerror(errno));
 		
 }
 
@@ -46,10 +52,19 @@ long double getElapsed(const struct timespec start, const struct timespec end) {
 struct timespec getTimespec(const long double value) {
 	struct timespec time;
 
-	time.tv_sec = (time_t) value;
+	time.tv_sec = (time_t) (value < 1)?0:ceill(value - 1);
 
 	time.tv_nsec = (long) (value * 1000000000) % 1000000000;
 
 	return time;
 
+}
+struct timeval getTimeval(const long double value) {
+	struct timeval time;
+
+	time.tv_sec = (time_t) (value < 1)?0:ceill(value - 1);
+
+  	time.tv_usec = (suseconds_t) (value * 1000000) % 1000000;
+
+	return time;
 }

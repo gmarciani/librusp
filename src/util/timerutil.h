@@ -5,14 +5,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
 #include <pthread.h>
 #include <time.h>
 #include <signal.h>
 #include <math.h>
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
+#include "macroutil.h"
 
 timer_t createTimer(void (*handler) (union sigval), void *arg);
 
@@ -23,5 +21,7 @@ void setTimer(const timer_t timerid, const long double value, const long double 
 long double getElapsed(const struct timespec start, const struct timespec end);
 
 struct timespec getTimespec(const long double value);
+
+struct timeval getTimeval(const long double value);
 
 #endif /* TIMERUTIL_H_ */

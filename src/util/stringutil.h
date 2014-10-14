@@ -9,12 +9,10 @@
 #include <sys/time.h>
 #include <time.h>
 #include <sys/types.h>
-
 #include "threadutil.h"
+#include "macroutil.h"
 
 #define BUFFSIZE 65535
-
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 typedef struct Buffer {
 	char content[BUFFSIZE];

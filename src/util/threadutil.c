@@ -15,8 +15,10 @@ pthread_t createThread(void *(*threadFunc) (void *), void *arg, const uint8_t mo
 			ERREXIT("Cannot set thread attribute.");
 	}
 
+	errno = 0;
+
 	if (pthread_create(&tid, &attr, threadFunc, arg) != 0) 
-		ERREXIT("Cannot create thread.");
+		ERREXIT("Cannot create thread: %s", strerror(errno));
 
 	if (pthread_attr_destroy(&attr) != 0) 
 		ERREXIT("Cannot destroy thread attributes.");
@@ -25,16 +27,19 @@ pthread_t createThread(void *(*threadFunc) (void *), void *arg, const uint8_t mo
 }
 
 void cancelThread(pthread_t tid) {
-	
+	errno = 0;
+
 	if (pthread_cancel(tid) != 0) 
-		ERREXIT("Cannot cancel thread.");
+		ERREXIT("Cannot cancel thread: %s", strerror(errno));
 }
 
 void *joinThread(pthread_t tid) {
 	void *retval;
 
+	errno = 0;
+
 	if (pthread_join(tid, &retval) != 0) 
-		ERREXIT("Cannot join thread.");
+		ERREXIT("Cannot join thread: %s", strerror(errno));
 
 	return retval;
 }

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include "macroutil.h"
 
 #define ADDRESS_IPV4_MAX_OUTPUT 21
 

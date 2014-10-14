@@ -9,14 +9,11 @@
 #include "rudpsgm.h"
 #include "../util/threadutil.h"
 #include "../util/timerutil.h"
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
+#include "../util/macroutil.h"
 
 typedef struct TSegmentBufferElement {
 	int status;
-	struct timespec addtime;
+	struct timespec time;
 	timer_t timer;
 	void *timerarg;
 	Segment segment;
@@ -38,9 +35,7 @@ TSegmentBuffer *createTSegmentBuffer(void);
 
 void freeTSegmentBuffer(TSegmentBuffer *buff);
 
-TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const int status);
-
-void setTSegmentBufferElementTimeout(TSegmentBufferElement *elem, const long double value, const long double ivalue, void (*handler) (union sigval), void *arg, size_t argsize);
+TSegmentBufferElement *addTSegmentBuffer(TSegmentBuffer *buff, const Segment sgm, const int status, void (*handler) (union sigval), void *arg, size_t argsize);
 
 TSegmentBufferElement *findTSegmentBufferBySequence(TSegmentBuffer *buff, const uint32_t seqn);
 

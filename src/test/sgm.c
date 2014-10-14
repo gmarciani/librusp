@@ -1,12 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "../core/rudpsgm.h"
+#include "../util/macroutil.h"
 
 #define MSG "Hello World! I'm happy! Stay hungry, stay foolish, folks!"
-
-#ifndef ERREXIT
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
-#endif
 
 static Segment sgm;
 

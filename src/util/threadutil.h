@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <errno.h>
 #include <pthread.h>
+#include "macroutil.h"
 
 #define THREAD_DETACHED 0
 #define THREAD_JOINABLE 1
-
-#define ERREXIT(errmsg) do{fprintf(stderr, errmsg "\n");exit(EXIT_FAILURE);}while(0)
 
 /* THREAD */
 
