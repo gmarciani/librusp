@@ -1,25 +1,26 @@
-# ECLIPSE
+# Eclipse
 .project
+.cproject
 
-# Bin Folders
+# Bin
 bin/
 
-# Old Folders
+# Old
 old/
 
-# Object files
+# Object
 *.o
 *.ko
 *.obj
 *.elf
 
-# Temp files
+# Temp
 *~
 
-# Lyx Files
+# Lyx
 *.lyx
 
-# Precompiled Headers
+# Precompiled
 *.gch
 *.pch
 
@@ -29,7 +30,7 @@ old/
 *.la
 *.lo
 
-# Shared objects (inc. Windows DLLs)
+# Shared objects
 *.dll
 *.so
 *.so.*
