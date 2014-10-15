@@ -12,32 +12,6 @@
 #include "threadutil.h"
 #include "macroutil.h"
 
-#define BUFFSIZE 65535
-
-typedef struct Buffer {
-	char content[BUFFSIZE];
-	size_t size;
-	pthread_mutex_t *mtx;
-	pthread_cond_t *insert_cnd;
-	pthread_cond_t *remove_cnd;
-} Buffer;
-
-/* BUFFER MANAGEMENT */
-
-Buffer *createBuffer(void);
-
-void freeBuffer(Buffer *buff);
-
-char *lookBuffer(Buffer *buff, const size_t size);
-
-void popBuffer(Buffer *buff, const size_t size);
-
-char *readBuffer(Buffer *buff, const size_t size);
-
-void writeBuffer(Buffer *buff, const char *str, const size_t size);
-
-char *bufferToString(Buffer *buff);
-
 /* STRING MANAGEMENT */
 
 char *stringDuplication(const char *src);

@@ -1,8 +1,9 @@
-#ifndef _RUDP_H_
-#define _RUDP_H_
+#ifndef RUDP_H_
+#define RUDP_H_
 
-#include "core/rudpconn.h"
-#include "core/rudpconnmng.h"
+#include "core/connection/conn.h"
+#include "core/connection/connmng.h"
+#include "util/addrutil.h"
 #include "util/sockutil.h"
 #include "util/macroutil.h"
 
@@ -30,4 +31,4 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid);
 
 struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid);
 
-#endif /* _RUDP_H_ */
+#endif /* RUDP_H_ */

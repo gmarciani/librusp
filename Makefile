@@ -8,68 +8,95 @@ CFLAGS = -g -Wall -O3
 
 PFLAGS = -pg
 
-# Directories
-
-SRCDIR = src
+# Bin Directories
 
 BINDIR = bin
 
+# Source Directories
+
+SRCDIR = src
+
 COREDIR = $(SRCDIR)/core
+
+BUFFERDIR = $(COREDIR)/buffer
+
+CONNECTIONDIR = $(COREDIR)/connection
+
+SEGMENTDIR = $(COREDIR)/segment
 
 UTILDIR = $(SRCDIR)/util
 
+# Tests Directory
+
 TESTDIR = src/test
 
-TESTPREFIX = test_
+BASE_TESTDIR = $(TESTDIR)/base
+
+BUFFER_TESTDIR = $(TESTDIR)/buffer
+
+COMMUNICATION_TESTDIR = $(TESTDIR)/communication
+
+SEGMENT_TESTDIR = $(TESTDIR)/segment
 
 # Dependencies
 
-PROTOCOL_LIBS = -lpthread -lrt -lm -lcrypto -lssl
+LIBS = -lpthread -lrt -lm -lcrypto -lssl
 
-PROTOCOL_UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c macroutil.h) $(PROTOCOL_LIBS)
+UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timerutil.h timerutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
 
-PROTOCOL_SEGMENTS = $(addprefix $(COREDIR)/, rudpsgmbuffer.h rudpsgmbuffer.c rudptsgmbuffer.h rudptsgmbuffer.c rudpsgm.h rudpsgm.c rudpseqn.h rudpseqn.h rudpseqn.c) $(PROTOCOL_UTILS)
+SEGMENTS = $(addprefix $(SEGMENTDIR)/, sgm.h sgm.c seqn.h seqn.c) $(UTILS)
 
-PROTOCOL_CONNECTION = $(addprefix $(COREDIR)/, rudpconn.h rudpconn.c rudpconnmng.h rudpconnmng.c rudptimeo.h) $(PROTOCOL_SEGMENTS)
+BUFFERS = $(addprefix $(BUFFERDIR)/, timeosgmbuff.h timeosgmbuff.c sortsgmbuff.h sortsgmbuff.c strbuff.h strbuff.c) $(SEGMENTS)
 
-PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
+CONNECTION = $(addprefix $(CONNECTIONDIR)/, conn.h conn.c connmng.h connmng.c timeo.h) $(BUFFERS)
+
+PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(CONNECTION)
 
 # Targets
 
-test: testdir echosnd echorcv tsgmbuffer sgmbuffer sgm timer buffer string math macro
+test: testdir communication buffer segment base
 
 testdir: 
 	mkdir -pv $(BINDIR)
+	
+communication: echosnd echorcv filesnd filercv
 
-echosnd: $(TESTDIR)/echosnd.c
-	$(CC) $(CFLAGS) $(TESTDIR)/echosnd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 
-echorcv: $(TESTDIR)/echorcv.c
-	$(CC) $(CFLAGS) $(TESTDIR)/echorcv.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+echorcv: $(COMMUNICATION_TESTDIR)/echorcv.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	
+filesnd: $(COMMUNICATION_TESTDIR)/filesnd.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 
-tsgmbuffer: $(TESTDIR)/tsgmbuffer.c
-	$(CC) $(CFLAGS) $(TESTDIR)/tsgmbuffer.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
+filercv: $(COMMUNICATION_TESTDIR)/filercv.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	
+buffer: sortsgmbuffer strbuffer
 
-sgmbuffer: $(TESTDIR)/sgmbuffer.c
-	$(CC) $(CFLAGS) $(TESTDIR)/sgmbuffer.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
+sortsgmbuffer: $(BUFFER_TESTDIR)/sortsgmbuffer.c
+	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
+	
+strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
+	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
 
-sgm: $(TESTDIR)/sgm.c
-	$(CC) $(CFLAGS) $(TESTDIR)/sgm.c $(PROTOCOL_SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
+segment: $(SEGMENT_TESTDIR)/sgm.c
+	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$@
+	
+base: timer str math macro
 
-timer: $(TESTDIR)/timer.c
-	$(CC) $(CFLAGS) $(TESTDIR)/timer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+timer: $(BASE_TESTDIR)/timer.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
-buffer: $(TESTDIR)/buffer.c
-	$(CC) $(CFLAGS) $(TESTDIR)/buffer.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+str: $(BASE_TESTDIR)/str.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
-string: $(TESTDIR)/string.c
-	$(CC) $(CFLAGS) $(TESTDIR)/string.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+math: $(BASE_TESTDIR)/math.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
-math: $(TESTDIR)/math.c
-	$(CC) $(CFLAGS) $(TESTDIR)/math.c $(PROTOCOL_UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
-
-macro: $(TESTDIR)/macro.c
-	$(CC) $(CFLAGS) $(TESTDIR)/macro.c $(UTILDIR)/macroutil.h -o $(BINDIR)/$(TESTPREFIX)$@
+macro: $(BASE_TESTDIR)/macro.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
 clean-test: 
-	rm -frv $(BINDIR)/$(TESTPREFIX)*
+	rm -frv $(BINDIR)/*
