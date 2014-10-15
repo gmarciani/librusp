@@ -27,9 +27,13 @@ http://gmarciani.com/portfolio/rudp/manual.
 
 `sudo make uninstall`
 
-## Clean everything
+## How to compile test suite
 
-`sudo make clean`
+`make test`
+
+## How to clean test suite
+
+`make clean-test`
 
 ## Report a bug
 
