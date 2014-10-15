@@ -2,16 +2,16 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <pthread.h>
-#include <time.h>
+#include <assert.h>
 #include "../../core/buffer/sortsgmbuff.h"
 #include "../../util/threadutil.h"
 #include "../../util/macroutil.h"
 
 #define NUM_ELEMENTS 10
 #define ISN (uint32_t) 0
-#define PLD "Hello World!"
+#define PLD "Hello"
 
-static SegmentBuffer *buff;
+static SSgmBuff *buff;
 
 static void creation(void);
 
@@ -43,17 +43,17 @@ int main(void) {
 }
 
 static void creation(void) {
-	printf("# Creating segment buffer\n");
+	printf("# Creating segment buffer..");
 
 	buff = createSegmentBuffer();
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void stringRepresentation(void) {
 	char *strbuff = NULL;
 
-	printf("# Segment buffer to string\n");
+	printf("# Segment buffer to string...\n");
 
 	strbuff = segmentBufferToString(buff);
 
@@ -63,52 +63,58 @@ static void stringRepresentation(void) {
 }
 
 static void insertion(void) {
-	Segment sgm;
+	Segment sortsgm[NUM_ELEMENTS], sgm;
+	SSgmBuffElem *curr = NULL;
 	uint32_t seqn = ISN;
 	int i;
 
-	printf("# Adding %d segments to segment buffer, with ISN %u and payload %s\n", NUM_ELEMENTS, ISN, PLD);
+	printf("# Adding %d segments to segment buffer, with ISN %u and payload %s...", NUM_ELEMENTS, ISN, PLD);
 
 	for (i = 0; i < NUM_ELEMENTS; i++) {
 	
 		sgm = createSegment(RUDP_ACK, 0, 0, seqn, i, PLD);
 
-		addSegmentBuffer(buff, sgm);
-
-		if (!isEqualSegment(sgm, findSegmentBufferBySequence(buff, sgm.hdr.seqn)->segment))
-			ERREXIT("FAILURE");
-
-		if (!isEqualSegment(sgm, findSegmentBufferByAck(buff, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment))
-			ERREXIT("FAILURE");
+		sortsgm[i] = sgm;
 
 		seqn = RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);
 	}
 
-	printf("SUCCESS\n");
+	for (i = NUM_ELEMENTS - 1; i >= 0; i--) {
+
+		addSegmentBuffer(buff, sortsgm[i]);
+
+		assert(isEqualSegment(sgm, findSegmentBufferBySequence(buff, sgm.hdr.seqn)->segment) &&
+				isEqualSegment(sgm, findSegmentBufferByAck(buff, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment));
+	}
+
+	curr = buff->head;
+
+	while (curr) {
+		if (curr->next)
+			assert(curr->segment.hdr.seqn <= curr->next->segment.hdr.seqn);
+
+		curr = curr->next;
+	}
+
+	printf("OK\n");
 }
 
 static void removal(void) {
-	printf("# Removing segment with seqn 0\n");
+	printf("# Removing segment with seqn 0 and segment acked by ackn 25...");
 
 	removeSegmentBuffer(buff, findSegmentBufferBySequence(buff, 0));
 
-	if (findSegmentBufferBySequence(buff, 0) != NULL)
-		ERREXIT("FAILURE");
+	removeSegmentBuffer(buff, findSegmentBufferByAck(buff, 25));
 
-	printf("# Removing segment acked by ackn 24\n");
+	assert(!findSegmentBufferBySequence(buff, 0) && !findSegmentBufferByAck(buff, 25));
 
-	removeSegmentBuffer(buff, findSegmentBufferByAck(buff, 24));
-
-	if (findSegmentBufferByAck(buff, 24) != NULL)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void deallocation(void) {
-	printf("# Freeing segment buffer\n");
+	printf("# Freeing segment buffer...");
 
 	freeSegmentBuffer(buff);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }

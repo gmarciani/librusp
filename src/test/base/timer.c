@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <assert.h>
 #include "../../util/timerutil.h"
 #include "../../util/macroutil.h"
 
@@ -58,131 +59,81 @@ int main(void) {
 static void testTimespecConversion(void) {
 	struct timespec ts;
 
-	printf("# Converting from double to timespec: value %LF\n", NTIME);
+	printf("# Converting from long double to timespec...");
 
 	ts = getTimespec(NTIME);
 
-	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
-
-	if (ts.tv_sec != 0 || ts.tv_nsec != 0)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	printf("# Converting from double to timespec: value %LF\n", LTIME);
+	assert(ts.tv_sec == 0 || ts.tv_nsec == 0);
 
 	ts = getTimespec(LTIME);
 
-	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
-
-	if (ts.tv_sec != 0 || ts.tv_nsec != 500000000)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	printf("# Converting from double to timespec: value %LF\n", MTIME);
+	assert(ts.tv_sec == 0 || ts.tv_nsec == 500000000);
 
 	ts = getTimespec(MTIME);
 
-	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
-
-	if (ts.tv_sec != 1 || ts.tv_nsec != 500000000)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	printf("# Converting from double to timespec: value %LF\n", HTIME);
+	assert(ts.tv_sec == 1 || ts.tv_nsec == 500000000);
 
 	ts = getTimespec(HTIME);
 
-	printf("sec:%ld nsec:%ld\n", ts.tv_sec, ts.tv_nsec);
+	assert(ts.tv_sec == 3 || ts.tv_nsec == 500000000);
 
-	if (ts.tv_sec != 3 || ts.tv_nsec != 500000000)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	
+	printf("OK\n");
 }
 
 static void testTimevalConversion(void) {
 	struct timeval tv;
 
-	printf("# Converting from double to timeval: value %LF\n", NTIME);
+	printf("# Converting from long double to timeval...");
 
 	tv = getTimeval(NTIME);
 
-	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
-
-	if (tv.tv_sec != 0 || tv.tv_usec != 0)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	printf("# Converting from double to timeval: value %LF\n", LTIME);
+	assert(tv.tv_sec == 0 || tv.tv_usec == 0);
 
 	tv = getTimeval(LTIME);
 
-	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
-
-	if (tv.tv_sec != 0 || tv.tv_usec != 500000)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	printf("# Converting from double to timeval: value %LF\n", MTIME);
+	assert(tv.tv_sec == 0 || tv.tv_usec == 500000);
 
 	tv = getTimeval(MTIME);
 
-	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
-
-	if (tv.tv_sec != 1 || tv.tv_usec != 500000)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
-
-	printf("# Converting from double to timeval: value %LF\n", HTIME);
+	assert(tv.tv_sec == 1 || tv.tv_usec == 500000);
 
 	tv = getTimeval(HTIME);
 
-	printf("sec:%ld usec:%ld\n", tv.tv_sec, tv.tv_usec);
+	assert(tv.tv_sec == 3 || tv.tv_usec == 500000);
 
-	if (tv.tv_sec != 3 || tv.tv_usec != 500000)
-		ERREXIT("FAILURE");
-
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void creation(void) {
-	printf("# Creating timer\n");
+	printf("# Creating timer...");
 
 	timerid = createTimer(timeoutFunc, &count);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void setExpiration(void) {
-	printf("# Setting timer periodic expiration: first timeout: %LF secs, periodic timeout: %LF secs\n", HTIME, LTIME);
+	printf("# Setting timer periodic expiration: %LF secs and periodic %LF secs...", HTIME, LTIME);
 
 	setTimer(timerid, HTIME, LTIME);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void disarm(void) {
-	printf("# Disarming timer\n");
+	printf("# Disarming timer...");
 
 	setTimer(timerid, NTIME, NTIME);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void deallocation(void) {
-	printf("# Freeing timer\n");
+	printf("# Freeing timer...");
 
 	freeTimer(timerid);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void timeoutFunc(union sigval value) {

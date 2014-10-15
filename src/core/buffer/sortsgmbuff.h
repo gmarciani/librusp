@@ -8,43 +8,45 @@
 
 /* SORTED SEGMENT BUFFER STRUCTURES */
 
-typedef struct SegmentBufferElement {
-	short status;
+typedef struct SSgmBuffElem {
 	Segment segment;
-	struct SegmentBufferElement *next;
-	struct SegmentBufferElement *prev;
-} SegmentBufferElement;
 
-typedef struct SegmentBuffer {
+	struct SSgmBuffElem *next;
+	struct SSgmBuffElem *prev;
+} SSgmBuffElem;
+
+typedef struct SSgmBuff {
 	long size;	
-	SegmentBufferElement *head;
-	SegmentBufferElement *tail;
+
+	SSgmBuffElem *head;
+	SSgmBuffElem *tail;
+
 	pthread_mutex_t *mtx;
 	pthread_cond_t *insert_cnd;
 	pthread_cond_t *remove_cnd;
 	pthread_cond_t *status_cnd;
-} SegmentBuffer;
+} SSgmBuff;
 
 /* SORTED SEGMENT BUFFER CREATION/DISTRUCTION */
 
-SegmentBuffer *createSegmentBuffer(void);
+SSgmBuff *createSegmentBuffer(void);
 
-void freeSegmentBuffer(SegmentBuffer *buff);
+void freeSegmentBuffer(SSgmBuff *buff);
 
 /* SORTED SEGMENT BUFFER INSERTION/REMOVAL */
 
-SegmentBufferElement *addSegmentBuffer(SegmentBuffer *buff, const Segment sgm);
+SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm);
 
-void removeSegmentBuffer(SegmentBuffer *buff, SegmentBufferElement *elem);
+void removeSegmentBuffer(SSgmBuff *buff, SSgmBuffElem *elem);
 
 /* SORTED SEGMENT BUFFER SEARCH */
 
-SegmentBufferElement *findSegmentBufferBySequence(SegmentBuffer *buff, const uint32_t seqn);
+SSgmBuffElem *findSegmentBufferBySequence(SSgmBuff *buff, const uint32_t seqn);
 
-SegmentBufferElement *findSegmentBufferByAck(SegmentBuffer *buff, const uint32_t ackn);
+SSgmBuffElem *findSegmentBufferByAck(SSgmBuff *buff, const uint32_t ackn);
 
 /* SORTED SEGMENT BUFFER REPRESENTATION */
 
-char *segmentBufferToString(SegmentBuffer *buff);
+char *segmentBufferToString(SSgmBuff *buff);
 
 #endif /* SORTSGMBUFF_H_ */

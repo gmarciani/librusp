@@ -1,15 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 #include "../../util/mathutil.h"
 #include "../../util/macroutil.h"
 
 #define STRING "Hy folks! I'm Jack. Let's us enjoy MD5!"
-#define NUMRAND 500000
-#define NONPROB 0.00
-#define LONPROB 0.03
-#define MONPROB 0.30
-#define HONPROB 1.00
+#define NUMRAND 50000
+#define CONSTRAINT 0.0001L
+#define NONPROB 0.00L
+#define LONPROB 0.03L
+#define MONPROB 0.30L
+#define HONPROB 1.00L
 
 void generateRandomUL(void);
 
@@ -39,14 +41,10 @@ void generateRandomUL(void) {
 	unsigned long repetitions;
 	unsigned long i, j, k, l;
 
-	printf("# Generating %ld random unsigned long\n", (unsigned long)NUMRAND);
+	printf("# Generating %d random unsigned long, expecting max %LF%% repetitions...", NUMRAND, CONSTRAINT);
 
 	for (i = 0; i < NUMRAND; i++)
 		randomUL[i] = getRandomUL();
-
-	printf("SUCCESS\n");
-
-	printf("# Analyzing generated random unsigned long\n");
 	
 	repetitions = 0;
 
@@ -77,26 +75,26 @@ void generateRandomUL(void) {
 		}
 	}
 
-	printf("Repetition Percentage: %LF%%\n", (long double)(repetitions / NUMRAND));
+	assert(repetitions <= (CONSTRAINT * 100 * NUMRAND));
+
+	printf("OK\n");
 }
 
 void generateRandomBit(const long double onprob) {
 	unsigned short randombit[NUMRAND];
-	long double onperc;
+	long double constraint;
 	unsigned long repetitions, i;
 
-	printf("# Generating %ld random bits (uniform ON: %LF%%)\n", (unsigned long)NUMRAND, onprob);
+	printf("%d", NUMRAND);
+
+	constraint = (onprob == 0.0 || onprob == 1.0) ? 0.0 : CONSTRAINT;
+
+	printf("# Generating %d random bits, with %LF%% ON probability, expecting max %LF%% error...", NUMRAND, onprob, constraint);
 
 	for (i = 0; i < NUMRAND; i++)
-		randombit[i] = getRandomBit(onprob);
-
-	printf("SUCCESS\n");
-
-	printf("# Analyzing generated random bits\n");
+		randombit[i] = getRandomBit(NONPROB);
 
 	repetitions = 0;
-
-	onperc = 0.0;
 
 	for (i = 0; i < NUMRAND; i++) {
 
@@ -104,19 +102,20 @@ void generateRandomBit(const long double onprob) {
 			repetitions++;
 	}
 
-	onperc = ((long double) repetitions * 100.0) / (long double) NUMRAND;
+	assert(repetitions >= ((NONPROB - constraint) * 100 * NUMRAND) &&
+			repetitions <= ((NONPROB + constraint) * 100 * NUMRAND));
 
-	printf("ON Percentage: %LF%%\n", onperc);
+	printf("OK\n");
 }
 
 static void generateMD5(void) {
 	unsigned long hash;
 
-	printf("# Generating MD5 hashing for: %s\n", STRING);
+	printf("# Generating MD5 hashing for: %s...", STRING);
 
 	hash = getMD5(STRING);
 
-	printf("%lu\n", hash);
+	printf("%lu...", hash);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }

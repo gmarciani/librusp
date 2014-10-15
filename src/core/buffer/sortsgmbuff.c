@@ -2,10 +2,10 @@
 
 /* SORTED SEGMENT BUFFER CREATION/DISTRUCTION */
 
-SegmentBuffer *createSegmentBuffer(void) {
-	SegmentBuffer *buff = NULL;
+SSgmBuff *createSegmentBuffer(void) {
+	SSgmBuff *buff = NULL;
 
-	if (!(buff = malloc(sizeof(SegmentBuffer))))
+	if (!(buff = malloc(sizeof(SSgmBuff))))
 		ERREXIT("Cannot allocate memory for segment buffer.");
 
 	buff->mtx = createMutex();
@@ -25,7 +25,7 @@ SegmentBuffer *createSegmentBuffer(void) {
 	return buff;
 }
 
-void freeSegmentBuffer(SegmentBuffer *buff) {
+void freeSegmentBuffer(SSgmBuff *buff) {
 
 	while (buff->head)
 		removeSegmentBuffer(buff, buff->head);
@@ -43,10 +43,10 @@ void freeSegmentBuffer(SegmentBuffer *buff) {
 
 /* SORTED SEGMENT BUFFER INSERTION/REMOVAL */
 
-SegmentBufferElement *addSegmentBuffer(SegmentBuffer *buff, const Segment sgm) {
-	SegmentBufferElement *new = NULL;
+SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm) {
+	SSgmBuffElem *new, *curr= NULL;
 
-	if (!(new = malloc(sizeof(SegmentBufferElement))))
+	if (!(new = malloc(sizeof(SSgmBuffElem))))
 		ERREXIT("Cannot allocate memory for new segment buffer element.");
 
 	new->segment = sgm;
@@ -63,13 +63,44 @@ SegmentBufferElement *addSegmentBuffer(SegmentBuffer *buff, const Segment sgm) {
 
 	} else {
 
-		new->prev = buff->tail;
+		if (new->segment.hdr.seqn < buff->head->segment.hdr.seqn) {
 
-		new->next = NULL;
+			new->next = buff->head;
 
-		buff->tail->next = new;
+			new->prev = NULL;
 
-		buff->tail = new;
+			buff->head->prev = new;
+
+			buff->head = new;
+
+		} else if (new->segment.hdr.seqn > buff->tail->segment.hdr.seqn) {
+
+			new->next = NULL;
+
+			new->prev = buff->tail;
+
+			buff->tail->next = new;
+
+			buff->tail = new;
+
+		} else {
+
+			curr = buff->head;
+
+			while (curr) {
+
+				if (new->segment.hdr.seqn < curr->segment.hdr.seqn)
+					break;
+
+				curr = curr->next;
+			}
+
+			new->next = curr;
+
+			new->prev = curr->prev;
+
+			curr->prev = new;
+		}
 	} 
 
 	buff->size++;
@@ -77,7 +108,7 @@ SegmentBufferElement *addSegmentBuffer(SegmentBuffer *buff, const Segment sgm) {
 	return new;
 }
 
-void removeSegmentBuffer(SegmentBuffer *buff, SegmentBufferElement *elem) {
+void removeSegmentBuffer(SSgmBuff *buff, SSgmBuffElem *elem) {
 
 	if (!elem)
 		return;
@@ -115,48 +146,38 @@ void removeSegmentBuffer(SegmentBuffer *buff, SegmentBufferElement *elem) {
 
 /* SORTED SEGMENT BUFFER SEARCH */
 
-SegmentBufferElement *findSegmentBufferBySequence(SegmentBuffer *buff, const uint32_t seqn) {
-	SegmentBufferElement *curr = buff->head;
-	SegmentBufferElement *trgt = NULL;
+SSgmBuffElem *findSegmentBufferBySequence(SSgmBuff *buff, const uint32_t seqn) {
+	SSgmBuffElem *curr = buff->head;
 
 	while (curr) {
 
-		if (curr->segment.hdr.seqn == seqn) {
-			
-			trgt = curr;
-
+		if (curr->segment.hdr.seqn == seqn)
 			break;
-		}
 
 		curr = curr->next;
 	}
 
-	return trgt;
+	return curr;
 }
 
-SegmentBufferElement *findSegmentBufferByAck(SegmentBuffer *buff, const uint32_t ackn) {
-	SegmentBufferElement *curr = buff->head;
-	SegmentBufferElement *trgt = NULL;
+SSgmBuffElem *findSegmentBufferByAck(SSgmBuff *buff, const uint32_t ackn) {
+	SSgmBuffElem *curr = buff->head;
 
 	while (curr) {
 
-		if (RUDP_ISACKED(curr->segment.hdr.seqn, curr->segment.hdr.plds, ackn)) {
-			
-			trgt = curr;
-
+		if (RUDP_ISACKED(curr->segment.hdr.seqn, curr->segment.hdr.plds, ackn))
 			break;
-		}
 
 		curr = curr->next;
 	}
 
-	return trgt;
+	return curr;
 }
 
 /* SORTED SEGMENT BUFFER REPRESENTATION */
 
-char *segmentBufferToString(SegmentBuffer *buff) {
-	SegmentBufferElement *curr = NULL;
+char *segmentBufferToString(SSgmBuff *buff) {
+	SSgmBuffElem *curr = NULL;
 	char *strbuff, *strsgm = NULL;	
 	uint32_t i;
 

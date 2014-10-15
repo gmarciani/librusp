@@ -38,6 +38,8 @@ COMMUNICATION_TESTDIR = $(TESTDIR)/communication
 
 SEGMENT_TESTDIR = $(TESTDIR)/segment
 
+TESTPREFIX = test_
+
 # Dependencies
 
 LIBS = -lpthread -lrt -lm -lcrypto -lssl
@@ -62,41 +64,41 @@ testdir:
 communication: echosnd echorcv filesnd filercv
 
 echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 echorcv: $(COMMUNICATION_TESTDIR)/echorcv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 	
 filesnd: $(COMMUNICATION_TESTDIR)/filesnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 
 filercv: $(COMMUNICATION_TESTDIR)/filercv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 	
 buffer: sortsgmbuffer strbuffer
 
 sortsgmbuffer: $(BUFFER_TESTDIR)/sortsgmbuffer.c
-	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
 strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
-	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 segment: $(SEGMENT_TESTDIR)/sgm.c
-	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-base: timer str math macro
+base: timer str rnd macro
 
 timer: $(BASE_TESTDIR)/timer.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 str: $(BASE_TESTDIR)/str.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-math: $(BASE_TESTDIR)/math.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
+rnd: $(BASE_TESTDIR)/rnd.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 macro: $(BASE_TESTDIR)/macro.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 
 	rm -frv $(BINDIR)/*
