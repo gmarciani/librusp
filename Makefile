@@ -8,7 +8,7 @@ CFLAGS = -g -Wall -O3
 
 PFLAGS = -pg
 
-# Sources
+# Directories
 
 SRCDIR = src
 
