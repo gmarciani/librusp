@@ -36,7 +36,10 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(PROTOCOL_CONNECTION)
 
 # Targets
 
-all: createbindir echosnd echorcv tsgmbuffer sgmbuffer sgm timer buffer string math macro
+test: testdir echosnd echorcv tsgmbuffer sgmbuffer sgm timer buffer string math macro
+
+testdir: 
+	mkdir -pv $(BINDIR)
 
 echosnd: $(TESTDIR)/echosnd.c
 	$(CC) $(CFLAGS) $(TESTDIR)/echosnd.c $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -68,10 +71,5 @@ math: $(TESTDIR)/math.c
 macro: $(TESTDIR)/macro.c
 	$(CC) $(CFLAGS) $(TESTDIR)/macro.c $(UTILDIR)/macroutil.h -o $(BINDIR)/$(TESTPREFIX)$@
 
-clean: 
+clean-test: 
 	rm -frv $(BINDIR)/$(TESTPREFIX)*
-
-# Utilities
-
-createbindir: 
-	mkdir -pv $(BINDIR)
