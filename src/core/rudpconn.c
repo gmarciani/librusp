@@ -140,8 +140,8 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 	conn->rcvslider = createThread(rcvSliderLoop, conn, THREAD_JOINABLE);
 }
 
-int getConnectionState(Connection *conn) {
-	int state;
+short getConnectionState(Connection *conn) {
+	short state;
 
 	lockMutex(conn->state_mtx);
 
@@ -152,7 +152,7 @@ int getConnectionState(Connection *conn) {
 	return state;
 }
 
-void setConnectionState(Connection *conn, const int state) {
+void setConnectionState(Connection *conn, const short state) {
 
 	lockMutex(conn->state_mtx);
 

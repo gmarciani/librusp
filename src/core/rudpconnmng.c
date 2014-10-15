@@ -235,9 +235,6 @@ void writeMessage(Connection *conn, const char *msg, const size_t size) {
 
 	lockMutex(conn->sndbuff->mtx);
 
-	while (conn->sndbuff->size != 0)
-		waitConditionVariable(conn->sndbuff->remove_cnd, conn->sndbuff->mtx);
-
 	writeBuffer(conn->sndbuff, msg, size);	
 
 	unlockMutex(conn->sndbuff->mtx);

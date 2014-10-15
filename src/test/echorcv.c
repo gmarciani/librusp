@@ -62,7 +62,7 @@ static void showListeningConnectionDetails(void) {
 
 	strladdr = addressToString(laddr);	
 
-	printf("Connection (%d) listening on: %s.\n", lconn, strladdr);		
+	printf("Connection (%ld) listening on: %s.\n", lconn, strladdr);		
 
 	free(strladdr);
 }
@@ -95,7 +95,7 @@ static void showEstablishedConnectionDetails(void) {
 
 	strcaddr = addressToString(caddr);	
 
-	printf("Connection (%d) established on: %s with: %s.\n", aconn, straaddr, strcaddr);		
+	printf("Connection (%ld) established on: %s with: %s.\n", aconn, straaddr, strcaddr);		
 
 	free(straaddr);	
 

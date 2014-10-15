@@ -65,7 +65,7 @@ static void showConnectionDetails(void) {
 
 	strsaddr = addressToString(saddr);		
 
-	printf("Connection (%d) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
+	printf("Connection (%ld) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
 
 	free(strcaddr);
 

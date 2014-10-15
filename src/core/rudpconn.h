@@ -40,12 +40,12 @@
 
 /* CONNECTION STRUCTURE */
 
-typedef int ConnectionId;
+typedef long int ConnectionId;
 
 typedef struct Connection {
 	ConnectionId connid;
 
-	int state;
+	short state;
 	pthread_mutex_t *state_mtx;
 	pthread_cond_t  *state_cnd;	
 
