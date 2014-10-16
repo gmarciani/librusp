@@ -16,6 +16,8 @@
 
 #define RUDP_NXTSEQN(seqn, plds) (((seqn) + (plds)) % RUDP_MAXSEQN)
 
+#define RUDP_LTSEQN(seqnone, seqntwo) (seqntwo - seqnone > 0)
+
 #define RUDP_ISACKED(seqn, plds, ackn) ((ackn) == RUDP_NXTSEQN((seqn), (plds)))
 
 int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const uint32_t seqn);

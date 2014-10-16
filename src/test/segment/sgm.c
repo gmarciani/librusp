@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include "../../core/segment/sgm.h"
 #include "../../util/macroutil.h"
 
-#define MSG "Hello World! I'm happy! Stay hungry, stay foolish, folks!"
+#define MSG "Hello World!"
 
 static Segment sgm;
 
@@ -12,6 +13,8 @@ static void creation(void);
 static void stringRepresentation(void);
 
 static void serializationDeserialization(void);
+
+static void sequenceComparation(void);
 
 static void sequenceMatching(void);
 
@@ -23,23 +26,25 @@ int main(void) {
 
 	serializationDeserialization();
 
+	sequenceComparation();
+
 	sequenceMatching();
 
 	exit(EXIT_SUCCESS);	
 }
 
 static void creation(void) {
-	printf("# Creating SYNACK segments (PLDS=%d) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s\n", RUDP_PLDS, MSG);
+	printf("# Creating SYNACK segments (PLDS=%d) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s...", RUDP_PLDS, MSG);
 
 	sgm = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, MSG);
 
-	printf("SUCCESS\n");	
+	printf("OK\n");
 }
 
 static void stringRepresentation(void) {
 	char *strsgm = NULL;
 
-	printf("# Segment to string\n");
+	printf("# Segment to string...");
 
 	strsgm = segmentToString(sgm);
 
@@ -52,7 +57,7 @@ static void serializationDeserialization(void) {
 	Segment sgmtwo;
 	char *ssgm = NULL;
 
-	printf("# Serializing/Deserializing segment\n");
+	printf("# Serializing/Deserializing segment...");
 
 	ssgm = serializeSegment(sgm);
 
@@ -60,16 +65,35 @@ static void serializationDeserialization(void) {
 
 	free(ssgm);
 
-	if (!isEqualSegment(sgm, sgmtwo))
-		ERREXIT("FAILURE");
+	assert(isEqualSegment(sgm, sgmtwo));
 
-	printf("SUCCESS\n");
+	printf("OK\n");
+}
+
+static void sequenceComparation(void) {
+	uint32_t seqnone, seqntwo;
+
+	printf("# Comparing less than...");
+
+	seqnone = 10;
+	seqntwo = 20;
+
+	while (seqnone != 9) {
+
+		assert(RUDP_LTSEQN(seqnone, seqntwo));
+
+		seqnone = RUDP_NXTSEQN(seqnone, 1);
+
+		seqntwo = RUDP_NXTSEQN(seqntwo, 1);
+	}
+
+	printf("OK\n");
 }
 
 static void sequenceMatching(void) {
 	uint32_t wndb, wnde, seqn;
 
-	printf("# Matching sequence number inside window\n");
+	printf("# Matching sequence number inside window...");
 
 	wndb = 0;
 	wnde = 2097152;
@@ -77,19 +101,16 @@ static void sequenceMatching(void) {
 
 	while (seqn != 79) {
 		
-		if (matchSequenceAgainstWindow(wndb, wnde, seqn) != 0) {
-			printf("wndb:%u wnde:%u seqn:%u\n", wndb, wnde, seqn);
-			ERREXIT("MATCHING FAILURE: sequence should be inside window.");
-		}
+		assert(matchSequenceAgainstWindow(wndb, wnde, seqn) == 0);
 
 		wndb = RUDP_NXTSEQN(wndb, 1);
 		wnde = RUDP_NXTSEQN(wnde, 1);
 		seqn = RUDP_NXTSEQN(seqn, 1);
 	}
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 
-	printf("# Matching sequence number before window\n");
+	printf("# Matching sequence number before window...");
 
 	wndb = 500;
 	wnde = 2097652;
@@ -97,19 +118,16 @@ static void sequenceMatching(void) {
 
 	while (seqn != 79) {		
 		
-		if (matchSequenceAgainstWindow(wndb, wnde, seqn) != -1) {
-			printf("wndb:%u wnde:%u seqn:%u\n", wndb, wnde, seqn);
-			ERREXIT("FAILURE: sequence should be before window.");
-		}
+		assert(matchSequenceAgainstWindow(wndb, wnde, seqn) == -1);
 
 		wndb = RUDP_NXTSEQN(wndb, 1);
 		wnde = RUDP_NXTSEQN(wnde, 1);
 		seqn = RUDP_NXTSEQN(seqn, 1);
 	}
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 
-	printf("# Matching sequence number after window\n");
+	printf("# Matching sequence number after window...");
 
 	wndb = 500;
 	wnde = 2097652;
@@ -117,15 +135,12 @@ static void sequenceMatching(void) {
 
 	while (seqn != 2107151) {
 		
-		if (matchSequenceAgainstWindow(wndb, wnde, seqn) != 1) {
-			printf("wndb:%u wnde:%u seqn:%u\n", wndb, wnde, seqn);	
-			ERREXIT("MATCHING FAILURE: sequence should be after window.");
-		}
+		assert(matchSequenceAgainstWindow(wndb, wnde, seqn) == 1);
 
 		wndb = RUDP_NXTSEQN(wndb, 1);
 		wnde = RUDP_NXTSEQN(wnde, 1);
 		seqn = RUDP_NXTSEQN(seqn, 1);
 	}
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }

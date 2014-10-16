@@ -79,7 +79,7 @@ void destroyConnection(Connection *conn) {
 
 		freeTSegmentBuffer(conn->sndsgmbuff);
 
-		freeSegmentBuffer(conn->rcvsgmbuff);
+		freeSgmBuff(conn->rcvsgmbuff);
 
 		freeBuffer(conn->sndbuff);		
 
@@ -365,7 +365,7 @@ static void *rcvBufferizerLoop(void *arg) {
 
 				lockMutex(conn->rcvsgmbuff->mtx);
 
-				addSegmentBuffer(conn->rcvsgmbuff, rcvsgm);
+				addSgmBuff(conn->rcvsgmbuff, rcvsgm);
 
 				unlockMutex(conn->rcvsgmbuff->mtx);
 
@@ -437,7 +437,7 @@ static void *rcvSliderLoop(void *arg) {
 
 					conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, curr->segment.hdr.plds);	
 
-					removeSegmentBuffer(conn->rcvsgmbuff, curr);			
+					removeSgmBuff(conn->rcvsgmbuff, curr);			
 
 					break;
 				}

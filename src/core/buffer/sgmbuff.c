@@ -1,11 +1,11 @@
-#include "sortsgmbuff.h"
+#include "sgmbuff.h"
 
-/* SORTED SEGMENT BUFFER CREATION/DISTRUCTION */
+/* SEGMENT BUFFER CREATION/DISTRUCTION */
 
-SSgmBuff *createSegmentBuffer(void) {
-	SSgmBuff *buff = NULL;
+SgmBuff *createSgmBuff(void) {
+	SgmBuff *buff = NULL;
 
-	if (!(buff = malloc(sizeof(SSgmBuff))))
+	if (!(buff = malloc(sizeof(SgmBuff))))
 		ERREXIT("Cannot allocate memory for segment buffer.");
 
 	buff->mtx = createMutex();
@@ -25,10 +25,10 @@ SSgmBuff *createSegmentBuffer(void) {
 	return buff;
 }
 
-void freeSegmentBuffer(SSgmBuff *buff) {
+void freeSgmBuff(SgmBuff *buff) {
 
 	while (buff->head)
-		removeSegmentBuffer(buff, buff->head);
+		removeSgmBuff(buff, buff->head);
 
 	destroyMutex(buff->mtx);
 
@@ -41,13 +41,15 @@ void freeSegmentBuffer(SSgmBuff *buff) {
 	free(buff);
 }
 
-/* SORTED SEGMENT BUFFER INSERTION/REMOVAL */
+/* SEGMENT BUFFER INSERTION/REMOVAL */
 
-SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm) {
-	SSgmBuffElem *new, *curr= NULL;
+SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm) {
+	SgmBuffElem *new, *curr= NULL;
 
-	if (!(new = malloc(sizeof(SSgmBuffElem))))
+	if (!(new = malloc(sizeof(SgmBuffElem))))
 		ERREXIT("Cannot allocate memory for new segment buffer element.");
+
+	new->status = RUDP_SGM_NACKED;
 
 	new->segment = sgm;
 
@@ -63,7 +65,7 @@ SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm) {
 
 	} else {
 
-		if (new->segment.hdr.seqn < buff->head->segment.hdr.seqn) {
+		if (RUDP_LTSEQN(new->segment.hdr.seqn, buff->head->segment.hdr.seqn)) {
 
 			new->next = buff->head;
 
@@ -73,7 +75,7 @@ SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm) {
 
 			buff->head = new;
 
-		} else if (new->segment.hdr.seqn > buff->tail->segment.hdr.seqn) {
+		} else if (RUDP_LTSEQN(buff->tail->segment.hdr.seqn, new->segment.hdr.seqn)) {
 
 			new->next = NULL;
 
@@ -89,7 +91,7 @@ SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm) {
 
 			while (curr) {
 
-				if (new->segment.hdr.seqn < curr->segment.hdr.seqn)
+				if (RUDP_LTSEQN(new->segment.hdr.seqn, curr->segment.hdr.seqn))
 					break;
 
 				curr = curr->next;
@@ -108,7 +110,7 @@ SSgmBuffElem *addSegmentBuffer(SSgmBuff *buff, const Segment sgm) {
 	return new;
 }
 
-void removeSegmentBuffer(SSgmBuff *buff, SSgmBuffElem *elem) {
+void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem) {
 
 	if (!elem)
 		return;
@@ -144,10 +146,10 @@ void removeSegmentBuffer(SSgmBuff *buff, SSgmBuffElem *elem) {
 	buff->size--;
 }
 
-/* SORTED SEGMENT BUFFER SEARCH */
+/* SEGMENT BUFFER SEARCH */
 
-SSgmBuffElem *findSegmentBufferBySequence(SSgmBuff *buff, const uint32_t seqn) {
-	SSgmBuffElem *curr = buff->head;
+SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn) {
+	SgmBuffElem *curr = buff->head;
 
 	while (curr) {
 
@@ -157,11 +159,11 @@ SSgmBuffElem *findSegmentBufferBySequence(SSgmBuff *buff, const uint32_t seqn) {
 		curr = curr->next;
 	}
 
-	return curr;
+	return curr		;
 }
 
-SSgmBuffElem *findSegmentBufferByAck(SSgmBuff *buff, const uint32_t ackn) {
-	SSgmBuffElem *curr = buff->head;
+SgmBuffElem *findSgmBuffAckn(SgmBuff *buff, const uint32_t ackn) {
+	SgmBuffElem *curr = buff->head;
 
 	while (curr) {
 
@@ -174,10 +176,10 @@ SSgmBuffElem *findSegmentBufferByAck(SSgmBuff *buff, const uint32_t ackn) {
 	return curr;
 }
 
-/* SORTED SEGMENT BUFFER REPRESENTATION */
+/* SEGMENT BUFFER REPRESENTATION */
 
-char *segmentBufferToString(SSgmBuff *buff) {
-	SSgmBuffElem *curr = NULL;
+char *sgmBuffToString(SgmBuff *buff) {
+	SgmBuffElem *curr = NULL;
 	char *strbuff, *strsgm = NULL;	
 	uint32_t i;
 

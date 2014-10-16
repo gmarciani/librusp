@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <assert.h>
-#include "../../core/buffer/sortsgmbuff.h"
+#include "../../core/buffer/sgmbuff.h"
 #include "../../util/threadutil.h"
 #include "../../util/macroutil.h"
 
@@ -11,7 +11,7 @@
 #define ISN (uint32_t) 0
 #define PLD "Hello"
 
-static SSgmBuff *buff;
+static SgmBuff *buff;
 
 static void creation(void);
 
@@ -45,7 +45,7 @@ int main(void) {
 static void creation(void) {
 	printf("# Creating segment buffer..");
 
-	buff = createSegmentBuffer();
+	buff = createSgmBuff();
 
 	printf("OK\n");
 }
@@ -55,7 +55,7 @@ static void stringRepresentation(void) {
 
 	printf("# Segment buffer to string...\n");
 
-	strbuff = segmentBufferToString(buff);
+	strbuff = sgmBuffToString(buff);
 
 	printf("%s\n", strbuff);
 
@@ -64,7 +64,7 @@ static void stringRepresentation(void) {
 
 static void insertion(void) {
 	Segment sortsgm[NUM_ELEMENTS], sgm;
-	SSgmBuffElem *curr = NULL;
+	SgmBuffElem *curr = NULL;
 	uint32_t seqn = ISN;
 	int i;
 
@@ -81,10 +81,10 @@ static void insertion(void) {
 
 	for (i = NUM_ELEMENTS - 1; i >= 0; i--) {
 
-		addSegmentBuffer(buff, sortsgm[i]);
+		addSgmBuff(buff, sortsgm[i]);
 
-		assert(isEqualSegment(sgm, findSegmentBufferBySequence(buff, sgm.hdr.seqn)->segment) &&
-				isEqualSegment(sgm, findSegmentBufferByAck(buff, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment));
+		assert(isEqualSegment(sgm, findSgmBuffSeqn(buff, sgm.hdr.seqn)->segment) &&
+				isEqualSegment(sgm, findSgmBuffAckn(buff, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment));
 	}
 
 	curr = buff->head;
@@ -102,11 +102,11 @@ static void insertion(void) {
 static void removal(void) {
 	printf("# Removing segment with seqn 0 and segment acked by ackn 25...");
 
-	removeSegmentBuffer(buff, findSegmentBufferBySequence(buff, 0));
+	removeSgmBuff(buff, findSgmBuffSeqn(buff, 0));
 
-	removeSegmentBuffer(buff, findSegmentBufferByAck(buff, 25));
+	removeSgmBuff(buff, findSgmBuffAckn(buff, 25));
 
-	assert(!findSegmentBufferBySequence(buff, 0) && !findSegmentBufferByAck(buff, 25));
+	assert(!findSgmBuffSeqn(buff, 0) && !findSgmBuffAckn(buff, 25));
 
 	printf("OK\n");
 }
@@ -114,7 +114,7 @@ static void removal(void) {
 static void deallocation(void) {
 	printf("# Freeing segment buffer...");
 
-	freeSegmentBuffer(buff);
+	freeSgmBuff(buff);
 
 	printf("OK\n");
 }

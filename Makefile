@@ -48,7 +48,7 @@ UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c tim
 
 SEGMENTS = $(addprefix $(SEGMENTDIR)/, sgm.h sgm.c seqn.h seqn.c) $(UTILS)
 
-BUFFERS = $(addprefix $(BUFFERDIR)/, timeosgmbuff.h timeosgmbuff.c sortsgmbuff.h sortsgmbuff.c strbuff.h strbuff.c) $(SEGMENTS)
+BUFFERS = $(addprefix $(BUFFERDIR)/, sgmbuff.h sgmbuff.c strbuff.h strbuff.c) $(SEGMENTS)
 
 CONNECTION = $(addprefix $(CONNECTIONDIR)/, conn.h conn.c connmng.h connmng.c timeo.h) $(BUFFERS)
 
@@ -75,9 +75,9 @@ filesnd: $(COMMUNICATION_TESTDIR)/filesnd.c
 filercv: $(COMMUNICATION_TESTDIR)/filercv.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-buffer: sortsgmbuffer strbuffer
+buffer: sgmbuffer strbuffer
 
-sortsgmbuffer: $(BUFFER_TESTDIR)/sortsgmbuffer.c
+sgmbuffer: $(BUFFER_TESTDIR)/sgmbuffer.c
 	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
 strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
