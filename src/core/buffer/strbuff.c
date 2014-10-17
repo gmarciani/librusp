@@ -1,12 +1,12 @@
 #include "strbuff.h"
 
-/* CREATION/DISTRUCTION */
+/* STRING BUFFER CREATION/DISTRUCTION */
 
-Buffer *createBuffer(void) {
-	Buffer *buff = NULL;
+StrBuff *createStrBuff(void) {
+	StrBuff *buff = NULL;
 
-	if (!(buff = malloc(sizeof(Buffer))))
-		ERREXIT("Cannot allocate memory for buffer.");
+	if (!(buff = malloc(sizeof(StrBuff))))
+		ERREXIT("Cannot allocate memory for string buffer.");
 
 	buff->mtx = createMutex();
 
@@ -19,7 +19,7 @@ Buffer *createBuffer(void) {
 	return buff;
 }
 
-void freeBuffer(Buffer *buff) {
+void freeStrBuff(StrBuff *buff) {
 
 	destroyMutex(buff->mtx);
 
@@ -32,9 +32,9 @@ void freeBuffer(Buffer *buff) {
 	free(buff);
 }
 
-/* I/O */
+/* STRING BUFFER I/O */
 
-char *lookBuffer(Buffer *buff, const size_t size) {
+char *lookStrBuff(StrBuff *buff, const size_t size) {
 	char *str = NULL;
 	size_t sizeToCopy;
 
@@ -50,13 +50,13 @@ char *lookBuffer(Buffer *buff, const size_t size) {
 	return str;
 }
 
-char *readBuffer(Buffer *buff, const size_t size) {
+char *readStrBuff(StrBuff *buff, const size_t size) {
 	char *str = NULL;
 	size_t sizeToCopy;
 
 	sizeToCopy = (size < buff->size) ? size : buff->size;
 
-	str = lookBuffer(buff, sizeToCopy);
+	str = lookStrBuff(buff, sizeToCopy);
 
 	if (sizeToCopy != 0)
 		memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->size - sizeToCopy));
@@ -66,7 +66,7 @@ char *readBuffer(Buffer *buff, const size_t size) {
 	return str;
 }
 
-void writeBuffer(Buffer *buff, const char *str, const size_t size) {
+void writeStrBuff(StrBuff *buff, const char *str, const size_t size) {
 
 	if (size == 0)
 		return;
@@ -76,13 +76,13 @@ void writeBuffer(Buffer *buff, const char *str, const size_t size) {
 	buff->size += size;
 }
 
-/* REPRESENTATION */
+/* STRING BUFFER REPRESENTATION */
 
-char *bufferToString(Buffer *buff) {
+char *strBuffToString(StrBuff *buff) {
 	char *strbuff = NULL;
 	char *strcontent = NULL;
 
-	strcontent = lookBuffer(buff, buff->size);
+	strcontent = lookStrBuff(buff, buff->size);
 
 	if (!(strbuff = malloc(sizeof(char) * (25 + strlen(strcontent) + 1))))
 		ERREXIT("Cannot allocate memory for buffer string representation.");

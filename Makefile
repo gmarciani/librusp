@@ -61,7 +61,7 @@ test: testdir communication buffer segment base
 testdir: 
 	mkdir -pv $(BINDIR)
 	
-communication: echosnd echorcv filesnd filercv
+communication: echosnd echorcv
 
 echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@

@@ -130,10 +130,7 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 	struct timespec start, end;
 	long double sampleRTT;
 
-	if (getConnectionState(lconn) != RUDP_CON_LIST)
-		ERREXIT("Cannot accept incoming connections: connection not listening.");
-
-	while (1) {
+	while (getConnectionState(lconn) == RUDP_CON_LIST) {
 
 		do {
 
@@ -218,6 +215,8 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 		setConnectionState(lconn, RUDP_CON_LIST);	
 	}
+
+	return -1;
 }
 
 /* DESYNCHRONIZATION */
@@ -235,7 +234,7 @@ void writeMessage(Connection *conn, const char *msg, const size_t size) {
 
 	lockMutex(conn->sndbuff->mtx);
 
-	writeBuffer(conn->sndbuff, msg, size);	
+	writeStrBuff(conn->sndbuff, msg, size);	
 
 	unlockMutex(conn->sndbuff->mtx);
 
@@ -245,7 +244,7 @@ void writeMessage(Connection *conn, const char *msg, const size_t size) {
 
 	do 
 		waitConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx);
-	while (conn->sndsgmbuff->size != 0);
+	while ((conn->sndbuff->size != 0) | (conn->sndsgmbuff->size != 0));
 
 	unlockMutex(conn->sndsgmbuff->mtx);
 }
@@ -261,7 +260,7 @@ char *readMessage(Connection *conn, const size_t size) {
 	while (conn->rcvbuff->size < size)
 		waitConditionVariable(conn->rcvbuff->insert_cnd, conn->rcvbuff->mtx);
 	
-	msg = readBuffer(conn->rcvbuff, size);	
+	msg = readStrBuff(conn->rcvbuff, size);	
 
 	unlockMutex(conn->rcvbuff->mtx);
 

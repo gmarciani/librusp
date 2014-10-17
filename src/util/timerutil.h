@@ -18,6 +18,10 @@ void freeTimer(const timer_t timerid);
 
 void setTimer(const timer_t timerid, const long double value, const long double ivalue);
 
+struct itimerspec getTimer(const timer_t timerid);
+
+short isTimerDisarmed(const timer_t timerid);
+
 long double getElapsed(const struct timespec start, const struct timespec end);
 
 struct timespec getTimespec(const long double value);

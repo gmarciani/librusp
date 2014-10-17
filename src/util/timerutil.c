@@ -41,6 +41,26 @@ void setTimer(const timer_t timerid, const long double value, const long double 
 		
 }
 
+struct itimerspec getTimer(const timer_t timerid) {
+	struct itimerspec timeout;
+
+	errno = 0;
+
+	if (timer_gettime(timerid, &timeout) != 0)
+		ERREXIT("Cannot set timer: %s", strerror(errno));
+
+	return timeout;
+}
+
+short isTimerDisarmed(const timer_t timerid) {
+	struct itimerspec timeout;
+
+	timeout = getTimer(timerid);
+
+	return (timeout.it_value.tv_sec == 0 && timeout.it_value.tv_nsec == 0 &&
+			timeout.it_interval.tv_sec == 0 && timeout.it_interval.tv_nsec == 0);
+}
+
 long double getElapsed(const struct timespec start, const struct timespec end) {
 	long double elapsed;
 

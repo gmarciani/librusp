@@ -44,14 +44,16 @@ void freeSgmBuff(SgmBuff *buff) {
 /* SEGMENT BUFFER INSERTION/REMOVAL */
 
 SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm) {
-	SgmBuffElem *new, *curr= NULL;
+	SgmBuffElem *new = NULL;
 
 	if (!(new = malloc(sizeof(SgmBuffElem))))
 		ERREXIT("Cannot allocate memory for new segment buffer element.");
 
-	new->status = RUDP_SGM_NACKED;
-
 	new->segment = sgm;
+
+	new->retrans = 0;
+
+	new->delay = 0;
 
 	if (buff->size == 0) {
 
@@ -65,44 +67,13 @@ SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm) {
 
 	} else {
 
-		if (RUDP_LTSEQN(new->segment.hdr.seqn, buff->head->segment.hdr.seqn)) {
+		new->prev = buff->tail;
 
-			new->next = buff->head;
+		new->next = NULL;
 
-			new->prev = NULL;
+		buff->tail->next = new;
 
-			buff->head->prev = new;
-
-			buff->head = new;
-
-		} else if (RUDP_LTSEQN(buff->tail->segment.hdr.seqn, new->segment.hdr.seqn)) {
-
-			new->next = NULL;
-
-			new->prev = buff->tail;
-
-			buff->tail->next = new;
-
-			buff->tail = new;
-
-		} else {
-
-			curr = buff->head;
-
-			while (curr) {
-
-				if (RUDP_LTSEQN(new->segment.hdr.seqn, curr->segment.hdr.seqn))
-					break;
-
-				curr = curr->next;
-			}
-
-			new->next = curr;
-
-			new->prev = curr->prev;
-
-			curr->prev = new;
-		}
+		buff->tail = new;
 	} 
 
 	buff->size++;

@@ -6,13 +6,14 @@
 #include "../../util/timerutil.h"
 #include "../../util/macroutil.h"
 
-#define RUDP_SGM_NACKED 1
-#define RUDP_SGM_YACKED 2
-
 /* SEGMENT BUFFER STRUCTURES */
 
 typedef struct SgmBuffElem {
 	short status;
+	long retrans;
+	struct timespec time;
+	long double delay;
+
 	Segment segment;
 
 	struct SgmBuffElem *next;

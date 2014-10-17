@@ -87,15 +87,6 @@ static void insertion(void) {
 				isEqualSegment(sgm, findSgmBuffAckn(buff, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment));
 	}
 
-	curr = buff->head;
-
-	while (curr) {
-		if (curr->next)
-			assert(curr->segment.hdr.seqn <= curr->next->segment.hdr.seqn);
-
-		curr = curr->next;
-	}
-
 	printf("OK\n");
 }
 

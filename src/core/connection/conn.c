@@ -18,6 +18,8 @@ static void *sndBufferizerLoop(void *arg);
 
 static void *sndSliderLoop(void *arg);
 
+//static void *timeoutManagerLoop(void *arg);
+
 static void timeoutHandler(union sigval arg);
 
 /* INBOX THREADS */
@@ -39,6 +41,10 @@ Connection *createConnection(void) {
 	conn->state_cnd = createConditionVariable();
 
 	conn->sock_mtx = createMutex();
+
+	conn->sndwnd_mtx = createMutex();
+
+	conn->rcvwnd_mtx = createMutex();
 
 	conn->timeo_mtx = createMutex();
 
@@ -69,21 +75,23 @@ void destroyConnection(Connection *conn) {
 
 		setConnectionState(conn, RUDP_CON_CLOS);
 
-		joinThread(conn->sndbufferizer);
+		freeTimer(conn->timer);
 
-		joinThread(conn->sndslider);
+		cancelThread(conn->sndbufferizer);
 
-		joinThread(conn->rcvbufferizer);
+		cancelThread(conn->sndslider);
 
-		joinThread(conn->rcvslider);
+		cancelThread(conn->rcvbufferizer);
 
-		freeTSegmentBuffer(conn->sndsgmbuff);
+		cancelThread(conn->rcvslider);
+
+		freeSgmBuff(conn->sndsgmbuff);
 
 		freeSgmBuff(conn->rcvsgmbuff);
 
-		freeBuffer(conn->sndbuff);		
+		freeStrBuff(conn->sndbuff);		
 
-		freeBuffer(conn->rcvbuff);
+		freeStrBuff(conn->rcvbuff);
 
 		destroyMutex(conn->state_mtx);
 
@@ -105,7 +113,8 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 
 	setSocketTimeout(conn->sock, ON_READ, 0.0);
 
-	setSocketConnected(conn->sock, paddr);	
+	setSocketConnected(conn->sock, paddr);
+
 
 	conn->extRTT = extRTT;
 
@@ -113,27 +122,31 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 
 	conn->timeo = extRTT;
 
+	conn->timer = createTimer(timeoutHandler, conn);
+
+
 	conn->sndwndb = sndwndb;
 
 	conn->sndwnde = sndwndb + (RUDP_PLDS * RUDP_CON_WNDS);
 
 	conn->sndnext = sndwndb;
 
-	conn->sndbuff = createBuffer();
+	conn->sndbuff = createStrBuff();
 
-	conn->sndsgmbuff = createTSegmentBuffer();
+	conn->sndsgmbuff = createSgmBuff();
+
+	conn->sndbufferizer = createThread(sndBufferizerLoop, conn, THREAD_JOINABLE);
+
+	conn->sndslider = createThread(sndSliderLoop, conn, THREAD_JOINABLE);
+
 
 	conn->rcvwndb = rcvwndb;
 
 	conn->rcvwnde = rcvwndb + (RUDP_PLDS * RUDP_CON_WNDS);
 
-	conn->rcvbuff = createBuffer();
+	conn->rcvbuff = createStrBuff();
 
-	conn->rcvsgmbuff = createSegmentBuffer();	
-
-	conn->sndbufferizer = createThread(sndBufferizerLoop, conn, THREAD_JOINABLE);
-
-	conn->sndslider = createThread(sndSliderLoop, conn, THREAD_JOINABLE);
+	conn->rcvsgmbuff = createSgmBuff();
 
 	conn->rcvbufferizer = createThread(rcvBufferizerLoop, conn, THREAD_JOINABLE);
 
@@ -189,8 +202,15 @@ void setTimeout(Connection *conn, const long double sampleRTT) {
 
 /* SEGMENTS I/O */
 
-void sendSegment(Connection *conn, const Segment sgm) {
+void sendSegment(Connection *conn, Segment sgm) {
 	char *ssgm = NULL;
+
+	if (!(sgm.hdr.ctrl & RUDP_ACK)) {
+
+		sgm.hdr.ctrl |= RUDP_ACK;
+
+		sgm.hdr.ackn = conn->rcvwndb;
+	}
 
 	ssgm = serializeSegment(sgm);
 
@@ -198,11 +218,11 @@ void sendSegment(Connection *conn, const Segment sgm) {
 
 	writeConnectedSocket(conn->sock, ssgm);
 
-	unlockMutex(conn->sock_mtx);
-
 	DBGFUNC(DEBUG, printOutSegment(getSocketPeer(conn->sock), sgm));	
 
 	free(ssgm);
+
+	unlockMutex(conn->sock_mtx);
 }
 
 int receiveSegment(Connection *conn, Segment *sgm) {
@@ -226,44 +246,65 @@ int receiveSegment(Connection *conn, Segment *sgm) {
 
 static void *sndBufferizerLoop(void *arg) {
 	Connection *conn = (Connection *) arg;
-	char *pld = NULL;
+	SgmBuffElem *curr = NULL;
 	long double timeout;
+	char *pld = NULL;
+	char *timestamp = NULL;
 
-	while (getConnectionState(conn) != RUDP_CON_CLOS) {
+	while (1) {
 
 		lockMutex(conn->sndbuff->mtx);
 
 		while (conn->sndbuff->size == 0)
 			waitConditionVariable(conn->sndbuff->insert_cnd, conn->sndbuff->mtx);
 
-		lockMutex(conn->sndsgmbuff->mtx);		
+		lockMutex(conn->sndsgmbuff->mtx);
 
-		while ((conn->sndwnde - conn->sndnext) < RUDP_PLDS)
+		DBGPRINT(DEBUG, "READING BUFFER: size %zu wndspace: %u", conn->sndbuff->size, (conn->sndwnde - conn->sndnext));
+
+		while ((conn->sndwnde - conn->sndnext) < RUDP_PLDS) {
+
+			DBGPRINT(DEBUG, "NO SPACE IN WINDOW");
+
 			waitConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx);
+		}
 
-		pld = readBuffer(conn->sndbuff, RUDP_PLDS);
+		pld = readStrBuff(conn->sndbuff, RUDP_PLDS);
 
-		unlockMutex(conn->sndbuff->mtx);	
+		unlockMutex(conn->sndbuff->mtx);
 
-		Segment sgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, conn->rcvwndb, pld);
+		Segment sgm = createSegment(0, 0, 0, conn->sndnext, 0, pld);
+
+		DBGPRINT(DEBUG, "SEGMENTIZED %s", pld);
 
 		free(pld);
 
-		conn->sndnext = RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);	
+		curr = addSgmBuff(conn->sndsgmbuff, sgm);
 
-		TimeoutObject timeoutobj = {.conn = conn};
+		curr->status = RUDP_SGM_NACK;
 
-		TSegmentBufferElement *timeoutsgm = addTSegmentBuffer(conn->sndsgmbuff, sgm);
-		
-		sendSegment(conn, sgm);		
+		clock_gettime(CLOCK_MONOTONIC, &(curr->time));
 
-		timeout = getTimeout(conn);
+		unlockMutex(conn->sndsgmbuff->mtx);
 
-		setTimer(timeoutsgm, timeout, 0);
+		signalConditionVariable(conn->sndsgmbuff->insert_cnd);
 
-		unlockMutex(conn->sndsgmbuff->mtx);	
+		conn->sndnext = RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);
 
-		signalConditionVariable(conn->sndsgmbuff->insert_cnd);	
+		sendSegment(conn, sgm);
+
+		if (isTimerDisarmed(conn->timer)) {
+
+			timeout = getTimeout(conn);
+
+			timestamp = getTime();
+
+			DBGPRINT(DEBUG, "%s TIMEOUT START: %LF", timestamp, timeout);
+
+			free(timestamp);
+
+			setTimer(conn->timer, timeout, 0.0);
+		}
 	}
 
 	return NULL;
@@ -271,9 +312,10 @@ static void *sndBufferizerLoop(void *arg) {
 
 static void *sndSliderLoop(void *arg) {
 	Connection *conn = (Connection *) arg;
-	long double sampleRTT;
+	long double timeout;
+	char *timestamp = NULL;
 
-	while (getConnectionState(conn) != RUDP_CON_CLOS) {
+	while (1) {
 
 		lockMutex(conn->sndsgmbuff->mtx);	
 
@@ -283,58 +325,98 @@ static void *sndSliderLoop(void *arg) {
 		while (conn->sndsgmbuff->head->status != RUDP_SGM_YACK)
 			waitConditionVariable(conn->sndsgmbuff->status_cnd, conn->sndsgmbuff->mtx);
 
+		DBGPRINT(DEBUG, "WNDB ACKED %u", conn->sndsgmbuff->head->segment.hdr.seqn);
+
 		conn->sndwndb = RUDP_NXTSEQN(conn->sndwndb, conn->sndsgmbuff->head->segment.hdr.plds);
 
 		conn->sndwnde = RUDP_NXTSEQN(conn->sndwnde, conn->sndsgmbuff->head->segment.hdr.plds);
 
-		removeTSegmentBuffer(conn->sndsgmbuff, conn->sndsgmbuff->head);
+		DBGPRINT(DEBUG, "SNDWND SLIDE: wndb %u wnde %u", conn->sndwndb, conn->sndwnde);
+
+		removeSgmBuff(conn->sndsgmbuff, conn->sndsgmbuff->head);
+
+		if (conn->sndsgmbuff->size == 0) {
+
+			timestamp = getTime();
+
+			DBGPRINT(DEBUG, "%s TIMEOUT STOP", timestamp);
+
+			free(timestamp);
+
+			setTimer(conn->timer, 0.0, 0.0);
+
+		} else {
+
+			timeout = getTimeout(conn);
+
+			timestamp = getTime();
+
+			DBGPRINT(DEBUG, "%s TIMEOUT RESTART: %LF", timestamp, timeout);
+
+			free(timestamp);
+
+			setTimer(conn->timer, timeout, 0.0);
+		}
 
 		unlockMutex(conn->sndsgmbuff->mtx);	
 
-		if (sampleRTT != -1) {
-
-			setTimeout(conn, sampleRTT);
-
-			broadcastConditionVariable(conn->sndsgmbuff->remove_cnd);
-		}	
+		broadcastConditionVariable(conn->sndsgmbuff->remove_cnd);
 	}	
 
 	return NULL;
 }
 
 static void timeoutHandler(union sigval arg) {
-	TimeoutObject *timeoutobj = (TimeoutObject *) arg.sival_ptr;
-	Connection *conn = NULL;
-	Segment sgm;
-	uint8_t sgmstatus;
+	Connection *conn = (Connection *) arg.sival_ptr;
+	struct timespec now;
+	SgmBuffElem *curr = NULL;
+	char *timestamp = NULL;
 
-	if (!timeoutobj)
-		return;
-
-	conn = timeoutobj->conn;
-
-	lockMutex(conn->sndsgmbuff->mtx);		
-
-	sgmstatus = timeoutobj->elem->status;
-
-	sgm = timeoutobj->elem->segment;	
-
-	DBGPRINT(DEBUG, "TIMEOUT(%LF) %u", conn->timeo, sgm.hdr.seqn);
-
-	if (sgmstatus == RUDP_SGM_YACK) {
-
-		unlockMutex(conn->sndsgmbuff->mtx);
-
+	if (timer_getoverrun(conn->timer) > 0) {
+		DBGPRINT(DEBUG, "TIMER OVERRUN DETECTED");
 		return;
 	}
 
-	//conn->timeo = RUDP_TIMEOUP * conn->timeo;	
+	setTimer(conn->timer, 0.0, 0.0);
 
-	sgm.hdr.ackn = conn->rcvwndb;
+	timestamp = getTime();
+
+	DBGPRINT(DEBUG, "%s INSIDE TIMEOUT", timestamp);
+
+	free(timestamp);
+
+	lockMutex(conn->sndsgmbuff->mtx);
+
+	curr = conn->sndsgmbuff->head;
+
+	while (curr) {
+
+		clock_gettime(CLOCK_MONOTONIC, &now);
+
+		DBGPRINT(DEBUG, "TIMEOUT CHECK %u: status %d elapsed %LF delay %LF retrans %ld", curr->segment.hdr.seqn, curr->status, getElapsed(curr->time, now), curr->delay, curr->retrans);
+
+		if ((curr->status == RUDP_SGM_NACK) & ((getElapsed(curr->time, now) - curr->delay) > getTimeout(conn))) {
+
+			assert(curr->retrans <= 20);
+
+			curr->retrans++;
+
+			curr->delay = getTimeout(conn);
+
+			clock_gettime(CLOCK_MONOTONIC, &(curr->time));
+
+			sendSegment(conn, curr->segment);
+		}
+
+		curr = curr->next;
+	}
+
+	if (conn->sndsgmbuff->size > 0)
+		setTimer(conn->timer, getTimeout(conn), 0.0);
 
 	unlockMutex(conn->sndsgmbuff->mtx);
 
-	sendSegment(conn, sgm);
+	DBGPRINT(DEBUG, "ENDOF TIMEOUT");
 }
 
 /* INBOX THREADS */
@@ -342,9 +424,12 @@ static void timeoutHandler(union sigval arg) {
 static void *rcvBufferizerLoop(void *arg) {
 	Connection *conn = (Connection *) arg;
 	Segment rcvsgm, acksgm;
+	struct timespec now;
+	long double sampleRTT;
 	int rcvwndmatch;
+	char *timestamp = NULL;
 
-	while (getConnectionState(conn) != RUDP_CON_CLOS) {
+	while (1) {
 
 		if (receiveSegment(conn, &rcvsgm) == -1) {
 
@@ -357,45 +442,99 @@ static void *rcvBufferizerLoop(void *arg) {
 
 		if (rcvwndmatch == 0) {
 
+			DBGPRINT(DEBUG, "SEGMENT INSIDE WINDOW: %u", rcvsgm.hdr.seqn);
+
 			if (rcvsgm.hdr.plds != 0) {
 
 				acksgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds), NULL);
 
 				sendSegment(conn, acksgm);
 
-				lockMutex(conn->rcvsgmbuff->mtx);
+				if (rcvsgm.hdr.seqn == conn->rcvwndb) {
 
-				addSgmBuff(conn->rcvsgmbuff, rcvsgm);
+					lockMutex(conn->rcvbuff->mtx);
 
-				unlockMutex(conn->rcvsgmbuff->mtx);
+					writeStrBuff(conn->rcvbuff, rcvsgm.pld, rcvsgm.hdr.plds);
 
-				if (rcvsgm.hdr.seqn == conn->rcvwndb)
-					signalConditionVariable(conn->rcvsgmbuff->insert_cnd);				
+					unlockMutex(conn->rcvbuff->mtx);
+
+					conn->rcvwndb = RUDP_NXTSEQN(conn->rcvwndb, rcvsgm.hdr.plds);
+
+					conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, rcvsgm.hdr.plds);
+
+					DBGPRINT(DEBUG, "RCVWND SLIDE: wndb %u wnde %u", conn->rcvwndb, conn->rcvwnde);
+
+					char *look = lookStrBuff(conn->rcvbuff, conn->rcvbuff->size);
+
+					DBGPRINT(DEBUG, "RCVBUFF: %s", look);
+
+					free(look);
+
+					signalConditionVariable(conn->rcvbuff->insert_cnd);
+
+					if (conn->rcvsgmbuff->size > 0)
+						signalConditionVariable(conn->rcvsgmbuff->status_cnd);
+
+				} else {
+
+					lockMutex(conn->rcvsgmbuff->mtx);
+
+					if (!findSgmBuffSeqn(conn->rcvsgmbuff, rcvsgm.hdr.seqn)) {
+
+						DBGPRINT(DEBUG, "SEGMENT BUFFERIZED %u", rcvsgm.hdr.seqn);
+
+						addSgmBuff(conn->rcvsgmbuff, rcvsgm);
+
+						signalConditionVariable(conn->rcvsgmbuff->insert_cnd);
+					}
+
+					unlockMutex(conn->rcvsgmbuff->mtx);
+				}
 			}
 
 			if (rcvsgm.hdr.ctrl & RUDP_ACK) {
 
 				lockMutex(conn->sndsgmbuff->mtx);
 
-				TSegmentBufferElement *ackedelem = findTSegmentBufferByAck(conn->sndsgmbuff, rcvsgm.hdr.ackn);
+				SgmBuffElem *ackedelem = findSgmBuffAckn(conn->sndsgmbuff, rcvsgm.hdr.ackn);
 
 				if (ackedelem) {
 
+					timestamp = getTime();
+
 					ackedelem->status = RUDP_SGM_YACK;
 
-					signalConditionVariable(conn->sndsgmbuff->status_cnd);					
+					clock_gettime(CLOCK_MONOTONIC, &(now));
+
+					sampleRTT = getElapsed(conn->sndsgmbuff->head->time, now);
+
+					setTimeout(conn, sampleRTT);
+
+					DBGPRINT(DEBUG, "%s ACK %u sample %LF new timeout %LF", timestamp, rcvsgm.hdr.ackn, sampleRTT, conn->timeo);
+
+					signalConditionVariable(conn->sndsgmbuff->status_cnd);
+
+					free(timestamp);
 				}
 
 				unlockMutex(conn->sndsgmbuff->mtx);
 			}			
 
-		} else if (rcvwndmatch == -1 && rcvsgm.hdr.plds != 0) {
+		} else if (rcvwndmatch == -1) {
 
-			acksgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds), NULL);
+			if (rcvsgm.hdr.plds != 0) {
 
-			sendSegment(conn, acksgm);
+				DBGPRINT(DEBUG, "SEGMENT BEFORE WINDOW: %u", rcvsgm.hdr.seqn);
 
-		}	
+				acksgm = createSegment(RUDP_ACK, 0, 0, conn->sndnext, RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds), NULL);
+
+				sendSegment(conn, acksgm);
+			}
+
+		} else if (rcvwndmatch == 1){
+
+			DBGPRINT(DEBUG, "SEGMENT AFTER WINDOW: %u", rcvsgm.hdr.seqn);
+		}
 	}
 
 	return NULL;
@@ -404,12 +543,14 @@ static void *rcvBufferizerLoop(void *arg) {
 static void *rcvSliderLoop(void *arg) {
 	Connection *conn = (Connection *) arg;
 
-	while (getConnectionState(conn) != RUDP_CON_CLOS) {
+	while (1) {
 
 		lockMutex(conn->rcvsgmbuff->mtx);
 
 		while (conn->rcvsgmbuff->size == 0)
 			waitConditionVariable(conn->rcvsgmbuff->insert_cnd, conn->rcvsgmbuff->mtx);
+
+		waitConditionVariable(conn->rcvsgmbuff->status_cnd, conn->rcvsgmbuff->mtx);
 
 		int flag = 1;
 
@@ -417,36 +558,44 @@ static void *rcvSliderLoop(void *arg) {
 
 			flag = 0;
 
-			SegmentBufferElement *curr = conn->rcvsgmbuff->head;
+			SgmBuffElem *curr = conn->rcvsgmbuff->head;
 
 			while (curr) {
 
 				if (curr->segment.hdr.seqn == conn->rcvwndb) {
 
-					flag = 1;
-
 					lockMutex(conn->rcvbuff->mtx);
 
-					writeBuffer(conn->rcvbuff, curr->segment.pld, curr->segment.hdr.plds);
+					writeStrBuff(conn->rcvbuff, curr->segment.pld, curr->segment.hdr.plds);
 
 					unlockMutex(conn->rcvbuff->mtx);
 
-					signalConditionVariable(conn->rcvbuff->insert_cnd);				
+					signalConditionVariable(conn->rcvbuff->insert_cnd);
+
+					removeSgmBuff(conn->rcvsgmbuff, curr);
 
 					conn->rcvwndb = RUDP_NXTSEQN(conn->rcvwndb, curr->segment.hdr.plds);
 
-					conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, curr->segment.hdr.plds);	
+					conn->rcvwnde = RUDP_NXTSEQN(conn->rcvwnde, curr->segment.hdr.plds);
 
-					removeSgmBuff(conn->rcvsgmbuff, curr);			
+					DBGPRINT(DEBUG, "RCVWND SLIDE: wndb %u wnde %u", conn->rcvwndb, conn->rcvwnde);
+
+					flag = 1;
+
+					char *look = lookStrBuff(conn->rcvbuff, conn->rcvbuff->size);
+
+					DBGPRINT(DEBUG, "RCVBUFF: %s", look);
+
+					free(look);
 
 					break;
 				}
-	
+
 				curr = curr->next;
 			}
 		}
 
-		unlockMutex(conn->rcvsgmbuff->mtx);						
+		unlockMutex(conn->rcvsgmbuff->mtx);
 	}	
 
 	return NULL;

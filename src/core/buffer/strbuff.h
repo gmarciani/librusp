@@ -9,30 +9,31 @@
 
 /* STRING BUFFER STRUCTURE */
 
-typedef struct Buffer {
-	char content[BUFFSIZE];
+typedef struct StrBuff {
 	size_t size;
+	char content[BUFFSIZE];
+
 	pthread_mutex_t *mtx;
 	pthread_cond_t *insert_cnd;
 	pthread_cond_t *remove_cnd;
-} Buffer;
+} StrBuff;
 
-/* CREATION/DISTRUCTION */
+/* STRING BUFFER CREATION/DISTRUCTION */
 
-Buffer *createBuffer(void);
+StrBuff *createStrBuff(void);
 
-void freeBuffer(Buffer *buff);
+void freeStrBuff(StrBuff *buff);
 
-/* I/O */
+/* STRING BUFFER I/O */
 
-char *lookBuffer(Buffer *buff, const size_t size);
+char *lookStrBuff(StrBuff *buff, const size_t size);
 
-char *readBuffer(Buffer *buff, const size_t size);
+char *readStrBuff(StrBuff *buff, const size_t size);
 
-void writeBuffer(Buffer *buff, const char *str, const size_t size);
+void writeStrBuff(StrBuff *buff, const char *str, const size_t size);
 
-/* REPRESENTATION */
+/* STRING BUFFER REPRESENTATION */
 
-char *bufferToString(Buffer *buff);
+char *strBuffToString(StrBuff *buff);
 
 #endif /* STRBUFF_H_ */

@@ -9,7 +9,7 @@
 
 #define STRINGSIZE strlen(STRING)
 
-static Buffer *buff;
+static StrBuff *buff;
 
 static void creation(void);
 
@@ -39,7 +39,7 @@ int main(void) {
 static void creation(void) {
 	printf("# Creating buffer...");
 
-	buff = createBuffer();
+	buff = createStrBuff();
 
 	printf("OK\n");
 }
@@ -47,7 +47,7 @@ static void creation(void) {
 static void writeTo(void) {
 	printf("# Writing buffer...");
 
-	writeBuffer(buff, STRING, STRINGSIZE);
+	writeStrBuff(buff, STRING, STRINGSIZE);
 
 	assert((strncmp(buff->content, STRING, buff->size) == 0));
 
@@ -59,7 +59,7 @@ static void lookFrom(void) {
 
 	printf("# Looking buffer...");
 
-	str = lookBuffer(buff, 3);
+	str = lookStrBuff(buff, 3);
 
 	assert((strcmp(str, "Lor") == 0 && buff->size == STRINGSIZE));
 
@@ -73,7 +73,7 @@ static void readFrom(void) {
 
 	printf("# Reading buffer...");
 
-	str = readBuffer(buff, 3);
+	str = readStrBuff(buff, 3);
 
 	assert((strcmp(str, "Lor") == 0 && buff->size == STRINGSIZE - 3));
 
@@ -85,7 +85,7 @@ static void readFrom(void) {
 static void deallocation(void) {
 	printf("# Freeing buffer...");
 
-	freeBuffer(buff);
+	freeStrBuff(buff);
 
 	printf("OK\n");
 }

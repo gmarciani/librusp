@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 #include <pthread.h>
 #include "../segment/sgm.h"
-#include "../buffer/sortsgmbuff.h"
-#include "../buffer/timeosgmbuff.h"
+#include "../buffer/sgmbuff.h"
 #include "../buffer/strbuff.h"
 #include "timeo.h"
 #include "../../util/stringutil.h"
@@ -32,7 +32,7 @@
 
 #define RUDP_CON_RETR 3
 
-#define RUDP_CON_WNDS ((RUDP_MAXSEQN / RUDP_PLDS) / 3)
+#define RUDP_CON_WNDS 5//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
 
 #define RUDP_SAMPLRTT 1
 
@@ -53,33 +53,29 @@ typedef struct Connection {
 	pthread_mutex_t *sock_mtx;
 	int sock;
 
-	long double extRTT;
-	long double devRTT;
-	long double timeo;
-	pthread_mutex_t *timeo_mtx;
-
 	uint32_t sndwndb;
 	uint32_t sndwnde;
 	uint32_t sndnext;
-	Buffer *sndbuff;
-	TSegmentBuffer *sndsgmbuff;
+	pthread_mutex_t *sndwnd_mtx;
+	StrBuff *sndbuff;
+	SgmBuff *sndsgmbuff;
 	pthread_t sndbufferizer;
 	pthread_t sndslider;
 
 	uint32_t rcvwndb;
 	uint32_t rcvwnde;	
-	Buffer *rcvbuff;	
-	SegmentBuffer *rcvsgmbuff;	
+	pthread_mutex_t *rcvwnd_mtx;
+	StrBuff *rcvbuff;
+	SgmBuff *rcvsgmbuff;
 	pthread_t rcvbufferizer;
 	pthread_t rcvslider;		
+
+	long double extRTT;
+	long double devRTT;
+	long double timeo;
+	timer_t timer;
+	pthread_mutex_t *timeo_mtx;
 } Connection;
-
-/* TIMEOUT STRUCTURE */
-
-typedef struct TimeoutObject {
-	Connection *conn;
-	TSegmentBufferElement *elem;
-} TimeoutObject;
 
 /* CONNECTION */
 
@@ -99,7 +95,7 @@ void setTimeout(Connection *conn, const long double sampleRTT);
 
 /* SEGMENT I/O */
 
-void sendSegment(Connection *conn, const Segment sgm);
+void sendSegment(Connection *conn, Segment sgm);
 
 int receiveSegment(Connection *conn, Segment *sgm);
 
