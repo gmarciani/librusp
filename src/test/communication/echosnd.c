@@ -31,11 +31,11 @@ int main(int argc, char **argv) {
 
 	showConnectionDetails();
 
-	//profileEcho(NDROP);
+	profileEcho(NDROP);
 
 	//profileEcho(LDROP);
 
-	profileEcho(HDROP);
+	//profileEcho(HDROP);
 
 	//disconnectConnection();
 

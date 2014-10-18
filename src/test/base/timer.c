@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <assert.h>
-#include "../../util/timerutil.h"
+#include "../../util/timeutil.h"
 #include "../../util/macroutil.h"
 
 #define NTIME 0.0L
@@ -113,9 +114,11 @@ static void creation(void) {
 }
 
 static void setExpiration(void) {
-	printf("# Setting timer periodic expiration: %LF secs and periodic %LF secs...", HTIME, LTIME);
+	struct timespec now = getTimestamp();
 
-	setTimer(timerid, HTIME, LTIME);
+	printf("# %LF %LF Setting timer periodic expiration: %LF secs and periodic %LF secs...", (long double) now.tv_sec, (long double) now.tv_nsec, HTIME, MTIME);
+
+	setTimer(timerid, HTIME, 0.0);
 
 	printf("OK\n");
 }
@@ -139,7 +142,9 @@ static void deallocation(void) {
 static void timeoutFunc(union sigval value) {
 	int *count = (int *) value.sival_ptr;
 
-	printf("TIMEOUT!\n");
+	struct timespec now = getTimestamp();
+
+	printf("%LF %LF TIMEOUT!\n", (long double)now.tv_sec, (long double)now.tv_nsec);
 
 	pthread_mutex_lock(&mtx);
 
@@ -149,5 +154,13 @@ static void timeoutFunc(union sigval value) {
 
 	pthread_mutex_unlock(&mtx);
 
-	pthread_cond_signal(&cnd);		
+	pthread_cond_signal(&cnd);
+
+	usleep(HTIME * 1000000);
+
+	now = getTimestamp();
+
+	printf("%LF %LF ENDOF TIMEOUT!\n", (long double)now.tv_sec, (long double)now.tv_nsec);
+
+	setTimer(timerid, MTIME, 0.0);
 }

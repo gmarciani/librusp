@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <errno.h>
-#include "timerutil.h"
+#include "timeutil.h"
 #include "mathutil.h"
 #include "macroutil.h"
 

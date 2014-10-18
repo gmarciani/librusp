@@ -3,6 +3,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "../../util/timeutil.h"
+#include "../../util/threadutil.h"
+#include "../../util/macroutil.h"
 
 // EXTIMATED RTT
 #define RUDP_EXTRTT_A (long double) 0.875
@@ -20,5 +23,27 @@
 #define RUDP_TIMEO(extRTT, devRTT) (long double) (RUDP_TIMEO_A * (extRTT) + RUDP_TIMEO_B * (devRTT))
 #define RUDP_TIMEOUP 1.50
 #define RUDP_TIMEODW 0.95
+
+typedef struct Timeout {
+	long double extRTT;
+	long double devRTT;
+	long double value;
+	timer_t timer;
+	pthread_mutex_t *mtx;
+} Timeout;
+
+Timeout *createTimeout(long double sampleRTT, void (*handler) (union sigval), void *arg);
+
+void freeTimeout(Timeout *timeout);
+
+short isTimeoutDisarmed(Timeout *timeout);
+
+long double getTimeoutValue(Timeout *timeout);
+
+void updateTimeout(Timeout *timeout, const long double sampleRTT);
+
+void startTimeout(Timeout *timeout);
+
+void stopTimeout(Timeout *timeout);
 
 #endif /* TIMEO_H_ */

@@ -97,7 +97,6 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 
 	if (getRandomBit(DROPRATE)) {
 		free(buff);
-		printf("Segment dropped\n");
 		return NULL;
 	}
 

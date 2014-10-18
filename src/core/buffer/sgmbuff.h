@@ -3,7 +3,6 @@
 
 #include "../segment/sgm.h"
 #include "../../util/threadutil.h"
-#include "../../util/timerutil.h"
 #include "../../util/macroutil.h"
 
 /* SEGMENT BUFFER STRUCTURES */

@@ -10,11 +10,12 @@
 #include "../buffer/sgmbuff.h"
 #include "../buffer/strbuff.h"
 #include "timeo.h"
+#include "wnd.h"
 #include "../../util/stringutil.h"
 #include "../../util/mathutil.h"
 #include "../../util/listutil.h"
 #include "../../util/threadutil.h"
-#include "../../util/timerutil.h"
+#include "../../util/timeutil.h"
 #include "../../util/addrutil.h"
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
@@ -53,28 +54,20 @@ typedef struct Connection {
 	pthread_mutex_t *sock_mtx;
 	int sock;
 
-	uint32_t sndwndb;
-	uint32_t sndwnde;
-	uint32_t sndnext;
-	pthread_mutex_t *sndwnd_mtx;
+	Window *sndwnd;
 	StrBuff *sndbuff;
 	SgmBuff *sndsgmbuff;
-	pthread_t sndbufferizer;
-	pthread_t sndslider;
 
-	uint32_t rcvwndb;
-	uint32_t rcvwnde;	
-	pthread_mutex_t *rcvwnd_mtx;
+	Window *rcvwnd;
 	StrBuff *rcvbuff;
 	SgmBuff *rcvsgmbuff;
+
+	Timeout *timeout;
+
+	pthread_t sndbufferizer;
+	pthread_t sndslider;
 	pthread_t rcvbufferizer;
 	pthread_t rcvslider;		
-
-	long double extRTT;
-	long double devRTT;
-	long double timeo;
-	timer_t timer;
-	pthread_mutex_t *timeo_mtx;
 } Connection;
 
 /* CONNECTION */
@@ -83,15 +76,11 @@ Connection *createConnection(void);
 
 void destroyConnection(Connection *conn);
 
-void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb, const long double extRTT);
+void setupConnection(Connection *conn, const int sock, const struct sockaddr_in paddr, const uint32_t sndwndb, const uint32_t rcvwndb, const long double sampleRTT);
 
 short getConnectionState(Connection *conn);
 
 void setConnectionState(Connection *conn, const short state);
-
-long double getTimeout(Connection *conn);
-
-void setTimeout(Connection *conn, const long double sampleRTT);
 
 /* SEGMENT I/O */
 

@@ -1,5 +1,5 @@
-#ifndef TIMERUTIL_H_
-#define TIMERUTIL_H_
+#ifndef TIMEUTIL_H_
+#define TIMEUTIL_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,4 +28,6 @@ struct timespec getTimespec(const long double value);
 
 struct timeval getTimeval(const long double value);
 
-#endif /* TIMERUTIL_H_ */
+struct timespec getTimestamp(void);
+
+#endif /* TIMEUTIL_H_ */

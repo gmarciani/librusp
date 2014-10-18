@@ -1,4 +1,4 @@
-#include "timerutil.h"
+#include "timeutil.h"
 
 timer_t createTimer(void (*handler) (union sigval), void *arg) {
 	timer_t timerid;
@@ -87,4 +87,12 @@ struct timeval getTimeval(const long double value) {
   	time.tv_usec = (suseconds_t) (value * 1000000) % 1000000;
 
 	return time;
+}
+
+struct timespec getTimestamp(void) {
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	return now;
 }
