@@ -232,21 +232,11 @@ void writeMessage(Connection *conn, const char *msg, const size_t size) {
 	if (getConnectionState(conn) != RUDP_CON_ESTA)
 		ERREXIT("Cannot write message: connection not established.");
 
-	lockMutex(conn->sndbuff->mtx);
-
 	writeStrBuff(conn->sndbuff, msg, size);	
 
-	unlockMutex(conn->sndbuff->mtx);
+	waitStrBuffEmptiness(conn->sndbuff);
 
-	signalConditionVariable(conn->sndbuff->insert_cnd);
-
-	lockMutex(conn->sndsgmbuff->mtx);
-
-	do 
-		waitConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx);
-	while ((conn->sndbuff->size != 0) | (conn->sndsgmbuff->size != 0));
-
-	unlockMutex(conn->sndsgmbuff->mtx);
+	waitSgmBuffEmptiness(conn->sndsgmbuff);
 }
 
 char *readMessage(Connection *conn, const size_t size) {
@@ -254,17 +244,8 @@ char *readMessage(Connection *conn, const size_t size) {
 
 	if (getConnectionState(conn) != RUDP_CON_ESTA)
 		ERREXIT("Cannot read message: connection not established.");
-
-	lockMutex(conn->rcvbuff->mtx);
-
-	while (conn->rcvbuff->size < size)
-		waitConditionVariable(conn->rcvbuff->insert_cnd, conn->rcvbuff->mtx);
 	
-	msg = readStrBuff(conn->rcvbuff, size);	
-
-	unlockMutex(conn->rcvbuff->mtx);
-
-	signalConditionVariable(conn->rcvbuff->remove_cnd);
+	msg = waitMinimumStrBuffContent(conn->rcvbuff, size);
 	
 	return msg;
 }

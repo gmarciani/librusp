@@ -48,7 +48,7 @@ typedef struct Connection {
 	ConnectionId connid;
 
 	short state;
-	pthread_mutex_t *state_mtx;
+	pthread_rwlock_t *state_rwlock;
 	pthread_cond_t  *state_cnd;	
 
 	pthread_mutex_t *sock_mtx;
@@ -65,7 +65,6 @@ typedef struct Connection {
 	Timeout *timeout;
 
 	pthread_t sndbufferizer;
-	pthread_t sndslider;
 	pthread_t rcvbufferizer;
 	pthread_t rcvslider;		
 } Connection;

@@ -117,3 +117,45 @@ void broadcastConditionVariable(pthread_cond_t *cnd) {
 	if (pthread_cond_broadcast(cnd) != 0) 
 		ERREXIT("Cannot broadcast condition variable.");
 }
+
+/* READ/WRITE LOCK */
+
+pthread_rwlock_t *createRWLock(void) {
+	pthread_rwlock_t *rwlock;
+
+	if (!(rwlock = malloc(sizeof(pthread_rwlock_t))))
+		ERREXIT("Cannot allocate memory for read-write lock.");
+
+	if (pthread_rwlock_init(rwlock, NULL) != 0)
+		ERREXIT("Cannot initialize read-write lock.");
+
+	return rwlock;
+}
+
+void freeRWLock(pthread_rwlock_t *rwlock) {
+	if (pthread_rwlock_destroy(rwlock) != 0)
+		ERREXIT("Cannot destroy read-write lock.");
+
+	free(rwlock);
+}
+
+void lockRead(pthread_rwlock_t *rwlock) {
+	int error;
+
+	if ((error = pthread_rwlock_rdlock(rwlock)) != 0)
+		ERREXIT("Cannot acquire read-lock: %d", error);
+}
+
+void lockWrite(pthread_rwlock_t *rwlock) {
+	int error;
+
+	if ((error = pthread_rwlock_wrlock(rwlock)) != 0)
+		ERREXIT("Cannot acquire write-lock: %d", error);
+}
+
+void unlockRWLock(pthread_rwlock_t *rwlock) {
+	int error;
+
+	if ((error = pthread_rwlock_unlock(rwlock)) != 0)
+		ERREXIT("Cannot release read-write lock: %d", error);
+}

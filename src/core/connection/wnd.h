@@ -12,20 +12,29 @@ typedef struct Window {
 	uint32_t end;
 	uint32_t next;
 
-	pthread_mutex_t *edge_mtx;
-	pthread_mutex_t *next_mtx;
+	pthread_rwlock_t *rwlock;
+	pthread_mutex_t *mtx;
+	pthread_cond_t *cnd;
 } Window;
 
 Window *createWindow(const uint32_t base, const uint32_t end);
 
 void freeWindow(Window *wnd);
 
-long double getWindowSpace(Window *wnd);
+uint32_t getWindowBase(Window *wnd);
+
+uint32_t getWindowEnd(Window *wnd);
+
+uint32_t getWindowNext(Window *wnd);
+
+long getWindowSpace(Window *wnd);
 
 void slideWindow(Window *wnd, const uint32_t offset);
 
 void slideWindowNext(Window *wnd, const uint32_t offset);
 
 short matchWindow(Window *wnd, const uint32_t value);
+
+void waitWindowSpace(Window *wnd, const long space);
 
 #endif /* WND_H_ */

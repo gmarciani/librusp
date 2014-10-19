@@ -6,9 +6,11 @@ Window *createWindow(const uint32_t base, const uint32_t end) {
 	if (!(wnd = malloc(sizeof(Window))))
 		ERREXIT("Cannot allocate memory for window");
 
-	wnd->edge_mtx = createMutex();
+	wnd->mtx = createMutex();
 
-	wnd->next_mtx = createMutex();
+	wnd->cnd = createConditionVariable();
+
+	wnd->rwlock = createRWLock();
 
 	wnd->base = base;
 
@@ -21,48 +23,100 @@ Window *createWindow(const uint32_t base, const uint32_t end) {
 
 void freeWindow(Window *wnd) {
 
-	destroyMutex(wnd->next_mtx);
+	freeRWLock(wnd->rwlock);
 
-	destroyMutex(wnd->edge_mtx);
+	destroyMutex(wnd->mtx);
+
+	destroyConditionVariable(wnd->cnd);
 
 	free(wnd);
 }
 
-long double getWindowSpace(Window *wnd) {
-	long double space;
+uint32_t getWindowBase(Window *wnd) {
+	uint32_t wndbase;
+
+	lockRead(wnd->rwlock);
+
+	wndbase = wnd->base;
+
+	unlockRWLock(wnd->rwlock);
+
+	return wndbase;
+}
+
+uint32_t getWindowEnd(Window *wnd) {
+	uint32_t wndend;
+
+	lockRead(wnd->rwlock);
+
+	wndend = wnd->end;
+
+	unlockRWLock(wnd->rwlock);
+
+	return wndend;
+}
+
+uint32_t getWindowNext(Window *wnd) {
+	uint32_t wndnext;
+
+	lockRead(wnd->rwlock);
+
+	wndnext = wnd->next;
+
+	unlockRWLock(wnd->rwlock);
+
+	return wndnext;
+}
+
+long getWindowSpace(Window *wnd) {
+	long space;
+
+	lockRead(wnd->rwlock);
 
 	space = (wnd->end - wnd->next);
+
+	unlockRWLock(wnd->rwlock);
 
 	return space;
 }
 
 void slideWindow(Window *wnd, const uint32_t offset) {
-
-	lockMutex(wnd->edge_mtx);
+	lockWrite(wnd->rwlock);
 
 	wnd->base = RUDP_NXTSEQN(wnd->base, offset);
 
 	wnd->end = RUDP_NXTSEQN(wnd->end, offset);
 
-	unlockMutex(wnd->edge_mtx);
+	unlockRWLock(wnd->rwlock);
+
+	broadcastConditionVariable(wnd->cnd);
 }
 
 void slideWindowNext(Window *wnd, const uint32_t offset) {
-	lockMutex(wnd->next_mtx);
+	lockWrite(wnd->rwlock);
 
 	wnd->next = RUDP_NXTSEQN(wnd->next, offset);
 
-	unlockMutex(wnd->next_mtx);
+	unlockRWLock(wnd->rwlock);
 }
 
 short matchWindow(Window *wnd, const uint32_t value) {
 	short match;
 
-	lockMutex(wnd->edge_mtx);
+	lockRead(wnd->rwlock);
 
 	match = matchSequenceAgainstWindow(wnd->base, wnd->end, value);
 
-	unlockMutex(wnd->edge_mtx);
+	unlockRWLock(wnd->rwlock);
 
 	return match;
+}
+
+void waitWindowSpace(Window *wnd, const long space) {
+	lockMutex(wnd->mtx);
+
+	while (getWindowSpace(wnd) < space)
+		waitConditionVariable(wnd->cnd, wnd->mtx);
+
+	unlockMutex(wnd->mtx);
 }

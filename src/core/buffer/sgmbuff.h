@@ -2,6 +2,7 @@
 #define SGMBUFF_H_
 
 #include "../segment/sgm.h"
+#include "../../util/timeutil.h"
 #include "../../util/threadutil.h"
 #include "../../util/macroutil.h"
 
@@ -17,6 +18,8 @@ typedef struct SgmBuffElem {
 
 	struct SgmBuffElem *next;
 	struct SgmBuffElem *prev;
+
+	pthread_rwlock_t *rwlock;
 } SgmBuffElem;
 
 typedef struct SgmBuff {
@@ -24,6 +27,8 @@ typedef struct SgmBuff {
 
 	SgmBuffElem *head;
 	SgmBuffElem *tail;
+
+	pthread_rwlock_t *rwlock;
 
 	pthread_mutex_t *mtx;
 	pthread_cond_t *insert_cnd;
@@ -39,9 +44,29 @@ void freeSgmBuff(SgmBuff *buff);
 
 /* SEGMENT BUFFER INSERTION/REMOVAL */
 
-SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm);
+SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const short status);
 
 void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem);
+
+long getSgmBuffSize(SgmBuff *buff);
+
+/* SEGMENT BUFFER ELEMENT */
+
+short getSgmBuffElemStatus(SgmBuffElem *elem);
+
+void setSgmBuffElemStatus(SgmBuffElem *elem, const short status);
+
+long double getSgmBuffElemElapsed(SgmBuffElem *elem);
+
+short testSgmBuffElemAttributes(SgmBuffElem *elem, const short status, const long double elapsed);
+
+void updateSgmBuffElemAttributes(SgmBuffElem *elem, const long retransoffset, const long double delay);
+
+/* SEGMENT BUFFER WAITING */
+
+void waitSgmBuffEmptiness(SgmBuff *buff);
+
+void waitStrategicInsertion(SgmBuff *buff);
 
 /* SEGMENT BUFFER SEARCH */
 

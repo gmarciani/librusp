@@ -7,6 +7,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "macroutil.h"
 
 #define THREAD_DETACHED 0
@@ -41,5 +42,17 @@ void waitConditionVariable(pthread_cond_t *cnd, pthread_mutex_t *mtx);
 void signalConditionVariable(pthread_cond_t *cnd);
 
 void broadcastConditionVariable(pthread_cond_t *cnd);
+
+/* READ/WRITE LOCK */
+
+pthread_rwlock_t *createRWLock(void);
+
+void freeRWLock(pthread_rwlock_t *rwlock);
+
+void lockRead(pthread_rwlock_t *rwlock);
+
+void lockWrite(pthread_rwlock_t *rwlock);
+
+void unlockRWLock(pthread_rwlock_t *rwlock);
 
 #endif /* THREADUTIL_H_ */

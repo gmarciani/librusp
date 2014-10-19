@@ -29,7 +29,8 @@ typedef struct Timeout {
 	long double devRTT;
 	long double value;
 	timer_t timer;
-	pthread_mutex_t *mtx;
+
+	pthread_rwlock_t *rwlock;
 } Timeout;
 
 Timeout *createTimeout(long double sampleRTT, void (*handler) (union sigval), void *arg);

@@ -86,7 +86,10 @@ strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
 segment: $(SEGMENT_TESTDIR)/sgm.c
 	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-base: timer str rnd macro
+base: sync timer str rnd macro
+
+sync: $(BASE_TESTDIR)/sync.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 timer: $(BASE_TESTDIR)/timer.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@

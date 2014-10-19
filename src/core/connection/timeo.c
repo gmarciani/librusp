@@ -14,7 +14,7 @@ Timeout *createTimeout(long double sampleRTT, void (*handler) (union sigval), vo
 
 	timeout->timer = createTimer(handler, arg);
 
-	timeout->mtx = createMutex();
+	timeout->rwlock = createRWLock();
 
 	return timeout;
 }
@@ -23,29 +23,37 @@ void freeTimeout(Timeout *timeout) {
 
 	freeTimer(timeout->timer);
 
-	destroyMutex(timeout->mtx);
+	freeRWLock(timeout->rwlock);
 
 	free(timeout);
 }
 
 short isTimeoutDisarmed(Timeout *timeout) {
-	return isTimerDisarmed(timeout->timer);
+	short isdisarmed;
+
+	lockRead(timeout->rwlock);
+
+	isdisarmed = isTimerDisarmed(timeout->timer);
+
+	unlockRWLock(timeout->rwlock);
+
+	return isdisarmed;
 }
 
 long double getTimeoutValue(Timeout *timeout) {
 	long double value;
 
-	lockMutex(timeout->mtx);
+	lockRead(timeout->rwlock);
 
 	value = timeout->value;
 
-	unlockMutex(timeout->mtx);
+	unlockRWLock(timeout->rwlock);
 
 	return value;
 }
 
 void updateTimeout(Timeout *timeout, const long double sampleRTT) {
-	lockMutex(timeout->mtx);
+	lockWrite(timeout->rwlock);
 
 	timeout->extRTT = RUDP_EXTRTT(timeout->extRTT, sampleRTT);
 
@@ -53,21 +61,21 @@ void updateTimeout(Timeout *timeout, const long double sampleRTT) {
 
 	timeout->value = RUDP_TIMEO(timeout->extRTT, timeout->devRTT);
 
-	unlockMutex(timeout->mtx);
+	unlockRWLock(timeout->rwlock);
 }
 
 void startTimeout(Timeout *timeout) {
-	lockMutex(timeout->mtx);
+	lockWrite(timeout->rwlock);
 
 	setTimer(timeout->timer, timeout->value, 0.0);
 
-	unlockMutex(timeout->mtx);
+	unlockRWLock(timeout->rwlock);
 }
 
 void stopTimeout(Timeout *timeout) {
-	lockMutex(timeout->mtx);
+	lockWrite(timeout->rwlock);
 
 	setTimer(timeout->timer, 0.0, 0.0);
 
-	unlockMutex(timeout->mtx);
+	unlockRWLock(timeout->rwlock);
 }

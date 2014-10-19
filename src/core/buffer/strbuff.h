@@ -13,6 +13,7 @@ typedef struct StrBuff {
 	size_t size;
 	char content[BUFFSIZE];
 
+	pthread_rwlock_t *rwlock;
 	pthread_mutex_t *mtx;
 	pthread_cond_t *insert_cnd;
 	pthread_cond_t *remove_cnd;
@@ -24,6 +25,10 @@ StrBuff *createStrBuff(void);
 
 void freeStrBuff(StrBuff *buff);
 
+/* BUFFER SIZE */
+
+size_t getStrBuffSize(StrBuff *buff);
+
 /* STRING BUFFER I/O */
 
 char *lookStrBuff(StrBuff *buff, const size_t size);
@@ -31,6 +36,14 @@ char *lookStrBuff(StrBuff *buff, const size_t size);
 char *readStrBuff(StrBuff *buff, const size_t size);
 
 void writeStrBuff(StrBuff *buff, const char *str, const size_t size);
+
+/* STRING BUFFER WAITING */
+
+void waitStrBuffEmptiness(StrBuff *buff);
+
+char *waitStrBuffContent(StrBuff *buff, const size_t size);
+
+char *waitMinimumStrBuffContent(StrBuff *buff, const size_t size);
 
 /* STRING BUFFER REPRESENTATION */
 

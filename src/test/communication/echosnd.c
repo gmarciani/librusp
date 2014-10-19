@@ -12,10 +12,10 @@
 
 #define MSGSIZE strlen(MSG)
 
-#define ITERATIONS 100
+#define ITERATIONS 1000
 #define NDROP 0.000
 #define LDROP 0.050
-#define HDROP 0.200
+#define HDROP 0.500
 
 static ConnectionId conn;
 
@@ -72,7 +72,7 @@ static void showConnectionDetails(void) {
 
 static void profileEcho(const long double droprate) {
 	struct timespec start, end;
-	long double elaps, speed, sent;
+	long double elaps, speed, bitsent;
 	char *rcvdata = NULL;
 	unsigned long iteration;
 
@@ -80,17 +80,23 @@ static void profileEcho(const long double droprate) {
 
 	setDropRate(droprate);
 
-	clock_gettime(CLOCK_MONOTONIC, &start);
+	elaps = 0.0;
 
 	for (iteration = 1; iteration <= ITERATIONS; iteration++) {
 
 		printf("\nECHO %ld\n", iteration);
 		
+		clock_gettime(CLOCK_MONOTONIC, &start);
+
 		rudpSend(conn, MSG, MSGSIZE);
 
 		printf("[SENT]>%s\n", MSG);
 
 		rcvdata = rudpReceive(conn, MSGSIZE);
+
+		clock_gettime(CLOCK_MONOTONIC, &end);
+
+		elaps += ((long double)(end.tv_sec - start.tv_sec) + ((long double)(end.tv_nsec - start.tv_nsec) / 1000000000.0));
 
 		printf("[RCVD]>%s\n", rcvdata);
 
@@ -100,13 +106,9 @@ static void profileEcho(const long double droprate) {
 		free(rcvdata);
 	}
 
-	clock_gettime(CLOCK_MONOTONIC, &end);
+	bitsent = (long double)(2.0 * ITERATIONS * MSGSIZE * 8.0 * 0.001);
 
-	elaps = ((long double)(end.tv_sec - start.tv_sec) + ((long double)(end.tv_nsec - start.tv_nsec) / 1000000000.0));
+	speed = bitsent / elaps;
 
-	speed = (2.0 * (long double)(ITERATIONS * MSGSIZE * 8.0 * 0.001)) / elaps;
-
-	sent = (long double)(2.0 * ITERATIONS * MSGSIZE * 0.001);
-
-	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", sent, droprate, elaps, speed);
+	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", (bitsent / (0.008)), droprate, elaps, speed);
 }
