@@ -4,11 +4,13 @@
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
-#define PORT 55000
-
 #define MSG "aaaaabbbbbcccccdddddeeeeefffffgg"
 
 #define MSGSIZE strlen(MSG)
+
+static int PORT;
+
+static int DEBUGMODE;
 
 static ConnectionId lconn;
 
@@ -26,7 +28,16 @@ static void showEstablishedConnectionDetails(void);
 
 static void echo(void);
 
-int main(void) {	
+int main(int argc, char **argv) {
+
+	if (argc < 3)
+		ERREXIT("usage: %s [port] [debug]", argv[0]);
+
+	PORT = atoi(argv[1]);
+
+	DEBUGMODE = atoi(argv[2]);
+
+	setConnectionDebugMode(DEBUGMODE);
 
 	startListen();
 

@@ -95,4 +95,8 @@ void deallocateConnectionInPool(Connection *conn);
 
 Connection *getConnectionById(const ConnectionId connid);
 
+/* UTILITY */
+
+void setConnectionDebugMode(const int dbgmode);
+
 #endif /* CONN_H_ */

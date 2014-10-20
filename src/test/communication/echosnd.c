@@ -5,17 +5,15 @@
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
-#define ADDRESS "127.0.0.1"
-#define PORT 55000
-
 #define MSG "aaaaabbbbbcccccdddddeeeeefffffgg"
 
 #define MSGSIZE strlen(MSG)
 
-#define ITERATIONS 1000
-#define NDROP 0.000
-#define LDROP 0.050
-#define HDROP 0.500
+static char *ADDRESS;
+static int PORT;
+static long ITERATIONS;
+static long double DROPRATE;
+static int DEBUGMODE;
 
 static ConnectionId conn;
 
@@ -23,19 +21,30 @@ static void establishConnection(void);
 
 static void showConnectionDetails(void);
 
-static void profileEcho(const long double droprate);
+static void profileEcho();
 
 int main(int argc, char **argv) {	
 	
+	if (argc < 6)
+		ERREXIT("usage: %s [address] [port] [drop] [iterations] [debug]", argv[0]);
+
+	ADDRESS = stringDuplication(argv[1]);
+
+	PORT = atoi(argv[2]);
+
+	DROPRATE = strtold(argv[3], NULL);
+
+	ITERATIONS = strtol(argv[4], NULL, 10);
+
+	DEBUGMODE = atoi(argv[5]);
+
+	setConnectionDebugMode(DEBUGMODE);
+
 	establishConnection();
 
 	showConnectionDetails();
 
-	profileEcho(NDROP);
-
-	//profileEcho(LDROP);
-
-	//profileEcho(HDROP);
+	profileEcho();
 
 	//disconnectConnection();
 
@@ -70,15 +79,15 @@ static void showConnectionDetails(void) {
 	free(strsaddr);
 }
 
-static void profileEcho(const long double droprate) {
+static void profileEcho() {
 	struct timespec start, end;
 	long double elaps, speed, bitsent;
 	char *rcvdata = NULL;
 	unsigned long iteration;
 
-	printf("# Profiling echoing on established connection (%d iterations on %zu bytes with droprate %LF%%)\n", ITERATIONS, MSGSIZE, droprate);
+	printf("# Profiling echoing on established connection (%ld iterations on %zu bytes with drop %LF%%)\n", ITERATIONS, MSGSIZE, DROPRATE);
 
-	setDropRate(droprate);
+	setDropRate(DROPRATE);
 
 	elaps = 0.0;
 
@@ -110,5 +119,5 @@ static void profileEcho(const long double droprate) {
 
 	speed = bitsent / elaps;
 
-	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", (bitsent / (0.008)), droprate, elaps, speed);
+	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", (bitsent / (0.008)), DROPRATE, elaps, speed);
 }

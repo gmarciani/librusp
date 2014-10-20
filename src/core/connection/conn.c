@@ -2,7 +2,7 @@
 
 /* DEBUG */
 
-static int DEBUG = 1;
+static int DEBUG = 0;
 
 /* CONNECTIONS POOL */
 
@@ -459,4 +459,10 @@ Connection *getConnectionById(const ConnectionId connid) {
 	unlockMutex(&CONPOOL_MTX);
 
 	return conn;		
+}
+
+/* UTILITY */
+
+void setConnectionDebugMode(const int dbgmode) {
+	DEBUG = dbgmode;
 }
