@@ -16,7 +16,7 @@ timer_t createTimer(void (*handler) (union sigval), void *arg);
 
 void freeTimer(const timer_t timerid);
 
-void setTimer(const timer_t timerid, const long double value, const long double ivalue);
+void setTimer(const timer_t timerid, const long double millis, const long double imillis);
 
 struct itimerspec getTimer(const timer_t timerid);
 
@@ -24,9 +24,9 @@ short isTimerDisarmed(const timer_t timerid);
 
 long double getElapsed(const struct timespec start, const struct timespec end);
 
-struct timespec getTimespec(const long double value);
+struct timespec getTimespec(const long double millis);
 
-struct timeval getTimeval(const long double value);
+struct timeval getTimeval(const long double millis);
 
 struct timespec getTimestamp(void);
 

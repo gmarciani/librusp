@@ -7,9 +7,9 @@
 #include "../../util/macroutil.h"
 
 #define NTIME 0.0L
-#define LTIME 0.5L
-#define MTIME 1.5L
-#define HTIME 3.5L
+#define LTIME 500.5L
+#define MTIME 1500.5L
+#define HTIME 3500.5L
 
 static timer_t timerid;
 
@@ -64,19 +64,27 @@ static void testTimespecConversion(void) {
 
 	ts = getTimespec(NTIME);
 
-	assert(ts.tv_sec == 0 || ts.tv_nsec == 0);
+	assert(ts.tv_sec == 0);
+
+	assert(ts.tv_nsec == 0);
 
 	ts = getTimespec(LTIME);
 
-	assert(ts.tv_sec == 0 || ts.tv_nsec == 500000000);
+	assert(ts.tv_sec == 0);
+
+	assert(ts.tv_nsec == 500500000);
 
 	ts = getTimespec(MTIME);
 
-	assert(ts.tv_sec == 1 || ts.tv_nsec == 500000000);
+	assert(ts.tv_sec == 1);
+
+	assert(ts.tv_nsec == 500500000);
 
 	ts = getTimespec(HTIME);
 
-	assert(ts.tv_sec == 3 || ts.tv_nsec == 500000000);
+	assert(ts.tv_sec == 3);
+
+	assert(ts.tv_nsec == 500500000);
 
 	printf("OK\n");
 }
@@ -88,19 +96,27 @@ static void testTimevalConversion(void) {
 
 	tv = getTimeval(NTIME);
 
-	assert(tv.tv_sec == 0 || tv.tv_usec == 0);
+	assert(tv.tv_sec == 0);
+
+	assert(tv.tv_usec == 0);
 
 	tv = getTimeval(LTIME);
 
-	assert(tv.tv_sec == 0 || tv.tv_usec == 500000);
+	assert(tv.tv_sec == 0);
+
+	assert(tv.tv_usec == 500500);
 
 	tv = getTimeval(MTIME);
 
-	assert(tv.tv_sec == 1 || tv.tv_usec == 500000);
+	assert(tv.tv_sec == 1);
+
+	assert(tv.tv_usec == 500500);
 
 	tv = getTimeval(HTIME);
 
-	assert(tv.tv_sec == 3 || tv.tv_usec == 500000);
+	assert(tv.tv_sec == 3);
+
+	assert(tv.tv_usec == 500500);
 
 	printf("OK\n");
 }
@@ -116,7 +132,7 @@ static void creation(void) {
 static void setExpiration(void) {
 	struct timespec now = getTimestamp();
 
-	printf("# %LF %LF Setting timer periodic expiration: %LF secs and periodic %LF secs...", (long double) now.tv_sec, (long double) now.tv_nsec, HTIME, MTIME);
+	printf("# %LF %LF Setting timer periodic expiration: %LF millis and periodic %LF millis...", (long double) now.tv_sec, (long double) now.tv_nsec, HTIME, MTIME);
 
 	setTimer(timerid, HTIME, 0.0);
 
@@ -156,7 +172,7 @@ static void timeoutFunc(union sigval value) {
 
 	pthread_cond_signal(&cnd);
 
-	usleep(HTIME * 1000000);
+	usleep(HTIME * 1000.0);
 
 	now = getTimestamp();
 

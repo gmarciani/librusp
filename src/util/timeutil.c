@@ -27,12 +27,12 @@ void freeTimer(const timer_t timerid) {
 		ERREXIT("Cannot delete timer: %s", strerror(errno));
 }
 
-void setTimer(const timer_t timerid, const long double value, const long double ivalue) {
+void setTimer(const timer_t timerid, const long double millis, const long double imillis) {
 	struct itimerspec timeout;
 
-	timeout.it_value = getTimespec(value);
+	timeout.it_value = getTimespec(millis);
 
-	timeout.it_interval = getTimespec(ivalue);
+	timeout.it_interval = getTimespec(imillis);
 
 	errno = 0;
 
@@ -62,29 +62,29 @@ short isTimerDisarmed(const timer_t timerid) {
 }
 
 long double getElapsed(const struct timespec start, const struct timespec end) {
-	long double elapsed;
+	long double millis;
 
-	elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000000000.0;
+	millis = (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
 
-	return elapsed;
+	return millis;
 }
 
-struct timespec getTimespec(const long double value) {
+struct timespec getTimespec(const long double millis) {
 	struct timespec time;
 
-	time.tv_sec = (time_t) (value < 1)?0:ceill(value - 1);
+	time.tv_sec = (time_t) floor(millis / 1000.0);
 
-	time.tv_nsec = (long) (value * 1000000000) % 1000000000;
+	time.tv_nsec = (long) fmod(millis * 1000000.0, 1000000000.0);
 
 	return time;
 
 }
-struct timeval getTimeval(const long double value) {
+struct timeval getTimeval(const long double millis) {
 	struct timeval time;
 
-	time.tv_sec = (time_t) (value < 1)?0:ceill(value - 1);
+	time.tv_sec = (time_t) floor(millis / 1000.0);
 
-  	time.tv_usec = (suseconds_t) (value * 1000000) % 1000000;
+  	time.tv_usec = (suseconds_t) fmod(millis * 1000.0, 1000000.0);
 
 	return time;
 }
