@@ -7,12 +7,9 @@ ConnectionId rudpListen(const int lport) {
 	Connection *conn = NULL;
 	struct sockaddr_in laddr;
 
-	laddr = createAddress("127.0.0.1", lport);
+	laddr = createAddress(NULL, lport);
 
 	conn = createConnection();
-
-	if (!conn)
-		return -1;
 
 	setListeningConnection(conn, laddr);
 
@@ -25,9 +22,7 @@ ConnectionId rudpAccept(const ConnectionId lconnid) {
 	Connection *lconn = NULL;
 	ConnectionId aconnid;
 
-	lconn = getConnectionById(lconnid);
-
-	if (!lconn)
+	if (!(lconn = getConnectionById(lconnid)))
 		ERREXIT("Cannot retrieve connection: %ld", lconnid);
 
 	aconnid = acceptSynchonization(lconn);
@@ -48,10 +43,11 @@ ConnectionId rudpConnect(const char *ip, const int port) {
 	syncresult = synchronizeConnection(conn, laddr);
 
 	if (syncresult == -1) {
+
 		destroyConnection(conn);
+
 		return -1;
 	}
-				
 
 	connid = conn->connid;
 
@@ -72,9 +68,7 @@ void rudpDisconnect(const ConnectionId connid) {
 void rudpClose(const ConnectionId connid) {	
 	Connection *conn = NULL;
 
-	conn = getConnectionById(connid);
-
-	if (!conn)
+	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);
 
 	destroyConnection(conn);
@@ -85,24 +79,37 @@ void rudpClose(const ConnectionId connid) {
 void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	Connection *conn = NULL;
 
-	conn = getConnectionById(connid);
 
-	if (!conn)
+	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);		
 
-	writeMessage(conn, msg, size);
+	if (getConnectionState(conn) != RUDP_CON_ESTA)
+		ERREXIT("Cannot write message: connection not established.");
+
+	writeStrBuff(conn->sndbuff, msg, size);
 }
 
 char *rudpReceive(const ConnectionId connid, const size_t size) {
-	Connection *conn = NULL;	
+	Connection *conn = NULL;
+	struct timespec timeout;
 	char *msg = NULL;	
 
-	conn = getConnectionById(connid);
-
-	if (!conn)
+	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);	
 
-	msg = readMessage(conn, size);
+	if (getConnectionState(conn) != RUDP_CON_ESTA)
+		ERREXIT("Cannot read message: connection not established.");
+
+	timeout = getTimespec(conn->timeout->value);
+
+	lockMutex(conn->rcvbuff->mtx);
+
+	while (conn->rcvbuff->size < size)
+		waitTimeoutConditionVariable(conn->rcvbuff->insert_cnd, conn->rcvbuff->mtx, timeout);
+
+	msg = readStrBuff(conn->rcvbuff, size);
+
+	unlockMutex(conn->rcvbuff->mtx);
 
 	return msg;
 }
@@ -118,7 +125,7 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection: %ld", connid);
 
-	addr = getSocketLocal(conn->sock);
+	addr = getSocketLocal(conn->sock.fd);
 
 	return addr;
 }
@@ -132,7 +139,7 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 	if (!conn)
 		ERREXIT("Cannot retrieve connection: %ld", connid);
 
-	addr = getSocketPeer(conn->sock);
+	addr = getSocketPeer(conn->sock.fd);
 
 	return addr;
 }

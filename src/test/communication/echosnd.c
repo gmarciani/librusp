@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "../../rudp.h"
+#include "../../util/timeutil.h"
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
@@ -81,21 +82,21 @@ static void showConnectionDetails(void) {
 
 static void profileEcho() {
 	struct timespec start, end;
-	long double elaps, speed, bitsent;
+	long double milliselaps, Kbps, KB;
 	char *rcvdata = NULL;
 	unsigned long iteration;
 
-	printf("# Profiling echoing on established connection (%ld iterations on %zu bytes with drop %LF%%)\n", ITERATIONS, MSGSIZE, DROPRATE);
+	printf("# Profiling echoing on established connection (%ld iterations on %zu bytes with drop %LF%%)\n", ITERATIONS, MSGSIZE, DROPRATE * 100.0);
 
 	setDropRate(DROPRATE);
 
-	elaps = 0.0;
+	milliselaps = 0.0;
 
 	for (iteration = 1; iteration <= ITERATIONS; iteration++) {
 
 		printf("\nECHO %ld\n", iteration);
 		
-		clock_gettime(CLOCK_MONOTONIC, &start);
+		start = getTimestamp();
 
 		rudpSend(conn, MSG, MSGSIZE);
 
@@ -103,9 +104,9 @@ static void profileEcho() {
 
 		rcvdata = rudpReceive(conn, MSGSIZE);
 
-		clock_gettime(CLOCK_MONOTONIC, &end);
+		end = getTimestamp();
 
-		elaps += ((long double)(end.tv_sec - start.tv_sec) + ((long double)(end.tv_nsec - start.tv_nsec) / 1000000000.0));
+		milliselaps += getElapsed(start, end);
 
 		printf("[RCVD]>%s\n", rcvdata);
 
@@ -115,9 +116,9 @@ static void profileEcho() {
 		free(rcvdata);
 	}
 
-	bitsent = (long double)(2.0 * ITERATIONS * MSGSIZE * 8.0 * 0.001);
+	KB = (long double)(2.0 * ITERATIONS * MSGSIZE / 1000.0);
 
-	speed = bitsent / elaps;
+	Kbps = KB * 8.0 / (milliselaps / 1000.0);
 
-	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", (bitsent / (0.008)), DROPRATE, elaps, speed);
+	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", KB, DROPRATE * 100.0, milliselaps / 1000.0, Kbps);
 }

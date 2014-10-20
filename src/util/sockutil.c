@@ -1,7 +1,5 @@
 #include "sockutil.h"
 
-static double DROPRATE = 0.0;
-
 /* SOCKET CREATION */
 
 int openSocket() {
@@ -79,28 +77,34 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 		ERREXIT("Cannot allocate memory for reading connected socket.");
 
 	errno = 0;
-	if ((rcvd = read(sock, buff, rcvsize)) == -1) {
 
-		if ((errno == EWOULDBLOCK) | (errno == EAGAIN) | (errno = EPIPE) | (errno == EINVAL)) {
-
-			free(buff);
-
-			return NULL;
-		}
-
-		fprintf(stderr, "Cannot read connected socket: %s\n", strerror(errno));
-
-		exit(EXIT_FAILURE);
-	}
+	if ((rcvd = read(sock, buff, rcvsize)) == -1)
+		ERREXIT("Cannot read connected socket: %s\n", strerror(errno));
 
 	buff[rcvd] = '\0';
 
-	if (getRandomBit(DROPRATE)) {
-		free(buff);
-		return NULL;
-	}
-
 	return buff;
+}
+
+/* SOCKET MULTIPLEXING */
+
+int selectSocket(const int sock, long double millis) {
+	fd_set readsock;
+	struct timeval timer;
+	int result;
+
+	FD_ZERO(&readsock);
+
+	FD_SET(sock, &readsock);
+
+	timer = getTimeval(millis);
+
+	errno = 0;
+
+	if ((result = select(sock + 1, &readsock, NULL, NULL, &timer)) == -1)
+		ERREXIT("Cannot select socket: %s.", strerror(errno));
+
+	return result;
 }
 
 /* SOCKET PROPERTIES */
@@ -121,35 +125,27 @@ void setSocketReusable(const int sock) {
 		ERREXIT("Cannot set socket reusable: %s", strerror(errno));
 }
 
-void setSocketTimeout(const int sock, const uint8_t mode, const long double value) {
+void setSocketTimeout(const int sock, const uint8_t mode, const long double millis) {
 	struct timeval timer;
 
-	timer = getTimeval(value);
+	timer = getTimeval(millis);
 
-	if (mode == (ON_READ | ON_WRITE)) {
-		
-		errno = 0;
-
-  		if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO | SO_SNDTIMEO, (const void *)&timer, sizeof(timer)) < 0)
-			ERREXIT("Cannot set socket read timeout: %s", strerror(errno));
-
-	} else if (mode == ON_READ) {
+	if (mode & ON_READ) {
 
 		errno = 0;
 
   		if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const void *)&timer, sizeof(timer)) < 0)
 			ERREXIT("Cannot set socket read timeout: %s", strerror(errno));
 
-	} else if (mode == ON_WRITE) {
+	}
+
+	if (mode & ON_WRITE) {
 
 		errno = 0;
 
   		if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const void *)&timer, sizeof(timer)) < 0)
       		ERREXIT("Cannot set socket write timeout: %s", strerror(errno));
 
-	} else {
-		
-		ERREXIT("Cannot set socket timeout: unrecognized mode.");
 	}
 }
 
@@ -177,10 +173,4 @@ struct sockaddr_in getSocketPeer(const int sock) {
 		ERREXIT("Cannot get socket peer address: %s", strerror(errno));
 
 	return addr;
-}
-
-/* UTILITY */
-
-void setDropRate(const double droprate) {
-	DROPRATE = droprate;
 }

@@ -37,13 +37,15 @@ char *readStrBuff(StrBuff *buff, const size_t size);
 
 void writeStrBuff(StrBuff *buff, const char *str, const size_t size);
 
+void popStrBuff(StrBuff *buff, const size_t size);
+
 /* STRING BUFFER WAITING */
 
-void waitStrBuffEmptiness(StrBuff *buff);
+void waitEmptyStrBuff(StrBuff *buff);
 
-char *waitStrBuffContent(StrBuff *buff, const size_t size);
+char *waitLookMaxStrBuff(StrBuff *buff, const size_t size);
 
-char *waitMinimumStrBuffContent(StrBuff *buff, const size_t size);
+char *waitReadMinStrBuff(StrBuff *buff, const size_t size);
 
 /* STRING BUFFER REPRESENTATION */
 

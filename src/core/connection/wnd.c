@@ -25,9 +25,9 @@ void freeWindow(Window *wnd) {
 
 	freeRWLock(wnd->rwlock);
 
-	destroyMutex(wnd->mtx);
+	freeMutex(wnd->mtx);
 
-	destroyConditionVariable(wnd->cnd);
+	freeConditionVariable(wnd->cnd);
 
 	free(wnd);
 }

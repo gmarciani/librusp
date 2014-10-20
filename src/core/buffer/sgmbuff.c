@@ -34,13 +34,13 @@ void freeSgmBuff(SgmBuff *buff) {
 
 	freeRWLock(buff->rwlock);
 
-	destroyMutex(buff->mtx);
+	freeMutex(buff->mtx);
 
-	destroyConditionVariable(buff->insert_cnd);
+	freeConditionVariable(buff->insert_cnd);
 
-	destroyConditionVariable(buff->remove_cnd);
+	freeConditionVariable(buff->remove_cnd);
 
-	destroyConditionVariable(buff->status_cnd);
+	freeConditionVariable(buff->status_cnd);
 
 	free(buff);
 }

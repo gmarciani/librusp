@@ -9,11 +9,11 @@ void setListeningConnection(Connection *conn, const struct sockaddr_in laddr) {
 	if (getConnectionState(conn) != RUDP_CON_CLOS)
 		ERREXIT("Cannot setup listening connection: connection not closed.");
 
-	conn->sock = openSocket();
+	conn->sock.fd = openSocket();
 
-	setSocketReusable(conn->sock);
+	setSocketReusable(conn->sock.fd);
 	
-	bindSocket(conn->sock, &laddr);
+	bindSocket(conn->sock.fd, &laddr);
 
 	setConnectionState(conn, RUDP_CON_LIST);
 }
@@ -28,7 +28,7 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 	char *ssyn = NULL;
 	char *ssynack = NULL;
 	char *sacksynack = NULL;
-	int asock;	
+	int asock, synretrans;
 	struct timespec start, end;
 	long double sampleRTT;	
 
@@ -37,78 +37,61 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 	asock = openSocket();
 
-	setSocketTimeout(asock, ON_READ, RUDP_SAMPLRTT);
+	syn = createSegment(RUDP_SYN, 0, 0, 0, 0, NULL);
 
-	int connattempts = 1;
+	ssyn = serializeSegment(syn);
 
-	do {
+	for (synretrans = 0; synretrans < RUDP_SYN_RETR; synretrans++) {
 
-		syn = createSegment(RUDP_SYN, 0, 0, 0, 0, NULL);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 
-		ssyn = serializeSegment(syn);	
+		writeUnconnectedSocket(asock, laddr, ssyn);
 
-		int synretrans = -1;
+		DBGFUNC(DEBUG, printOutSegment(laddr, syn));
 
-		do {
+		setConnectionState(conn, RUDP_CON_SYNS);
 
-			synretrans++;
+		if (!selectSocket(asock, RUDP_SAMPLRTT))
+			continue;
 
-			clock_gettime(CLOCK_MONOTONIC, &start);
+		ssynack = readUnconnectedSocket(asock, &aaddr, RUDP_SGMS);
 
-			writeUnconnectedSocket(asock, laddr, ssyn);		
+		clock_gettime(CLOCK_MONOTONIC, &end);
 
-			DBGFUNC(DEBUG, printOutSegment(laddr, syn));
+		sampleRTT = getElapsed(start, end);
 
-			setConnectionState(conn, RUDP_CON_SYNS);
+		synack = deserializeSegment(ssynack);
 
-			ssynack = readUnconnectedSocket(asock, &aaddr, RUDP_SGMS);
+		free(ssynack);
 
-			if (ssynack == NULL) {
-				DBGPRINT(DEBUG, "SYNACK DROPPED");
-				continue;
-			}
+		DBGFUNC(DEBUG, printInSegment(aaddr, synack));
 
-			clock_gettime(CLOCK_MONOTONIC, &end);
+		if ((synack.hdr.ctrl == (RUDP_SYN | RUDP_ACK)) &
+			(synack.hdr.ackn == RUDP_NXTSEQN(syn.hdr.seqn, 1))) {
 
-			sampleRTT = getElapsed(start, end);
+			setConnectionState(conn, RUDP_CON_SYNR);
 
-			synack = deserializeSegment(ssynack);
+			acksynack = createSegment(RUDP_ACK, 0, 0, RUDP_NXTSEQN(syn.hdr.seqn, 1), RUDP_NXTSEQN(synack.hdr.seqn, 1), NULL);
 
-			free(ssynack);
+			sacksynack = serializeSegment(acksynack);
 
-			DBGFUNC(DEBUG, printInSegment(aaddr, synack));
+			writeUnconnectedSocket(asock, aaddr, sacksynack);
 
-			if ((synack.hdr.ctrl == (RUDP_SYN | RUDP_ACK)) &
-				(synack.hdr.ackn == RUDP_NXTSEQN(syn.hdr.seqn, 1))) {
+			DBGFUNC(DEBUG, printOutSegment(aaddr, acksynack));
 
-				setConnectionState(conn, RUDP_CON_SYNR);
+			setupConnection(conn, asock, aaddr, acksynack.hdr.seqn, acksynack.hdr.ackn, sampleRTT);
 
-				free(ssyn);
+			setConnectionState(conn, RUDP_CON_ESTA);
 
-				acksynack = createSegment(RUDP_ACK, 0, 0, RUDP_NXTSEQN(syn.hdr.seqn, 1), RUDP_NXTSEQN(synack.hdr.seqn, 1), NULL);
+			free(ssyn);
 
-				sacksynack = serializeSegment(acksynack);
+			free(sacksynack);
 
-				writeUnconnectedSocket(asock, aaddr, sacksynack);
+			return conn->connid;
+		}
+	}
 
-				DBGFUNC(DEBUG, printOutSegment(aaddr, acksynack));
-
-				free(sacksynack);					
-
-				setupConnection(conn, asock, aaddr, acksynack.hdr.seqn, acksynack.hdr.ackn, sampleRTT);				
-
-				setConnectionState(conn, RUDP_CON_ESTA);
-
-				return conn->connid;					
-			}			
-
-		} while (synretrans <= RUDP_CON_RETR);	
-
-		free(ssyn);
-
-		connattempts++;
-
-	} while (connattempts <= RUDP_CON_ATTS);	
+	free(ssyn);
 
 	closeSocket(asock);
 
@@ -126,44 +109,32 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 	char *ssyn = NULL;
 	char *ssynack = NULL;
 	char *sacksynack = NULL;
-	int asock;
+	int asock, synackretrans;
 	struct timespec start, end;
 	long double sampleRTT;
 
 	while (getConnectionState(lconn) == RUDP_CON_LIST) {
 
-		do {
+		ssyn = readUnconnectedSocket(lconn->sock.fd, &caddr, RUDP_SGMS);
 
-			ssyn = readUnconnectedSocket(lconn->sock, &caddr, RUDP_SGMS);			
+		syn = deserializeSegment(ssyn);
 
-			if (ssyn == NULL) {
-				DBGPRINT(DEBUG, "SYN DROPPED");
-				continue;
-			}				
-			
-			syn = deserializeSegment(ssyn);
+		DBGFUNC(DEBUG, printInSegment(caddr, syn));
 
-			DBGFUNC(DEBUG, printInSegment(caddr, syn));
+		free(ssyn);
 
-			free(ssyn);
-
-		} while (syn.hdr.ctrl != RUDP_SYN);
+		if (syn.hdr.ctrl !=RUDP_SYN)
+			continue;
 
 		setConnectionState(lconn, RUDP_CON_SYNR);
 
 		asock = openSocket();
-
-		setSocketTimeout(asock, ON_READ, RUDP_SAMPLRTT);
 	
 		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, 10, RUDP_NXTSEQN(syn.hdr.seqn, 1), NULL); 
 
 		ssynack = serializeSegment(synack);
 
-		int synackretrans = -1;
-
-		do {			
-
-			synackretrans++;
+		for (synackretrans = 0; synackretrans < RUDP_CON_RETR; synackretrans++) {
 
 			clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -173,12 +144,10 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 			setConnectionState(lconn, RUDP_CON_SYNS);	
 
-			sacksynack = readUnconnectedSocket(asock, &caddr, RUDP_SGMS);
-
-			if (sacksynack == NULL) {
-				DBGPRINT(DEBUG, "ACK SYNACK DROPPED");
+			if (!selectSocket(asock, RUDP_SAMPLRTT))
 				continue;
-			}
+
+			sacksynack = readUnconnectedSocket(asock, &caddr, RUDP_SGMS);
 
 			clock_gettime(CLOCK_MONOTONIC, &end);
 
@@ -205,9 +174,8 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 				setConnectionState(aconn, RUDP_CON_ESTA);
 
 				return aconn->connid;			
-			}			
-
-		} while (synackretrans <= RUDP_CON_RETR);
+			}
+		}
 
 		free(ssynack);				
 
@@ -223,29 +191,4 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 
 void desynchronizeConnection(Connection *conn) {
 	destroyConnection(conn);
-}
-
-/* MESSAGE I/O */
-
-void writeMessage(Connection *conn, const char *msg, const size_t size) {
-
-	if (getConnectionState(conn) != RUDP_CON_ESTA)
-		ERREXIT("Cannot write message: connection not established.");
-
-	writeStrBuff(conn->sndbuff, msg, size);	
-
-	waitStrBuffEmptiness(conn->sndbuff);
-
-	waitSgmBuffEmptiness(conn->sndsgmbuff);
-}
-
-char *readMessage(Connection *conn, const size_t size) {
-	char *msg = NULL;
-
-	if (getConnectionState(conn) != RUDP_CON_ESTA)
-		ERREXIT("Cannot read message: connection not established.");
-	
-	msg = waitMinimumStrBuffContent(conn->rcvbuff, size);
-	
-	return msg;
 }

@@ -42,7 +42,7 @@ TESTPREFIX = test_
 
 # Dependencies
 
-LIBS = -lpthread -lrt -lm -lcrypto -lssl
+LIBS = -pthread -lrt -lm -lcrypto -lssl
 
 UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
 
@@ -86,7 +86,7 @@ strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
 segment: $(SEGMENT_TESTDIR)/sgm.c
 	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-base: sync timer str rnd macro
+base: sync timer str rnd macro performance
 
 sync: $(BASE_TESTDIR)/sync.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -101,6 +101,9 @@ rnd: $(BASE_TESTDIR)/rnd.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 macro: $(BASE_TESTDIR)/macro.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	
+performance: $(BASE_TESTDIR)/performance.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 clean-test: 

@@ -29,13 +29,13 @@
 #define RUDP_CON_FINS 6	
 #define RUDP_CON_FINR 7
 
-#define RUDP_CON_ATTS 3
+#define RUDP_SYN_RETR 5
 
 #define RUDP_CON_RETR 3
 
 #define RUDP_CON_WNDS 5//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
 
-#define RUDP_SAMPLRTT 1
+#define RUDP_SAMPLRTT 1000
 
 #define RUDP_SGM_NACK 0
 #define RUDP_SGM_YACK 1
@@ -44,15 +44,29 @@
 
 typedef long ConnectionId;
 
+typedef struct ConnectionState {
+	short value;
+	pthread_rwlock_t *rwlock;
+	pthread_mutex_t *mtx;
+	pthread_cond_t *cnd;
+} ConnectionState;
+
+typedef struct ConnectionSocket {
+	int fd;
+	pthread_mutex_t *mtx;
+} ConnectionSocket;
+
+typedef struct ConnectionInfo {
+	short value;
+	pthread_mutex_t *mtx;
+	pthread_cond_t *cnd;
+} ConnectionInfo;
+
 typedef struct Connection {
 	ConnectionId connid;
-
-	short state;
-	pthread_rwlock_t *state_rwlock;
-	pthread_cond_t  *state_cnd;	
-
-	pthread_mutex_t *sock_mtx;
-	int sock;
+	ConnectionState state;
+	ConnectionInfo info;
+	ConnectionSocket sock;
 
 	Window *sndwnd;
 	StrBuff *sndbuff;
@@ -64,9 +78,9 @@ typedef struct Connection {
 
 	Timeout *timeout;
 
-	pthread_t sndbufferizer;
-	pthread_t rcvbufferizer;
-	pthread_t rcvslider;		
+	pthread_t sender;
+	pthread_t receiver;
+	pthread_t slider;
 } Connection;
 
 /* CONNECTION */
@@ -96,6 +110,8 @@ void deallocateConnectionInPool(Connection *conn);
 Connection *getConnectionById(const ConnectionId connid);
 
 /* UTILITY */
+
+void setDropRate(const long double droprate);
 
 void setConnectionDebugMode(const int dbgmode);
 

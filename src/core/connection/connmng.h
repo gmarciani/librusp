@@ -17,10 +17,4 @@ ConnectionId acceptSynchonization(Connection *lconn);
 
 void desynchronizeConnection(Connection *conn);
 
-/* MESSAGE I/O */
-
-void writeMessage(Connection *conn, const char *msg, const size_t size);
-
-char *readMessage(Connection *conn, const size_t size);
-
 #endif /* CONNMNG_H_ */

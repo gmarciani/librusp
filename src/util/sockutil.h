@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/select.h>
 #include <math.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -16,8 +17,8 @@
 #include "mathutil.h"
 #include "macroutil.h"
 
-#define ON_READ		0b01
-#define ON_WRITE	0b10
+#define ON_READ	0b01
+#define ON_WRITE 0b10
 
 /* SOCKET CREATION */
 
@@ -37,22 +38,22 @@ void writeConnectedSocket(const int sock, const char *buff);
 
 char *readConnectedSocket(const int sock, const size_t rcvsize);
 
+/* SOCKET MULTIPLEXING */
+
+int selectSocket(const int sock, long double millis);
+
 /* SOCKET PROPERTIES */
 
 void setSocketConnected(const int sock, const struct sockaddr_in addr);
 
 void setSocketReusable(const int sock);
 
-void setSocketTimeout(const int sock, const uint8_t mode, const long double value);
+void setSocketTimeout(const int sock, const uint8_t mode, const long double millis);
 
 /* SOCKET END-POINTS */
 
 struct sockaddr_in getSocketLocal(const int sock);
 
 struct sockaddr_in getSocketPeer(const int sock);
-
-/* UTILITY */
-
-void setDropRate(const double droprate);
 
 #endif /* SOCKUTIL_H_ */

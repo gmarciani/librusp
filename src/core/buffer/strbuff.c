@@ -25,11 +25,11 @@ void freeStrBuff(StrBuff *buff) {
 
 	freeRWLock(buff->rwlock);
 
-	destroyMutex(buff->mtx);
+	freeMutex(buff->mtx);
 
-	destroyConditionVariable(buff->insert_cnd);
+	freeConditionVariable(buff->insert_cnd);
 
-	destroyConditionVariable(buff->remove_cnd);
+	freeConditionVariable(buff->remove_cnd);
 
 	buff->size = 0;
 
@@ -54,42 +54,30 @@ size_t getStrBuffSize(StrBuff *buff) {
 
 char *lookStrBuff(StrBuff *buff, const size_t size) {
 	char *str = NULL;
-	size_t sizeToCopy;
+	size_t sizeToLook;
 
 	lockRead(buff->rwlock);
 
-	sizeToCopy = (size < buff->size) ? size : buff->size;
+	sizeToLook = (size < buff->size) ? size : buff->size;
 
-	if (!(str = malloc(sizeof(char) * (sizeToCopy + 1))))
+	if (!(str = malloc(sizeof(char) * (sizeToLook + 1))))
 		ERREXIT("Cannot allocate memory for buffer get.");
 
-	memcpy(str, buff->content, sizeof(char) * sizeToCopy);
+	memcpy(str, buff->content, sizeof(char) * sizeToLook);
 
 	unlockRWLock(buff->rwlock);
 
-	str[sizeToCopy] = '\0';
+	str[sizeToLook] = '\0';
 
 	return str;
 }
 
 char *readStrBuff(StrBuff *buff, const size_t size) {
 	char *str = NULL;
-	size_t sizeToCopy;
 
-	sizeToCopy = (size < buff->size) ? size : buff->size;
+	str = lookStrBuff(buff, size);
 
-	str = lookStrBuff(buff, sizeToCopy);
-
-	lockWrite(buff->rwlock);
-
-	if (sizeToCopy != 0)
-		memmove(buff->content, buff->content + sizeToCopy, sizeof(char) * (buff->size - sizeToCopy));
-
-	buff->size -= sizeToCopy;
-
-	unlockRWLock(buff->rwlock);
-
-	broadcastConditionVariable(buff->remove_cnd);
+	popStrBuff(buff, strlen(str));
 
 	return str;
 }
@@ -109,9 +97,26 @@ void writeStrBuff(StrBuff *buff, const char *str, const size_t size) {
 	broadcastConditionVariable(buff->insert_cnd);
 }
 
+void popStrBuff(StrBuff *buff, const size_t size) {
+	size_t sizeToPop;
+
+	sizeToPop = (size < buff->size) ? size : buff->size;
+
+	lockWrite(buff->rwlock);
+
+	if (sizeToPop != 0)
+		memmove(buff->content, buff->content + sizeToPop, sizeof(char) * (buff->size - sizeToPop));
+
+	buff->size -= sizeToPop;
+
+	unlockRWLock(buff->rwlock);
+
+	broadcastConditionVariable(buff->remove_cnd);
+}
+
 /* STRING BUFFER WAITING */
 
-void waitStrBuffEmptiness(StrBuff *buff) {
+void waitEmptyStrBuff(StrBuff *buff) {
 	lockMutex(buff->mtx);
 
 	while (getStrBuffSize(buff) > 0)
@@ -120,7 +125,7 @@ void waitStrBuffEmptiness(StrBuff *buff) {
 	unlockMutex(buff->mtx);
 }
 
-char *waitStrBuffContent(StrBuff *buff, const size_t size) {
+char *waitLookMaxStrBuff(StrBuff *buff, const size_t size) {
 	char *result = NULL;
 
 	lockMutex(buff->mtx);
@@ -135,7 +140,7 @@ char *waitStrBuffContent(StrBuff *buff, const size_t size) {
 	return result;
 }
 
-char *waitMinimumStrBuffContent(StrBuff *buff, const size_t size) {
+char *waitReadMinStrBuff(StrBuff *buff, const size_t size) {
 	char *result = NULL;
 
 	lockMutex(buff->mtx);

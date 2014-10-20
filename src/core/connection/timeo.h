@@ -28,23 +28,16 @@ typedef struct Timeout {
 	long double extRTT;
 	long double devRTT;
 	long double value;
-	timer_t timer;
 
 	pthread_rwlock_t *rwlock;
 } Timeout;
 
-Timeout *createTimeout(long double sampleRTT, void (*handler) (union sigval), void *arg);
+Timeout *createTimeout(long double sampleRTT);
 
 void freeTimeout(Timeout *timeout);
-
-short isTimeoutDisarmed(Timeout *timeout);
 
 long double getTimeoutValue(Timeout *timeout);
 
 void updateTimeout(Timeout *timeout, const long double sampleRTT);
-
-void startTimeout(Timeout *timeout);
-
-void stopTimeout(Timeout *timeout);
 
 #endif /* TIMEO_H_ */

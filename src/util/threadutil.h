@@ -25,7 +25,7 @@ void *joinThread(pthread_t tid);
 
 pthread_mutex_t *createMutex();
 
-void destroyMutex(pthread_mutex_t *mtx);
+void freeMutex(pthread_mutex_t *mtx);
 
 void lockMutex(pthread_mutex_t *mtx);
 
@@ -35,9 +35,11 @@ void unlockMutex(pthread_mutex_t *mtx);
 
 pthread_cond_t *createConditionVariable();
 
-void destroyConditionVariable(pthread_cond_t *cnd);
+void freeConditionVariable(pthread_cond_t *cnd);
 
 void waitConditionVariable(pthread_cond_t *cnd, pthread_mutex_t *mtx);
+
+void waitTimeoutConditionVariable(pthread_cond_t *cnd, pthread_mutex_t *mtx, const struct timespec timeout);
 
 void signalConditionVariable(pthread_cond_t *cnd);
 
@@ -54,5 +56,18 @@ void lockRead(pthread_rwlock_t *rwlock);
 void lockWrite(pthread_rwlock_t *rwlock);
 
 void unlockRWLock(pthread_rwlock_t *rwlock);
+
+/* SPINLOCK */
+
+
+/* SEMAPHORE */
+
+sem_t *createSemaphore(const unsigned int value);
+
+void freeSemaphore(sem_t *sem);
+
+void incrementSemaphore(sem_t *sem);
+
+void decrementSemaphore(sem_t *sem);
 
 #endif /* THREADUTIL_H_ */
