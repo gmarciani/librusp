@@ -1,0 +1,693 @@
+WND: RWL
+TIMEO: RWL
+STATE: RWL
+SGMBUFF: RWL
+STRBUFF: RWL
+
+
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ns/call  ns/call  name    
+ 66.69      0.02     0.02                             rudpReceive
+ 33.34      0.03     0.01   136476    73.30    73.30  lockRead
+  0.00      0.03     0.00   201457     0.00     0.00  unlockRWLock
+  0.00      0.03     0.00   117683     0.00     0.00  waitTimeoutConditionVariable
+  0.00      0.03     0.00    65084     0.00     0.00  lockWrite
+  0.00      0.03     0.00    42591     0.00     0.00  broadcastConditionVariable
+  0.00      0.03     0.00    31790     0.00     0.00  unlockMutex
+  0.00      0.03     0.00    31730     0.00     0.00  lockMutex
+  0.00      0.03     0.00    28444     0.00    73.29  getWindowBase
+  0.00      0.03     0.00    17289     0.00    73.48  getTimeoutValue
+  0.00      0.03     0.00    15728     0.00    73.54  receiveSegment
+  0.00      0.03     0.00    15702     0.00     0.00  selectSocket
+  0.00      0.03     0.00    15650     0.00     0.00  getTimeval
+  0.00      0.03     0.00    14975     0.00     0.00  stringNDuplication
+  0.00      0.03     0.00    14961     0.00     0.00  getRandomBit
+  0.00      0.03     0.00    14953     0.00     0.00  matchSequenceAgainstWindow
+  0.00      0.03     0.00    14950     0.00    73.45  matchWindow
+  0.00      0.03     0.00    14945     0.00     0.00  deserializeSegment
+  0.00      0.03     0.00    14915     0.00     0.00  readConnectedSocket
+  0.00      0.03     0.00    14913     0.00     0.00  serializeSegment
+  0.00      0.03     0.00    14898     0.00     0.00  splitStringBySection
+  0.00      0.03     0.00    14880     0.00     0.00  writeConnectedSocket
+  0.00      0.03     0.00    14537     0.00    73.37  findSgmBuffAckn
+  0.00      0.03     0.00    14260     0.00    73.27  getWindowNext
+  0.00      0.03     0.00    14234     0.00     0.00  createSegment
+  0.00      0.03     0.00    13815     0.00     0.00  slideWindow
+  0.00      0.03     0.00    12780     0.00    73.33  getSgmBuffElemStatus
+  0.00      0.03     0.00     7804     0.00     0.00  getElapsed
+  0.00      0.03     0.00     6961     0.00     0.00  writeStrBuff
+  0.00      0.03     0.00     6953     0.00     0.00  createRWLock
+  0.00      0.03     0.00     6950     0.00     0.00  removeSgmBuff
+  0.00      0.03     0.00     6948     0.00     0.00  popStrBuff
+  0.00      0.03     0.00     6947     0.00     0.00  freeRWLock
+  0.00      0.03     0.00     6946     0.00    73.29  getSgmBuffElemElapsed
+  0.00      0.03     0.00     6946     0.00     0.00  slideWindowNext
+  0.00      0.03     0.00     6946     0.00    90.52  waitWindowSpace
+  0.00      0.03     0.00     6944     0.00     0.00  addSgmBuff
+  0.00      0.03     0.00     6940     0.00     0.00  updateTimeout
+  0.00      0.03     0.00     6932     0.00     0.00  setSgmBuffElemStatus
+  0.00      0.03     0.00     6915     0.00    73.24  findSgmBuffSeqn
+  0.00      0.03     0.00     6914     0.00    73.57  waitLookMaxStrBuff
+  0.00      0.03     0.00     2635     0.00     0.00  waitConditionVariable
+  0.00      0.03     0.00     1979     0.00     0.00  getConnectionById
+  0.00      0.03     0.00     1974     0.00    73.37  getConnectionState
+  0.00      0.03     0.00      976     0.00     0.00  getTimespec
+  0.00      0.03     0.00      906     0.00    70.47  readStrBuff
+  0.00      0.03     0.00      853     0.00    73.13  testSgmBuffElemAttributes
+  0.00      0.03     0.00      836     0.00    73.47  getSgmBuffSize
+  0.00      0.03     0.00      700     0.00     0.00  updateSgmBuffElemAttributes
+  0.00      0.03     0.00       14     0.00     0.00  createConditionVariable
+  0.00      0.03     0.00        9     0.00     0.00  createMutex
+  0.00      0.03     0.00        3     0.00     0.00  setConnectionState
+  0.00      0.03     0.00        2     0.00     0.00  createSgmBuff
+  0.00      0.03     0.00        2     0.00     0.00  createStrBuff
+  0.00      0.03     0.00        2     0.00     0.00  createThread
+  0.00      0.03     0.00        2     0.00     0.00  createWindow
+  0.00      0.03     0.00        2     0.00     0.00  writeUnconnectedSocket
+  0.00      0.03     0.00        1     0.00     0.00  addElementToList
+  0.00      0.03     0.00        1     0.00     0.00  createAddress
+  0.00      0.03     0.00        1     0.00     0.00  createConnection
+  0.00      0.03     0.00        1     0.00     0.00  createTimeout
+  0.00      0.03     0.00        1     0.00     0.00  getSocketLocal
+  0.00      0.03     0.00        1     0.00     0.00  getSocketPeer
+  0.00      0.03     0.00        1     0.00     0.00  openSocket
+  0.00      0.03     0.00        1     0.00     0.00  readUnconnectedSocket
+  0.00      0.03     0.00        1     0.00     0.00  setSocketConnected
+  0.00      0.03     0.00        1     0.00     0.00  setupConnection
+  0.00      0.03     0.00        1     0.00    73.37  synchronizeConnection
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+ 
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this 
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+		     Call graph (explanation follows)
+
+
+granularity: each sample hit covers 2 byte(s) for 33.32% of 0.03 seconds
+
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]     67.1    0.02    0.00                 rudpReceive [1]
+                0.00    0.00     973/1974        getConnectionState [16]
+                0.00    0.00     906/906         readStrBuff [18]
+                0.00    0.00  117683/117683      waitTimeoutConditionVariable [24]
+                0.00    0.00     977/1979        getConnectionById [52]
+                0.00    0.00     977/31730       lockMutex [28]
+                0.00    0.00     976/976         getTimespec [53]
+                0.00    0.00     957/31790       unlockMutex [27]
+-----------------------------------------------
+                0.00    0.00     221/136476      receiverLoop [3]
+                0.00    0.00     838/136476      getSgmBuffSize [20]
+                0.00    0.00     851/136476      testSgmBuffElemAttributes [19]
+                0.00    0.00     871/136476      readStrBuff [18]
+                0.00    0.00    1976/136476      getConnectionState [16]
+                0.00    0.00    6910/136476      findSgmBuffSeqn [15]
+                0.00    0.00    6940/136476      waitLookMaxStrBuff [14]
+                0.00    0.00    6945/136476      getSgmBuffElemElapsed [13]
+                0.00    0.00    8578/136476      waitWindowSpace [12]
+                0.00    0.00   12786/136476      getSgmBuffElemStatus [11]
+                0.00    0.00   14255/136476      getWindowNext [10]
+                0.00    0.00   14551/136476      findSgmBuffAckn [9]
+                0.00    0.00   14982/136476      matchWindow [8]
+                0.00    0.00   17331/136476      getTimeoutValue [6]
+                0.00    0.00   28441/136476      getWindowBase [5]
+[2]     33.3    0.01    0.00  136476         lockRead [2]
+-----------------------------------------------
+                                                 <spontaneous>
+[3]     25.5    0.00    0.01                 receiverLoop [3]
+                0.00    0.00   21517/28444       getWindowBase [5]
+                0.00    0.00   15728/15728       receiveSegment [7]
+                0.00    0.00   14950/14950       matchWindow [8]
+                0.00    0.00   14537/14537       findSgmBuffAckn [9]
+                0.00    0.00   12780/12780       getSgmBuffElemStatus [11]
+                0.00    0.00    7321/14260       getWindowNext [10]
+                0.00    0.00    6946/6946        getSgmBuffElemElapsed [13]
+                0.00    0.00    6915/6915        findSgmBuffSeqn [15]
+                0.00    0.00    1548/17289       getTimeoutValue [6]
+                0.00    0.00     853/853         testSgmBuffElemAttributes [19]
+                0.00    0.00     836/836         getSgmBuffSize [20]
+                0.00    0.00     221/136476      lockRead [2]
+                0.00    0.00   20842/42591       broadcastConditionVariable [26]
+                0.00    0.00   14783/201457      unlockRWLock [23]
+                0.00    0.00   13815/13815       slideWindow [40]
+                0.00    0.00    8038/31730       lockMutex [28]
+                0.00    0.00    8036/14880       writeConnectedSocket [38]
+                0.00    0.00    8030/31790       unlockMutex [27]
+                0.00    0.00    7992/14913       serializeSegment [36]
+                0.00    0.00    7293/14234       createSegment [39]
+                0.00    0.00    6961/6961        writeStrBuff [42]
+                0.00    0.00    6950/6950        removeSgmBuff [44]
+                0.00    0.00    6940/6940        updateTimeout [49]
+                0.00    0.00    6932/6932        setSgmBuffElemStatus [50]
+                0.00    0.00     700/700         updateSgmBuffElemAttributes [54]
+-----------------------------------------------
+                                                 <spontaneous>
+[4]      7.2    0.00    0.00                 senderLoop [4]
+                0.00    0.00    6946/6946        waitWindowSpace [12]
+                0.00    0.00    6914/6914        waitLookMaxStrBuff [14]
+                0.00    0.00    6939/14260       getWindowNext [10]
+                0.00    0.00    6927/28444       getWindowBase [5]
+                0.00    0.00   13879/31790       unlockMutex [27]
+                0.00    0.00    6948/6948        popStrBuff [45]
+                0.00    0.00    6946/6946        slideWindowNext [47]
+                0.00    0.00    6944/6944        addSgmBuff [48]
+                0.00    0.00    6939/14234       createSegment [39]
+                0.00    0.00    6923/42591       broadcastConditionVariable [26]
+                0.00    0.00    6922/201457      unlockRWLock [23]
+                0.00    0.00    6919/14913       serializeSegment [36]
+                0.00    0.00    6873/31730       lockMutex [28]
+                0.00    0.00    6844/14880       writeConnectedSocket [38]
+-----------------------------------------------
+                0.00    0.00    6927/28444       senderLoop [4]
+                0.00    0.00   21517/28444       receiverLoop [3]
+[5]      6.9    0.00    0.00   28444         getWindowBase [5]
+                0.00    0.00   28441/136476      lockRead [2]
+                0.00    0.00   28410/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00    1548/17289       receiverLoop [3]
+                0.00    0.00   15741/17289       receiveSegment [7]
+[6]      4.2    0.00    0.00   17289         getTimeoutValue [6]
+                0.00    0.00   17331/136476      lockRead [2]
+                0.00    0.00   17278/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00   15728/15728       receiverLoop [3]
+[7]      3.9    0.00    0.00   15728         receiveSegment [7]
+                0.00    0.00   15741/17289       getTimeoutValue [6]
+                0.00    0.00   15701/15702       selectSocket [29]
+                0.00    0.00   14961/14961       getRandomBit [32]
+                0.00    0.00   14944/14945       deserializeSegment [34]
+                0.00    0.00   14915/14915       readConnectedSocket [35]
+-----------------------------------------------
+                0.00    0.00   14950/14950       receiverLoop [3]
+[8]      3.7    0.00    0.00   14950         matchWindow [8]
+                0.00    0.00   14982/136476      lockRead [2]
+                0.00    0.00   14981/201457      unlockRWLock [23]
+                0.00    0.00   14953/14953       matchSequenceAgainstWindow [33]
+-----------------------------------------------
+                0.00    0.00   14537/14537       receiverLoop [3]
+[9]      3.6    0.00    0.00   14537         findSgmBuffAckn [9]
+                0.00    0.00   14551/136476      lockRead [2]
+                0.00    0.00   14514/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00    6939/14260       senderLoop [4]
+                0.00    0.00    7321/14260       receiverLoop [3]
+[10]     3.5    0.00    0.00   14260         getWindowNext [10]
+                0.00    0.00   14255/136476      lockRead [2]
+                0.00    0.00   14265/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00   12780/12780       receiverLoop [3]
+[11]     3.1    0.00    0.00   12780         getSgmBuffElemStatus [11]
+                0.00    0.00   12786/136476      lockRead [2]
+                0.00    0.00   12795/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00    6946/6946        senderLoop [4]
+[12]     2.1    0.00    0.00    6946         waitWindowSpace [12]
+                0.00    0.00    8578/136476      lockRead [2]
+                0.00    0.00    8584/201457      unlockRWLock [23]
+                0.00    0.00    6952/31730       lockMutex [28]
+                0.00    0.00    1654/2635        waitConditionVariable [51]
+-----------------------------------------------
+                0.00    0.00    6946/6946        receiverLoop [3]
+[13]     1.7    0.00    0.00    6946         getSgmBuffElemElapsed [13]
+                0.00    0.00    6945/136476      lockRead [2]
+                0.00    0.00    6949/7804        getElapsed [41]
+                0.00    0.00    6945/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00    6914/6914        senderLoop [4]
+[14]     1.7    0.00    0.00    6914         waitLookMaxStrBuff [14]
+                0.00    0.00    6940/136476      lockRead [2]
+                0.00    0.00    6951/201457      unlockRWLock [23]
+                0.00    0.00    6947/31790       unlockMutex [27]
+                0.00    0.00    6909/31730       lockMutex [28]
+                0.00    0.00     981/2635        waitConditionVariable [51]
+-----------------------------------------------
+                0.00    0.00    6915/6915        receiverLoop [3]
+[15]     1.7    0.00    0.00    6915         findSgmBuffSeqn [15]
+                0.00    0.00    6910/136476      lockRead [2]
+                0.00    0.00    6900/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00       1/1974        synchronizeConnection [21]
+                0.00    0.00     973/1974        rudpReceive [1]
+                0.00    0.00    1000/1974        rudpSend [17]
+[16]     0.5    0.00    0.00    1974         getConnectionState [16]
+                0.00    0.00    1976/136476      lockRead [2]
+                0.00    0.00    1969/201457      unlockRWLock [23]
+-----------------------------------------------
+                                                 <spontaneous>
+[17]     0.2    0.00    0.00                 rudpSend [17]
+                0.00    0.00    1000/1974        getConnectionState [16]
+                0.00    0.00    1000/1979        getConnectionById [52]
+-----------------------------------------------
+                0.00    0.00     906/906         rudpReceive [1]
+[18]     0.2    0.00    0.00     906         readStrBuff [18]
+                0.00    0.00     871/136476      lockRead [2]
+                0.00    0.00    1854/201457      unlockRWLock [23]
+                0.00    0.00     940/42591       broadcastConditionVariable [26]
+                0.00    0.00     907/65084       lockWrite [25]
+-----------------------------------------------
+                0.00    0.00     853/853         receiverLoop [3]
+[19]     0.2    0.00    0.00     853         testSgmBuffElemAttributes [19]
+                0.00    0.00     851/136476      lockRead [2]
+                0.00    0.00     854/7804        getElapsed [41]
+                0.00    0.00     854/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00     836/836         receiverLoop [3]
+[20]     0.2    0.00    0.00     836         getSgmBuffSize [20]
+                0.00    0.00     838/136476      lockRead [2]
+                0.00    0.00     831/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00       1/1           rudpConnect [22]
+[21]     0.0    0.00    0.00       1         synchronizeConnection [21]
+                0.00    0.00       1/1974        getConnectionState [16]
+                0.00    0.00       3/42591       broadcastConditionVariable [26]
+                0.00    0.00       3/3           setConnectionState [57]
+                0.00    0.00       2/14234       createSegment [39]
+                0.00    0.00       2/14913       serializeSegment [36]
+                0.00    0.00       2/2           writeUnconnectedSocket [62]
+                0.00    0.00       1/1           openSocket [69]
+                0.00    0.00       1/15702       selectSocket [29]
+                0.00    0.00       1/1           readUnconnectedSocket [70]
+                0.00    0.00       1/7804        getElapsed [41]
+                0.00    0.00       1/14945       deserializeSegment [34]
+                0.00    0.00       1/1           setupConnection [72]
+-----------------------------------------------
+                                                 <spontaneous>
+[22]     0.0    0.00    0.00                 rudpConnect [22]
+                0.00    0.00       1/1           synchronizeConnection [21]
+                0.00    0.00       1/1           createAddress [64]
+                0.00    0.00       1/1           createConnection [65]
+-----------------------------------------------
+                0.00    0.00       3/201457      setConnectionState [57]
+                0.00    0.00     831/201457      getSgmBuffSize [20]
+                0.00    0.00     854/201457      testSgmBuffElemAttributes [19]
+                0.00    0.00    1854/201457      readStrBuff [18]
+                0.00    0.00    1969/201457      getConnectionState [16]
+                0.00    0.00    6900/201457      findSgmBuffSeqn [15]
+                0.00    0.00    6922/201457      senderLoop [4]
+                0.00    0.00    6929/201457      popStrBuff [45]
+                0.00    0.00    6939/201457      addSgmBuff [48]
+                0.00    0.00    6945/201457      getSgmBuffElemElapsed [13]
+                0.00    0.00    6947/201457      removeSgmBuff [44]
+                0.00    0.00    6951/201457      waitLookMaxStrBuff [14]
+                0.00    0.00    7959/201457      writeStrBuff [42]
+                0.00    0.00    8584/201457      waitWindowSpace [12]
+                0.00    0.00   12795/201457      getSgmBuffElemStatus [11]
+                0.00    0.00   13844/201457      slideWindow [40]
+                0.00    0.00   14265/201457      getWindowNext [10]
+                0.00    0.00   14514/201457      findSgmBuffAckn [9]
+                0.00    0.00   14783/201457      receiverLoop [3]
+                0.00    0.00   14981/201457      matchWindow [8]
+                0.00    0.00   17278/201457      getTimeoutValue [6]
+                0.00    0.00   28410/201457      getWindowBase [5]
+[23]     0.0    0.00    0.00  201457         unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00  117683/117683      rudpReceive [1]
+[24]     0.0    0.00    0.00  117683         waitTimeoutConditionVariable [24]
+-----------------------------------------------
+                0.00    0.00       3/65084       setConnectionState [57]
+                0.00    0.00     701/65084       updateSgmBuffElemAttributes [54]
+                0.00    0.00     907/65084       readStrBuff [18]
+                0.00    0.00    6923/65084       addSgmBuff [48]
+                0.00    0.00    6925/65084       setSgmBuffElemStatus [50]
+                0.00    0.00    6935/65084       popStrBuff [45]
+                0.00    0.00    6948/65084       slideWindowNext [47]
+                0.00    0.00    6950/65084       updateTimeout [49]
+                0.00    0.00    6967/65084       removeSgmBuff [44]
+                0.00    0.00    7965/65084       writeStrBuff [42]
+                0.00    0.00   13860/65084       slideWindow [40]
+[25]     0.0    0.00    0.00   65084         lockWrite [25]
+-----------------------------------------------
+                0.00    0.00       3/42591       synchronizeConnection [21]
+                0.00    0.00     940/42591       readStrBuff [18]
+                0.00    0.00    6923/42591       senderLoop [4]
+                0.00    0.00    6939/42591       addSgmBuff [48]
+                0.00    0.00    6944/42591       removeSgmBuff [44]
+                0.00    0.00   20842/42591       receiverLoop [3]
+[26]     0.0    0.00    0.00   42591         broadcastConditionVariable [26]
+-----------------------------------------------
+                0.00    0.00       1/31790       createConnection [65]
+                0.00    0.00     957/31790       rudpReceive [1]
+                0.00    0.00    1976/31790       getConnectionById [52]
+                0.00    0.00    6947/31790       waitLookMaxStrBuff [14]
+                0.00    0.00    8030/31790       receiverLoop [3]
+                0.00    0.00   13879/31790       senderLoop [4]
+[27]     0.0    0.00    0.00   31790         unlockMutex [27]
+-----------------------------------------------
+                0.00    0.00       1/31730       createConnection [65]
+                0.00    0.00     977/31730       rudpReceive [1]
+                0.00    0.00    1980/31730       getConnectionById [52]
+                0.00    0.00    6873/31730       senderLoop [4]
+                0.00    0.00    6909/31730       waitLookMaxStrBuff [14]
+                0.00    0.00    6952/31730       waitWindowSpace [12]
+                0.00    0.00    8038/31730       receiverLoop [3]
+[28]     0.0    0.00    0.00   31730         lockMutex [28]
+-----------------------------------------------
+                0.00    0.00       1/15702       synchronizeConnection [21]
+                0.00    0.00   15701/15702       receiveSegment [7]
+[29]     0.0    0.00    0.00   15702         selectSocket [29]
+                0.00    0.00   15650/15650       getTimeval [30]
+-----------------------------------------------
+                0.00    0.00   15650/15650       selectSocket [29]
+[30]     0.0    0.00    0.00   15650         getTimeval [30]
+-----------------------------------------------
+                0.00    0.00   14975/14975       deserializeSegment [34]
+[31]     0.0    0.00    0.00   14975         stringNDuplication [31]
+-----------------------------------------------
+                0.00    0.00   14961/14961       receiveSegment [7]
+[32]     0.0    0.00    0.00   14961         getRandomBit [32]
+-----------------------------------------------
+                0.00    0.00   14953/14953       matchWindow [8]
+[33]     0.0    0.00    0.00   14953         matchSequenceAgainstWindow [33]
+-----------------------------------------------
+                0.00    0.00       1/14945       synchronizeConnection [21]
+                0.00    0.00   14944/14945       receiveSegment [7]
+[34]     0.0    0.00    0.00   14945         deserializeSegment [34]
+                0.00    0.00   14975/14975       stringNDuplication [31]
+                0.00    0.00   14898/14898       splitStringBySection [37]
+-----------------------------------------------
+                0.00    0.00   14915/14915       receiveSegment [7]
+[35]     0.0    0.00    0.00   14915         readConnectedSocket [35]
+-----------------------------------------------
+                0.00    0.00       2/14913       synchronizeConnection [21]
+                0.00    0.00    6919/14913       senderLoop [4]
+                0.00    0.00    7992/14913       receiverLoop [3]
+[36]     0.0    0.00    0.00   14913         serializeSegment [36]
+-----------------------------------------------
+                0.00    0.00   14898/14898       deserializeSegment [34]
+[37]     0.0    0.00    0.00   14898         splitStringBySection [37]
+-----------------------------------------------
+                0.00    0.00    6844/14880       senderLoop [4]
+                0.00    0.00    8036/14880       receiverLoop [3]
+[38]     0.0    0.00    0.00   14880         writeConnectedSocket [38]
+-----------------------------------------------
+                0.00    0.00       2/14234       synchronizeConnection [21]
+                0.00    0.00    6939/14234       senderLoop [4]
+                0.00    0.00    7293/14234       receiverLoop [3]
+[39]     0.0    0.00    0.00   14234         createSegment [39]
+-----------------------------------------------
+                0.00    0.00   13815/13815       receiverLoop [3]
+[40]     0.0    0.00    0.00   13815         slideWindow [40]
+                0.00    0.00   13860/65084       lockWrite [25]
+                0.00    0.00   13844/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00       1/7804        synchronizeConnection [21]
+                0.00    0.00     854/7804        testSgmBuffElemAttributes [19]
+                0.00    0.00    6949/7804        getSgmBuffElemElapsed [13]
+[41]     0.0    0.00    0.00    7804         getElapsed [41]
+-----------------------------------------------
+                0.00    0.00    6961/6961        receiverLoop [3]
+[42]     0.0    0.00    0.00    6961         writeStrBuff [42]
+                0.00    0.00    7965/65084       lockWrite [25]
+                0.00    0.00    7959/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00       1/6953        createConnection [65]
+                0.00    0.00       1/6953        createTimeout [66]
+                0.00    0.00       2/6953        createWindow [61]
+                0.00    0.00       2/6953        createSgmBuff [58]
+                0.00    0.00       2/6953        createStrBuff [59]
+                0.00    0.00    6945/6953        addSgmBuff [48]
+[43]     0.0    0.00    0.00    6953         createRWLock [43]
+-----------------------------------------------
+                0.00    0.00    6950/6950        receiverLoop [3]
+[44]     0.0    0.00    0.00    6950         removeSgmBuff [44]
+                0.00    0.00    6967/65084       lockWrite [25]
+                0.00    0.00    6947/201457      unlockRWLock [23]
+                0.00    0.00    6947/6947        freeRWLock [46]
+                0.00    0.00    6944/42591       broadcastConditionVariable [26]
+-----------------------------------------------
+                0.00    0.00    6948/6948        senderLoop [4]
+[45]     0.0    0.00    0.00    6948         popStrBuff [45]
+                0.00    0.00    6935/65084       lockWrite [25]
+                0.00    0.00    6929/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00    6947/6947        removeSgmBuff [44]
+[46]     0.0    0.00    0.00    6947         freeRWLock [46]
+-----------------------------------------------
+                0.00    0.00    6946/6946        senderLoop [4]
+[47]     0.0    0.00    0.00    6946         slideWindowNext [47]
+                0.00    0.00    6948/65084       lockWrite [25]
+-----------------------------------------------
+                0.00    0.00    6944/6944        senderLoop [4]
+[48]     0.0    0.00    0.00    6944         addSgmBuff [48]
+                0.00    0.00    6945/6953        createRWLock [43]
+                0.00    0.00    6939/201457      unlockRWLock [23]
+                0.00    0.00    6939/42591       broadcastConditionVariable [26]
+                0.00    0.00    6923/65084       lockWrite [25]
+-----------------------------------------------
+                0.00    0.00    6940/6940        receiverLoop [3]
+[49]     0.0    0.00    0.00    6940         updateTimeout [49]
+                0.00    0.00    6950/65084       lockWrite [25]
+-----------------------------------------------
+                0.00    0.00    6932/6932        receiverLoop [3]
+[50]     0.0    0.00    0.00    6932         setSgmBuffElemStatus [50]
+                0.00    0.00    6925/65084       lockWrite [25]
+-----------------------------------------------
+                0.00    0.00     981/2635        waitLookMaxStrBuff [14]
+                0.00    0.00    1654/2635        waitWindowSpace [12]
+[51]     0.0    0.00    0.00    2635         waitConditionVariable [51]
+-----------------------------------------------
+                0.00    0.00       1/1979        rudpGetLocalAddress [127]
+                0.00    0.00       1/1979        rudpGetPeerAddress [128]
+                0.00    0.00     977/1979        rudpReceive [1]
+                0.00    0.00    1000/1979        rudpSend [17]
+[52]     0.0    0.00    0.00    1979         getConnectionById [52]
+                0.00    0.00    1980/31730       lockMutex [28]
+                0.00    0.00    1976/31790       unlockMutex [27]
+-----------------------------------------------
+                0.00    0.00     976/976         rudpReceive [1]
+[53]     0.0    0.00    0.00     976         getTimespec [53]
+-----------------------------------------------
+                0.00    0.00     700/700         receiverLoop [3]
+[54]     0.0    0.00    0.00     700         updateSgmBuffElemAttributes [54]
+                0.00    0.00     701/65084       lockWrite [25]
+-----------------------------------------------
+                0.00    0.00       2/14          createConnection [65]
+                0.00    0.00       2/14          createWindow [61]
+                0.00    0.00       4/14          createStrBuff [59]
+                0.00    0.00       6/14          createSgmBuff [58]
+[55]     0.0    0.00    0.00      14         createConditionVariable [55]
+-----------------------------------------------
+                0.00    0.00       2/9           createWindow [61]
+                0.00    0.00       2/9           createSgmBuff [58]
+                0.00    0.00       2/9           createStrBuff [59]
+                0.00    0.00       3/9           createConnection [65]
+[56]     0.0    0.00    0.00       9         createMutex [56]
+-----------------------------------------------
+                0.00    0.00       3/3           synchronizeConnection [21]
+[57]     0.0    0.00    0.00       3         setConnectionState [57]
+                0.00    0.00       3/65084       lockWrite [25]
+                0.00    0.00       3/201457      unlockRWLock [23]
+-----------------------------------------------
+                0.00    0.00       2/2           setupConnection [72]
+[58]     0.0    0.00    0.00       2         createSgmBuff [58]
+                0.00    0.00       6/14          createConditionVariable [55]
+                0.00    0.00       2/6953        createRWLock [43]
+                0.00    0.00       2/9           createMutex [56]
+-----------------------------------------------
+                0.00    0.00       2/2           setupConnection [72]
+[59]     0.0    0.00    0.00       2         createStrBuff [59]
+                0.00    0.00       4/14          createConditionVariable [55]
+                0.00    0.00       2/6953        createRWLock [43]
+                0.00    0.00       2/9           createMutex [56]
+-----------------------------------------------
+                0.00    0.00       2/2           setupConnection [72]
+[60]     0.0    0.00    0.00       2         createThread [60]
+-----------------------------------------------
+                0.00    0.00       2/2           setupConnection [72]
+[61]     0.0    0.00    0.00       2         createWindow [61]
+                0.00    0.00       2/14          createConditionVariable [55]
+                0.00    0.00       2/9           createMutex [56]
+                0.00    0.00       2/6953        createRWLock [43]
+-----------------------------------------------
+                0.00    0.00       2/2           synchronizeConnection [21]
+[62]     0.0    0.00    0.00       2         writeUnconnectedSocket [62]
+-----------------------------------------------
+                0.00    0.00       1/1           createConnection [65]
+[63]     0.0    0.00    0.00       1         addElementToList [63]
+-----------------------------------------------
+                0.00    0.00       1/1           rudpConnect [22]
+[64]     0.0    0.00    0.00       1         createAddress [64]
+-----------------------------------------------
+                0.00    0.00       1/1           rudpConnect [22]
+[65]     0.0    0.00    0.00       1         createConnection [65]
+                0.00    0.00       3/9           createMutex [56]
+                0.00    0.00       2/14          createConditionVariable [55]
+                0.00    0.00       1/6953        createRWLock [43]
+                0.00    0.00       1/31730       lockMutex [28]
+                0.00    0.00       1/1           addElementToList [63]
+                0.00    0.00       1/31790       unlockMutex [27]
+-----------------------------------------------
+                0.00    0.00       1/1           setupConnection [72]
+[66]     0.0    0.00    0.00       1         createTimeout [66]
+                0.00    0.00       1/6953        createRWLock [43]
+-----------------------------------------------
+                0.00    0.00       1/1           rudpGetLocalAddress [127]
+[67]     0.0    0.00    0.00       1         getSocketLocal [67]
+-----------------------------------------------
+                0.00    0.00       1/1           rudpGetPeerAddress [128]
+[68]     0.0    0.00    0.00       1         getSocketPeer [68]
+-----------------------------------------------
+                0.00    0.00       1/1           synchronizeConnection [21]
+[69]     0.0    0.00    0.00       1         openSocket [69]
+-----------------------------------------------
+                0.00    0.00       1/1           synchronizeConnection [21]
+[70]     0.0    0.00    0.00       1         readUnconnectedSocket [70]
+-----------------------------------------------
+                0.00    0.00       1/1           setupConnection [72]
+[71]     0.0    0.00    0.00       1         setSocketConnected [71]
+-----------------------------------------------
+                0.00    0.00       1/1           synchronizeConnection [21]
+[72]     0.0    0.00    0.00       1         setupConnection [72]
+                0.00    0.00       2/2           createWindow [61]
+                0.00    0.00       2/2           createSgmBuff [58]
+                0.00    0.00       2/2           createStrBuff [59]
+                0.00    0.00       2/2           createThread [60]
+                0.00    0.00       1/1           setSocketConnected [71]
+                0.00    0.00       1/1           createTimeout [66]
+-----------------------------------------------
+
+ This table describes the call tree of the program, and was sorted by
+ the total amount of time spent in each function and its children.
+
+ Each entry in this table consists of several lines.  The line with the
+ index number at the left hand margin lists the current function.
+ The lines above it list the functions that called this function,
+ and the lines below it list the functions this one called.
+ This line lists:
+     index	A unique number given to each element of the table.
+		Index numbers are sorted numerically.
+		The index number is printed next to every function name so
+		it is easier to look up where the function is in the table.
+
+     % time	This is the percentage of the `total' time that was spent
+		in this function and its children.  Note that due to
+		different viewpoints, functions excluded by options, etc,
+		these numbers will NOT add up to 100%.
+
+     self	This is the total amount of time spent in this function.
+
+     children	This is the total amount of time propagated into this
+		function by its children.
+
+     called	This is the number of times the function was called.
+		If the function called itself recursively, the number
+		only includes non-recursive calls, and is followed by
+		a `+' and the number of recursive calls.
+
+     name	The name of the current function.  The index number is
+		printed after it.  If the function is a member of a
+		cycle, the cycle number is printed between the
+		function's name and the index number.
+
+
+ For the function's parents, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the function into this parent.
+
+     children	This is the amount of time that was propagated from
+		the function's children into this parent.
+
+     called	This is the number of times this parent called the
+		function `/' the total number of times the function
+		was called.  Recursive calls to the function are not
+		included in the number after the `/'.
+
+     name	This is the name of the parent.  The parent's index
+		number is printed after it.  If the parent is a
+		member of a cycle, the cycle number is printed between
+		the name and the index number.
+
+ If the parents of the function cannot be determined, the word
+ `<spontaneous>' is printed in the `name' field, and all the other
+ fields are blank.
+
+ For the function's children, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the child into the function.
+
+     children	This is the amount of time that was propagated from the
+		child's children to the function.
+
+     called	This is the number of times the function called
+		this child `/' the total number of times the child
+		was called.  Recursive calls by the child are not
+		listed in the number after the `/'.
+
+     name	This is the name of the child.  The child's index
+		number is printed after it.  If the child is a
+		member of a cycle, the cycle number is printed
+		between the name and the index number.
+
+ If there are any cycles (circles) in the call graph, there is an
+ entry for the cycle-as-a-whole.  This entry shows who called the
+ cycle (as parents) and the members of the cycle (as children.)
+ The `+' recursive calls entry shows the number of function calls that
+ were internal to the cycle, and the calls entry for each member shows,
+ for that member, how many times it was called from other members of
+ the cycle.
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+Index by function name
+
+  [63] addElementToList       [11] getSgmBuffElemStatus   [36] serializeSegment
+  [48] addSgmBuff             [20] getSgmBuffSize         [57] setConnectionState
+  [26] broadcastConditionVariable [67] getSocketLocal     [50] setSgmBuffElemStatus
+  [64] createAddress          [68] getSocketPeer          [71] setSocketConnected
+  [55] createConditionVariable [6] getTimeoutValue        [72] setupConnection
+  [65] createConnection       [53] getTimespec            [40] slideWindow
+  [56] createMutex            [30] getTimeval             [47] slideWindowNext
+  [43] createRWLock            [5] getWindowBase          [37] splitStringBySection
+  [39] createSegment          [10] getWindowNext          [31] stringNDuplication
+  [58] createSgmBuff          [28] lockMutex              [21] synchronizeConnection
+  [59] createStrBuff           [2] lockRead               [19] testSgmBuffElemAttributes
+  [60] createThread           [25] lockWrite              [27] unlockMutex
+  [66] createTimeout          [33] matchSequenceAgainstWindow [23] unlockRWLock
+  [61] createWindow            [8] matchWindow            [54] updateSgmBuffElemAttributes
+  [34] deserializeSegment     [69] openSocket             [49] updateTimeout
+   [9] findSgmBuffAckn        [45] popStrBuff             [51] waitConditionVariable
+  [15] findSgmBuffSeqn        [35] readConnectedSocket    [14] waitLookMaxStrBuff
+  [46] freeRWLock             [18] readStrBuff            [24] waitTimeoutConditionVariable
+  [52] getConnectionById      [70] readUnconnectedSocket  [12] waitWindowSpace
+  [16] getConnectionState      [7] receiveSegment         [38] writeConnectedSocket
+  [41] getElapsed             [44] removeSgmBuff          [42] writeStrBuff
+  [32] getRandomBit            [1] rudpReceive            [62] writeUnconnectedSocket
+  [13] getSgmBuffElemElapsed  [29] selectSocket

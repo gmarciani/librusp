@@ -1,0 +1,221 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ns/call  ns/call  name    
+ 32.10      0.17     0.17                             readerMTXFunc
+ 20.77      0.28     0.11                             readerSPLFunc
+  9.44      0.33     0.05   594930    84.11    84.11  lockSpinLock
+  9.44      0.38     0.05                             freeSpinLock
+  9.44      0.43     0.05                             readerRWLFunc
+  3.78      0.45     0.02   598177    33.46    33.46  lockMutex
+  3.78      0.47     0.02   498982    40.11    40.11  lockRead
+  3.78      0.49     0.02                             freeMutex
+  3.78      0.51     0.02                             freeRWLock
+  1.89      0.52     0.01                             writerRWLFunc
+  1.89      0.53     0.01                             writerSPLFunc
+  0.00      0.53     0.00   599572     0.00     0.00  unlockMutex
+  0.00      0.53     0.00   599527     0.00     0.00  unlockRWLock
+  0.00      0.53     0.00   599345     0.00     0.00  unlockSpinLock
+  0.00      0.53     0.00    98553     0.00     0.00  lockWrite
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+ 
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this 
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+		     Call graph (explanation follows)
+
+
+granularity: each sample hit covers 2 byte(s) for 1.89% of 0.53 seconds
+
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]     35.2    0.17    0.02                 readerMTXFunc [1]
+                0.02    0.00  499086/598177      lockMutex [6]
+                0.00    0.00  499754/599572      unlockMutex [13]
+-----------------------------------------------
+                                                 <spontaneous>
+[2]     28.6    0.11    0.04                 readerSPLFunc [2]
+                0.04    0.00  497660/594930      lockSpinLock [4]
+                0.00    0.00  499739/599345      unlockSpinLock [15]
+-----------------------------------------------
+                                                 <spontaneous>
+[3]     13.2    0.05    0.02                 readerRWLFunc [3]
+                0.02    0.00  498982/498982      lockRead [7]
+                0.00    0.00  499852/599527      unlockRWLock [14]
+-----------------------------------------------
+                0.01    0.00   97270/594930      writerSPLFunc [10]
+                0.04    0.00  497660/594930      readerSPLFunc [2]
+[4]      9.4    0.05    0.00  594930         lockSpinLock [4]
+-----------------------------------------------
+                                                 <spontaneous>
+[5]      9.4    0.05    0.00                 freeSpinLock [5]
+-----------------------------------------------
+                0.00    0.00   99091/598177      writerMTXFunc [12]
+                0.02    0.00  499086/598177      readerMTXFunc [1]
+[6]      3.8    0.02    0.00  598177         lockMutex [6]
+-----------------------------------------------
+                0.02    0.00  498982/498982      readerRWLFunc [3]
+[7]      3.8    0.02    0.00  498982         lockRead [7]
+-----------------------------------------------
+                                                 <spontaneous>
+[8]      3.8    0.02    0.00                 freeMutex [8]
+-----------------------------------------------
+                                                 <spontaneous>
+[9]      3.8    0.02    0.00                 freeRWLock [9]
+-----------------------------------------------
+                                                 <spontaneous>
+[10]     3.4    0.01    0.01                 writerSPLFunc [10]
+                0.01    0.00   97270/594930      lockSpinLock [4]
+                0.00    0.00   99606/599345      unlockSpinLock [15]
+-----------------------------------------------
+                                                 <spontaneous>
+[11]     1.9    0.01    0.00                 writerRWLFunc [11]
+                0.00    0.00   99675/599527      unlockRWLock [14]
+                0.00    0.00   98553/98553       lockWrite [16]
+-----------------------------------------------
+                                                 <spontaneous>
+[12]     0.6    0.00    0.00                 writerMTXFunc [12]
+                0.00    0.00   99091/598177      lockMutex [6]
+                0.00    0.00   99818/599572      unlockMutex [13]
+-----------------------------------------------
+                0.00    0.00   99818/599572      writerMTXFunc [12]
+                0.00    0.00  499754/599572      readerMTXFunc [1]
+[13]     0.0    0.00    0.00  599572         unlockMutex [13]
+-----------------------------------------------
+                0.00    0.00   99675/599527      writerRWLFunc [11]
+                0.00    0.00  499852/599527      readerRWLFunc [3]
+[14]     0.0    0.00    0.00  599527         unlockRWLock [14]
+-----------------------------------------------
+                0.00    0.00   99606/599345      writerSPLFunc [10]
+                0.00    0.00  499739/599345      readerSPLFunc [2]
+[15]     0.0    0.00    0.00  599345         unlockSpinLock [15]
+-----------------------------------------------
+                0.00    0.00   98553/98553       writerRWLFunc [11]
+[16]     0.0    0.00    0.00   98553         lockWrite [16]
+-----------------------------------------------
+
+ This table describes the call tree of the program, and was sorted by
+ the total amount of time spent in each function and its children.
+
+ Each entry in this table consists of several lines.  The line with the
+ index number at the left hand margin lists the current function.
+ The lines above it list the functions that called this function,
+ and the lines below it list the functions this one called.
+ This line lists:
+     index	A unique number given to each element of the table.
+		Index numbers are sorted numerically.
+		The index number is printed next to every function name so
+		it is easier to look up where the function is in the table.
+
+     % time	This is the percentage of the `total' time that was spent
+		in this function and its children.  Note that due to
+		different viewpoints, functions excluded by options, etc,
+		these numbers will NOT add up to 100%.
+
+     self	This is the total amount of time spent in this function.
+
+     children	This is the total amount of time propagated into this
+		function by its children.
+
+     called	This is the number of times the function was called.
+		If the function called itself recursively, the number
+		only includes non-recursive calls, and is followed by
+		a `+' and the number of recursive calls.
+
+     name	The name of the current function.  The index number is
+		printed after it.  If the function is a member of a
+		cycle, the cycle number is printed between the
+		function's name and the index number.
+
+
+ For the function's parents, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the function into this parent.
+
+     children	This is the amount of time that was propagated from
+		the function's children into this parent.
+
+     called	This is the number of times this parent called the
+		function `/' the total number of times the function
+		was called.  Recursive calls to the function are not
+		included in the number after the `/'.
+
+     name	This is the name of the parent.  The parent's index
+		number is printed after it.  If the parent is a
+		member of a cycle, the cycle number is printed between
+		the name and the index number.
+
+ If the parents of the function cannot be determined, the word
+ `<spontaneous>' is printed in the `name' field, and all the other
+ fields are blank.
+
+ For the function's children, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the child into the function.
+
+     children	This is the amount of time that was propagated from the
+		child's children to the function.
+
+     called	This is the number of times the function called
+		this child `/' the total number of times the child
+		was called.  Recursive calls by the child are not
+		listed in the number after the `/'.
+
+     name	This is the name of the child.  The child's index
+		number is printed after it.  If the child is a
+		member of a cycle, the cycle number is printed
+		between the name and the index number.
+
+ If there are any cycles (circles) in the call graph, there is an
+ entry for the cycle-as-a-whole.  This entry shows who called the
+ cycle (as parents) and the members of the cycle (as children.)
+ The `+' recursive calls entry shows the number of function calls that
+ were internal to the cycle, and the calls entry for each member shows,
+ for that member, how many times it was called from other members of
+ the cycle.
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+Index by function name
+
+   [8] freeMutex               [4] lockSpinLock           [13] unlockMutex
+   [9] freeRWLock             [16] lockWrite              [14] unlockRWLock
+   [5] freeSpinLock            [1] readerMTXFunc (syncperf.c) [15] unlockSpinLock
+   [6] lockMutex               [3] readerRWLFunc (syncperf.c) [11] writerRWLFunc (syncperf.c)
+   [7] lockRead                [2] readerSPLFunc (syncperf.c) [10] writerSPLFunc (syncperf.c)
