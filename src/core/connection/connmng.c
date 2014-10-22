@@ -21,14 +21,10 @@ void setListeningConnection(Connection *conn, const struct sockaddr_in laddr) {
 /* SYNCHRONIZATION */
 
 int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
-	struct sockaddr_in aaddr;	
-	Segment syn;
-	Segment synack;
-	Segment acksynack;
-	char *ssyn = NULL;
-	char *ssynack = NULL;
-	char *sacksynack = NULL;
+	Segment syn, synack, acksynack;
+	char ssyn[RUDP_SGMS + 1], ssynack[RUDP_SGMS + 1], sacksynack[RUDP_SGMS + 1];
 	int asock, synretrans;
+	struct sockaddr_in aaddr;
 	struct timespec start, end;
 	long double sampleRTT;	
 
@@ -37,15 +33,15 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 	asock = openSocket();
 
-	syn = createSegment(RUDP_SYN, 0, 0, 0, 0, NULL);
+	syn = createSegment(RUDP_SYN, 0, 0, 0, 0, 0, NULL);
 
-	ssyn = serializeSegment(syn);
+	serializeSegment(syn, ssyn);
 
 	for (synretrans = 0; synretrans < RUDP_SYN_RETR; synretrans++) {
 
 		clock_gettime(CLOCK_MONOTONIC, &start);
 
-		writeUnconnectedSocket(asock, laddr, ssyn);
+		writeUSocket(asock, laddr, ssyn, strlen(ssyn));
 
 		DBGFUNC(DEBUG, printOutSegment(laddr, syn));
 
@@ -54,15 +50,13 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 		if (!selectSocket(asock, RUDP_SAMPLRTT))
 			continue;
 
-		ssynack = readUnconnectedSocket(asock, &aaddr, RUDP_SGMS);
+		readUSocket(asock, &aaddr, ssynack, RUDP_SGMS);
 
 		clock_gettime(CLOCK_MONOTONIC, &end);
 
 		sampleRTT = getElapsed(start, end);
 
-		synack = deserializeSegment(ssynack);
-
-		free(ssynack);
+		deserializeSegment(ssynack, &synack);
 
 		DBGFUNC(DEBUG, printInSegment(aaddr, synack));
 
@@ -71,11 +65,11 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 			setConnectionState(conn, RUDP_CON_SYNR);
 
-			acksynack = createSegment(RUDP_ACK, 0, 0, RUDP_NXTSEQN(syn.hdr.seqn, 1), RUDP_NXTSEQN(synack.hdr.seqn, 1), NULL);
+			acksynack = createSegment(RUDP_ACK, 0, 0, 0, RUDP_NXTSEQN(syn.hdr.seqn, 1), RUDP_NXTSEQN(synack.hdr.seqn, 1), NULL);
 
-			sacksynack = serializeSegment(acksynack);
+			serializeSegment(acksynack, sacksynack);
 
-			writeUnconnectedSocket(asock, aaddr, sacksynack);
+			writeUSocket(asock, aaddr, sacksynack, strlen(sacksynack));
 
 			DBGFUNC(DEBUG, printOutSegment(aaddr, acksynack));
 
@@ -83,15 +77,9 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 			setConnectionState(conn, RUDP_CON_ESTA);
 
-			free(ssyn);
-
-			free(sacksynack);
-
 			return conn->connid;
 		}
 	}
-
-	free(ssyn);
 
 	closeSocket(asock);
 
@@ -102,43 +90,37 @@ int synchronizeConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 ConnectionId acceptSynchonization(Connection *lconn) {
 	Connection *aconn = NULL;
-	struct sockaddr_in caddr;	
-	Segment syn;
-	Segment synack; 
-	Segment acksynack;
-	char *ssyn = NULL;
-	char *ssynack = NULL;
-	char *sacksynack = NULL;
+	Segment syn, synack, acksynack;
+	char ssyn[RUDP_SGMS + 1], ssynack[RUDP_SGMS + 1], sacksynack[RUDP_SGMS + 1];
 	int asock, synackretrans;
+	struct sockaddr_in caddr;
 	struct timespec start, end;
 	long double sampleRTT;
 
 	while (getConnectionState(lconn) == RUDP_CON_LIST) {
 
-		ssyn = readUnconnectedSocket(lconn->sock.fd, &caddr, RUDP_SGMS);
+		readUSocket(lconn->sock.fd, &caddr, ssyn, RUDP_SGMS);
 
-		syn = deserializeSegment(ssyn);
+		deserializeSegment(ssyn, &syn);
 
 		DBGFUNC(DEBUG, printInSegment(caddr, syn));
 
-		free(ssyn);
-
-		if (syn.hdr.ctrl !=RUDP_SYN)
+		if (syn.hdr.ctrl != RUDP_SYN)
 			continue;
 
 		setConnectionState(lconn, RUDP_CON_SYNR);
 
 		asock = openSocket();
 	
-		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, 10, RUDP_NXTSEQN(syn.hdr.seqn, 1), NULL); 
+		synack = createSegment(RUDP_SYN | RUDP_ACK, 0, 0, 0, 10, RUDP_NXTSEQN(syn.hdr.seqn, 1), NULL);
 
-		ssynack = serializeSegment(synack);
+		serializeSegment(synack, ssynack);
 
 		for (synackretrans = 0; synackretrans < RUDP_CON_RETR; synackretrans++) {
 
 			clock_gettime(CLOCK_MONOTONIC, &start);
 
-			writeUnconnectedSocket(asock, caddr, ssynack);	
+			writeUSocket(asock, caddr, ssynack, strlen(ssynack));
 
 			DBGFUNC(DEBUG, printOutSegment(caddr, synack));
 
@@ -147,23 +129,19 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 			if (!selectSocket(asock, RUDP_SAMPLRTT))
 				continue;
 
-			sacksynack = readUnconnectedSocket(asock, &caddr, RUDP_SGMS);
+			readUSocket(asock, &caddr, sacksynack, RUDP_SGMS);
 
 			clock_gettime(CLOCK_MONOTONIC, &end);
 
 			sampleRTT = getElapsed(start, end);
 
-			acksynack = deserializeSegment(sacksynack);	
+			deserializeSegment(sacksynack, &acksynack);
 
 			DBGFUNC(DEBUG, printInSegment(caddr, acksynack));
-
-			free(sacksynack);			
 
 			if ((acksynack.hdr.ctrl == RUDP_ACK) &
 				(acksynack.hdr.seqn == synack.hdr.ackn) &
 				(acksynack.hdr.ackn == RUDP_NXTSEQN(synack.hdr.seqn, 1))) {
-
-				free(ssynack);
 	
 				aconn = createConnection();	
 
@@ -176,8 +154,6 @@ ConnectionId acceptSynchonization(Connection *lconn) {
 				return aconn->connid;			
 			}
 		}
-
-		free(ssynack);				
 
 		closeSocket(asock);
 

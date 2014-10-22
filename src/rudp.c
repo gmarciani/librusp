@@ -86,9 +86,16 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	if (getConnectionState(conn) != RUDP_CON_ESTA)
 		ERREXIT("Cannot write message: connection not established.");
 
-	writeStrBuff(conn->sndbuff, msg, size);
-
 	timeout = getTimespec(conn->timeout->value);
+
+	lockMutex(conn->sndbuff->mtx);
+
+	while (BUFFSIZE - getStrBuffSize(conn->sndbuff) < size)
+		waitTimeoutConditionVariable(conn->sndbuff->remove_cnd, conn->sndbuff->mtx, timeout);
+
+	unlockMutex(conn->sndbuff->mtx);
+
+	writeStrBuff(conn->sndbuff, msg, size);
 
 	lockMutex(conn->sndsgmbuff->mtx);
 
@@ -98,11 +105,10 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	unlockMutex(conn->sndsgmbuff->mtx);
 }
 
-char *rudpReceive(const ConnectionId connid, const size_t size) {
+size_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 	Connection *conn = NULL;
+	size_t rcvd;
 	struct timespec timeout;
-	char *msg = NULL;	
-
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);	
 
@@ -116,11 +122,11 @@ char *rudpReceive(const ConnectionId connid, const size_t size) {
 	while (conn->rcvbuff->size < size)
 		waitTimeoutConditionVariable(conn->rcvbuff->insert_cnd, conn->rcvbuff->mtx, timeout);
 
-	msg = readStrBuff(conn->rcvbuff, size);
-
 	unlockMutex(conn->rcvbuff->mtx);
 
-	return msg;
+	rcvd = readStrBuff(conn->rcvbuff, msg, size);
+
+	return rcvd;
 }
 
 /* UTILITY */

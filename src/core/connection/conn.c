@@ -158,7 +158,8 @@ void setConnectionState(Connection *conn, const short state) {
 /* SEGMENTS I/O */
 
 void sendSegment(Connection *conn, Segment sgm) {
-	char *ssgm = NULL;
+	char ssgm[RUDP_SGMS + 1];
+	size_t ssgmsize;
 
 	if (!(sgm.hdr.ctrl & RUDP_ACK)) {
 
@@ -167,21 +168,19 @@ void sendSegment(Connection *conn, Segment sgm) {
 		sgm.hdr.ackn = getWindowBase(conn->rcvwnd);
 	}
 
-	ssgm = serializeSegment(sgm);
+	ssgmsize = serializeSegment(sgm, ssgm);
 
 	lockMutex(conn->sock.mtx);
 
-	writeConnectedSocket(conn->sock.fd, ssgm);
+	writeCSocket(conn->sock.fd, ssgm, ssgmsize);
 
 	DBGFUNC(DEBUG, printOutSegment(getSocketPeer(conn->sock.fd), sgm));
 
 	unlockMutex(conn->sock.mtx);
-
-	free(ssgm);
 }
 
 int receiveSegment(Connection *conn, Segment *sgm) {
-	char *ssgm = NULL;
+	char ssgm[RUDP_SGMS + 1];
 	long double timeout;
 
 	if (getRandomBit(DROPRATE)) {
@@ -196,13 +195,11 @@ int receiveSegment(Connection *conn, Segment *sgm) {
 	if (selectSocket(conn->sock.fd, timeout) == 0)
 		return 0;
 
-	ssgm = readConnectedSocket(conn->sock.fd, RUDP_SGMS);
+	readCSocket(conn->sock.fd, ssgm, RUDP_SGMS);
 
-	*sgm = deserializeSegment(ssgm);
+	deserializeSegment(ssgm, sgm);
 
 	DBGFUNC(DEBUG, printInSegment(getSocketPeer(conn->sock.fd), *sgm));
-
-	free(ssgm);	
 
 	return 1;
 }
@@ -211,15 +208,16 @@ int receiveSegment(Connection *conn, Segment *sgm) {
 
 static void *senderLoop(void *arg) {
 	Connection *conn = (Connection *) arg;
-	char *pld = NULL;
+	char payload[RUDP_PLDS];
+	size_t plds;
 
 	while (1) {
 
-		pld = waitLookMaxStrBuff(conn->sndbuff, RUDP_PLDS);
+		plds = waitLookMaxStrBuff(conn->sndbuff, payload, RUDP_PLDS);
 
-		Segment sgm = createSegment(0, 0, 0, getWindowNext(conn->sndwnd), 0, pld);
+		Segment sgm = createSegment(0, 0, plds, 0, getWindowNext(conn->sndwnd), 0, payload);
 
-		waitWindowSpace(conn->sndwnd, RUDP_PLDS);
+		waitWindowSpace(conn->sndwnd, plds);
 
 		addSgmBuff(conn->sndsgmbuff, sgm, RUDP_SGM_NACK);
 
@@ -229,9 +227,7 @@ static void *senderLoop(void *arg) {
 
 		DBGPRINT(DEBUG, "SNDWND SLIDENXT: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(conn->sndwnd), getWindowNext(conn->sndwnd), getWindowEnd(conn->sndwnd), getStrBuffSize(conn->sndbuff), getSgmBuffSize(conn->sndsgmbuff));
 
-		popStrBuff(conn->sndbuff, strlen(pld));
-
-		free(pld);
+		popStrBuff(conn->sndbuff, plds);
 	}
 
 	return NULL;
@@ -267,7 +263,7 @@ static void timeoutFunction(void *arg) {
 static void sendAck(Connection *conn, const uint32_t ackn) {
 	Segment acksgm;
 
-	acksgm = createSegment(RUDP_ACK, 0, 0, getWindowNext(conn->sndwnd), ackn, NULL);
+	acksgm = createSegment(RUDP_ACK, 0, 0, 0, getWindowNext(conn->sndwnd), ackn, NULL);
 
 	sendSegment(conn, acksgm);
 }
@@ -361,7 +357,9 @@ static void *receiverLoop(void *arg) {
 		} else if (rcvwndmatch == -1 && rcvsgm.hdr.plds != 0) {
 
 			sendAck(conn,  RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds));
+
 		} else {
+
 			DBGPRINT(DEBUG, "SEGMENT NOT CONSIDERED %u", rcvsgm.hdr.seqn);
 		}
 	}
