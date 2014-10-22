@@ -38,6 +38,8 @@ COMMUNICATION_TESTDIR = $(TESTDIR)/communication
 
 SEGMENT_TESTDIR = $(TESTDIR)/segment
 
+PERFORMANCE_TESTDIR = $(TESTDIR)/performance
+
 TESTPREFIX = test_
 
 # Dependencies
@@ -56,7 +58,7 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(CONNECTION)
 
 # Targets
 
-test: testdir communication buffer segment base
+test: testdir communication buffer segment base performance
 
 testdir: 
 	mkdir -pv $(BINDIR)
@@ -64,7 +66,7 @@ testdir:
 communication: echosnd echorcv
 
 echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)
 
 echorcv: $(COMMUNICATION_TESTDIR)/echorcv.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -86,7 +88,7 @@ strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
 segment: $(SEGMENT_TESTDIR)/sgm.c
 	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-base: sync timer str rnd macro performance
+base: sync timer str rnd macro
 
 sync: $(BASE_TESTDIR)/sync.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
@@ -103,8 +105,12 @@ rnd: $(BASE_TESTDIR)/rnd.c
 macro: $(BASE_TESTDIR)/macro.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-performance: $(BASE_TESTDIR)/performance.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+performance: syncperf baseperf
+	
+baseperf: $(PERFORMANCE_TESTDIR)/baseperf.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)
 
+syncperf: $(PERFORMANCE_TESTDIR)/syncperf.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)
 clean-test: 
 	rm -frv $(BINDIR)/*

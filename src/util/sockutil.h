@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/select.h>
 #include <math.h>
 #include <sys/socket.h>

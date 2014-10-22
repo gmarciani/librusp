@@ -28,8 +28,6 @@ static void sendAck(Connection *conn, const uint32_t ackn);
 
 static void *receiverLoop(void *arg);
 
-static void *sliderLoop(void *arg);
-
 /* CONNECTION */
 
 Connection *createConnection(void) {
@@ -46,12 +44,6 @@ Connection *createConnection(void) {
 
 	conn->state.cnd = createConditionVariable();
 
-	conn->info.value = 0;
-
-	conn->info.mtx = createMutex();
-
-	conn->info.cnd = createConditionVariable();
-
 	conn->sock.fd = -1;
 
 	conn->sock.mtx = createMutex();
@@ -66,10 +58,6 @@ void destroyConnection(Connection *conn) {
 	if (getConnectionState(conn) < RUDP_CON_ESTA) {
 		
 		setConnectionState(conn, RUDP_CON_CLOS);
-
-		freeMutex(conn->info.mtx);
-
-		freeConditionVariable(conn->info.cnd);
 
 		freeRWLock(conn->state.rwlock);
 
@@ -104,10 +92,6 @@ void destroyConnection(Connection *conn) {
 		freeWindow(conn->sndwnd);
 
 		freeWindow(conn->rcvwnd);
-
-		freeMutex(conn->info.mtx);
-
-		freeConditionVariable(conn->info.cnd);
 
 		freeRWLock(conn->state.rwlock);
 
@@ -146,8 +130,6 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 	conn->sender = createThread(senderLoop, conn, THREAD_JOINABLE);
 
 	conn->receiver = createThread(receiverLoop, conn, THREAD_JOINABLE);
-
-	//conn->slider = createThread(sliderLoop, conn, THREAD_JOINABLE);
 }
 
 short getConnectionState(Connection *conn) {
@@ -200,20 +182,21 @@ void sendSegment(Connection *conn, Segment sgm) {
 
 int receiveSegment(Connection *conn, Segment *sgm) {
 	char *ssgm = NULL;
-
-	if (selectSocket(conn->sock.fd, getTimeoutValue(conn->timeout)) == 0)
-		return 0;
-
-	ssgm = readConnectedSocket(conn->sock.fd, RUDP_SGMS);
+	long double timeout;
 
 	if (getRandomBit(DROPRATE)) {
 
 		DBGPRINT(DEBUG, "SEGMENT DROPPPED");
 
-		free(ssgm);
-
 		return 0;
 	}
+
+	timeout = getTimeoutValue(conn->timeout);
+
+	if (selectSocket(conn->sock.fd, timeout) == 0)
+		return 0;
+
+	ssgm = readConnectedSocket(conn->sock.fd, RUDP_SGMS);
 
 	*sgm = deserializeSegment(ssgm);
 
@@ -240,9 +223,11 @@ static void *senderLoop(void *arg) {
 
 		addSgmBuff(conn->sndsgmbuff, sgm, RUDP_SGM_NACK);
 
+		sendSegment(conn, sgm);
+
 		slideWindowNext(conn->sndwnd, sgm.hdr.plds);
 
-		sendSegment(conn, sgm);
+		DBGPRINT(DEBUG, "SNDWND SLIDENXT: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(conn->sndwnd), getWindowNext(conn->sndwnd), getWindowEnd(conn->sndwnd), getStrBuffSize(conn->sndbuff), getSgmBuffSize(conn->sndsgmbuff));
 
 		popStrBuff(conn->sndbuff, strlen(pld));
 
@@ -256,7 +241,7 @@ static void timeoutFunction(void *arg) {
 	Connection *conn = (Connection *) arg;
 	SgmBuffElem *curr = NULL;
 
-	DBGPRINT(DEBUG, "INSIDE TIMEOUT");
+	DBGPRINT(DEBUG, "INSIDE TIMEOUT: %LF", getTimeoutValue(conn->timeout));
 
 	lockRead(conn->sndsgmbuff->rwlock);
 
@@ -322,9 +307,6 @@ static void *receiverLoop(void *arg) {
 
 					DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(conn->rcvwnd), getWindowEnd(conn->rcvwnd), getStrBuffSize(conn->rcvbuff), getSgmBuffSize(conn->rcvsgmbuff));
 
-					/*if (getSgmBuffSize(conn->rcvsgmbuff) > 0)
-						signalConditionVariable(conn->rcvsgmbuff->status_cnd);*/
-
 					SgmBuffElem *curr = NULL;
 
 					while ((curr = findSgmBuffSeqn(conn->rcvsgmbuff, getWindowBase(conn->rcvwnd)))) {
@@ -355,6 +337,8 @@ static void *receiverLoop(void *arg) {
 
 					sampleRTT = getSgmBuffElemElapsed(ackedelem);
 
+					assert(sampleRTT > 0.0);
+
 					while (conn->sndsgmbuff->head) {
 
 						if (getSgmBuffElemStatus(conn->sndsgmbuff->head) != RUDP_SGM_YACK)
@@ -377,33 +361,10 @@ static void *receiverLoop(void *arg) {
 		} else if (rcvwndmatch == -1 && rcvsgm.hdr.plds != 0) {
 
 			sendAck(conn,  RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds));
+		} else {
+			DBGPRINT(DEBUG, "SEGMENT NOT CONSIDERED %u", rcvsgm.hdr.seqn);
 		}
 	}
-
-	return NULL;
-}
-
-static void *sliderLoop(void *arg) {
-	Connection *conn = (Connection *) arg;
-	SgmBuffElem *curr = NULL;
-
-	while (1) {
-
-		waitStrategicInsertion(conn->rcvsgmbuff);
-
-		while ((curr = findSgmBuffSeqn(conn->rcvsgmbuff, getWindowBase(conn->rcvwnd)))) {
-
-			Segment sgm = curr->segment;
-
-			removeSgmBuff(conn->rcvsgmbuff, curr);
-
-			writeStrBuff(conn->rcvbuff, sgm.pld, sgm.hdr.plds);
-
-			slideWindow(conn->rcvwnd, sgm.hdr.plds);
-
-			DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(conn->rcvwnd), getWindowEnd(conn->rcvwnd), getStrBuffSize(conn->rcvbuff), getSgmBuffSize(conn->rcvsgmbuff));
-		}
-	}	
 
 	return NULL;
 }

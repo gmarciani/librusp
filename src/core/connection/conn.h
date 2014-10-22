@@ -56,16 +56,9 @@ typedef struct ConnectionSocket {
 	pthread_mutex_t *mtx;
 } ConnectionSocket;
 
-typedef struct ConnectionInfo {
-	short value;
-	pthread_mutex_t *mtx;
-	pthread_cond_t *cnd;
-} ConnectionInfo;
-
 typedef struct Connection {
 	ConnectionId connid;
 	ConnectionState state;
-	ConnectionInfo info;
 	ConnectionSocket sock;
 
 	Window *sndwnd;

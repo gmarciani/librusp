@@ -59,6 +59,13 @@ void unlockRWLock(pthread_rwlock_t *rwlock);
 
 /* SPINLOCK */
 
+pthread_spinlock_t *createSpinLock(void);
+
+void freeSpinLock(pthread_spinlock_t *spin);
+
+void lockSpinLock(pthread_spinlock_t *spin);
+
+void unlockSpinLock(pthread_spinlock_t *spin);
 
 /* SEMAPHORE */
 

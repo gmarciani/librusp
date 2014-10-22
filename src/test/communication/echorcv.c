@@ -4,7 +4,7 @@
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
-#define MSG "aaaaabbbbbcccccdddddeeeeefffffgg"
+#define MSG "aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiiijjjjjkkkkklllllmmmmmnnnnnooooopppppqqqqqrrrrrssssstttttuuuuuvvvvvwwwwwxxxxxyyyyyzz"
 
 #define MSGSIZE strlen(MSG)
 

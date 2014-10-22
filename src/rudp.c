@@ -78,7 +78,7 @@ void rudpClose(const ConnectionId connid) {
 
 void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	Connection *conn = NULL;
-
+	struct timespec timeout;
 
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);		
@@ -87,6 +87,15 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 		ERREXIT("Cannot write message: connection not established.");
 
 	writeStrBuff(conn->sndbuff, msg, size);
+
+	timeout = getTimespec(conn->timeout->value);
+
+	lockMutex(conn->sndsgmbuff->mtx);
+
+	while (getStrBuffSize(conn->sndbuff) > 0 || getSgmBuffSize(conn->sndsgmbuff) > 0)
+		waitTimeoutConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx, timeout);
+
+	unlockMutex(conn->sndsgmbuff->mtx);
 }
 
 char *rudpReceive(const ConnectionId connid, const size_t size) {

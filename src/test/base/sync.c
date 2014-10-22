@@ -47,9 +47,9 @@ int main(void) {
 
 	freeRWLock(mystruct.rwlock);
 
-	destroyMutex(mystruct.readers_mtx);
+	freeMutex(mystruct.readers_mtx);
 
-	destroyMutex(mystruct.writers_mtx);
+	freeMutex(mystruct.writers_mtx);
 
 	exit(EXIT_SUCCESS);
 }

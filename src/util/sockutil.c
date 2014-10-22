@@ -90,19 +90,20 @@ char *readConnectedSocket(const int sock, const size_t rcvsize) {
 
 int selectSocket(const int sock, long double millis) {
 	fd_set readsock;
-	struct timeval timer;
+	struct timespec timer;
 	int result;
 
 	FD_ZERO(&readsock);
 
 	FD_SET(sock, &readsock);
 
-	timer = getTimeval(millis);
+	timer = getTimespec(millis);
 
 	errno = 0;
 
-	if ((result = select(sock + 1, &readsock, NULL, NULL, &timer)) == -1)
-		ERREXIT("Cannot select socket: %s.", strerror(errno));
+	if ((result = pselect(sock + 1, &readsock, NULL, NULL, &timer, NULL)) == -1)
+		if (errno != EINTR)
+			ERREXIT("Cannot select socket: %s (timeout: %LF).", strerror(errno), millis);
 
 	return result;
 }

@@ -183,7 +183,7 @@ long double getSgmBuffElemElapsed(SgmBuffElem *elem) {
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	elapsed = getElapsed(elem->time, now) - elem->delay;
+	elapsed = getElapsed(elem->time, now);
 
 	unlockRWLock(elem->rwlock);
 
@@ -198,7 +198,7 @@ short testSgmBuffElemAttributes(SgmBuffElem *elem, const short status, const lon
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	result = (elem->status == status) & ((getElapsed(elem->time, now) - elem->delay) < elapsed);
+	result = (elem->status == status) & ((getElapsed(elem->time, now) - elem->delay) > elapsed);
 
 	unlockRWLock(elem->rwlock);
 

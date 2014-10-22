@@ -39,11 +39,11 @@ long double getTimeoutValue(Timeout *timeout) {
 void updateTimeout(Timeout *timeout, const long double sampleRTT) {
 	lockWrite(timeout->rwlock);
 
-	timeout->extRTT = RUDP_EXTRTT(timeout->extRTT, sampleRTT);
+	timeout->extRTT = RUDP_EXTRTT_A * timeout->extRTT + RUDP_EXTRTT_B * sampleRTT;
 
-	timeout->devRTT = RUDP_DEVRTT(timeout->devRTT, timeout->extRTT, sampleRTT);
+	timeout->devRTT = RUDP_DEVRTT_A * timeout->devRTT + RUDP_DEVRTT_B * fabsl(timeout->extRTT - sampleRTT);
 
-	timeout->value = RUDP_TIMEO(timeout->extRTT, timeout->devRTT);
+	timeout->value = RUDP_TIMEO_A * timeout->extRTT + RUDP_TIMEO_B * timeout->devRTT;
 
 	unlockRWLock(timeout->rwlock);
 }

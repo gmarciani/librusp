@@ -168,6 +168,39 @@ void unlockRWLock(pthread_rwlock_t *rwlock) {
 		ERREXIT("Cannot release read-write lock: %d", error);
 }
 
+/* SPINLOCK */
+
+pthread_spinlock_t *createSpinLock(void) {
+	pthread_spinlock_t *spin = NULL;
+
+	if (!(spin = malloc(sizeof(pthread_spinlock_t))))
+		ERREXIT("Cannot allocate memory for spin-lock.");
+
+	if (pthread_spin_init(spin, PTHREAD_PROCESS_PRIVATE) > 0)
+		ERREXIT("Cannot initialize spin-lock.");
+
+	return spin;
+}
+
+void freeSpinLock(pthread_spinlock_t *spin) {
+	if (pthread_spin_destroy(spin) > 0)
+		ERREXIT("Cannot destroy spin-lock.");
+}
+
+void lockSpinLock(pthread_spinlock_t *spin) {
+	int error;
+
+	if ((error = pthread_spin_lock(spin)) > 0)
+		ERREXIT("Cannot acquire spin-lock: %d", error);
+}
+
+void unlockSpinLock(pthread_spinlock_t *spin) {
+	int error;
+
+	if ((error = pthread_spin_unlock(spin)) > 0)
+		ERREXIT("Cannot release spin-lock: %d", error);
+}
+
 /* SEMAPHORE */
 
 sem_t *createSemaphore(const unsigned int value) {
