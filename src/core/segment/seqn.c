@@ -11,19 +11,14 @@ int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const u
 }
 
 uint32_t getRandomSequence(const struct sockaddr_in laddr, const struct sockaddr_in paddr) {
-	char *strladdr = NULL;
-	char *strpaddr = NULL;
+	char strladdr[ADDRIPV4_STR], strpaddr[ADDRIPV4_STR];
 	uint32_t isn;
 
-	strladdr = addressToString(laddr);
+	addressToString(laddr, strladdr);
 
-	strpaddr = addressToString(paddr);
+	addressToString(paddr, strladdr);
 
 	isn = (((getMD5(strladdr) + getMD5(strpaddr)) % clock()) + getRandomUL()) % RUDP_MAXSEQN;
-
-	free(strladdr);
-
-	free(strpaddr);
 	
 	return isn;	
 }

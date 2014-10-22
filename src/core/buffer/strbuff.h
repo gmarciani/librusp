@@ -31,21 +31,21 @@ size_t getStrBuffSize(StrBuff *buff);
 
 /* STRING BUFFER I/O */
 
-char *lookStrBuff(StrBuff *buff, const size_t size);
+size_t lookStrBuff(StrBuff *buff, char *content, const size_t size);
 
-char *readStrBuff(StrBuff *buff, const size_t size);
+size_t readStrBuff(StrBuff *buff, char *content, const size_t size);
 
-void writeStrBuff(StrBuff *buff, const char *str, const size_t size);
+size_t writeStrBuff(StrBuff *buff, const char *content, const size_t size);
 
-void popStrBuff(StrBuff *buff, const size_t size);
+size_t popStrBuff(StrBuff *buff, const size_t size);
 
 /* STRING BUFFER WAITING */
 
 void waitEmptyStrBuff(StrBuff *buff);
 
-char *waitLookMaxStrBuff(StrBuff *buff, const size_t size);
+size_t waitLookMaxStrBuff(StrBuff *buff, char *content, const size_t size);
 
-char *waitReadMinStrBuff(StrBuff *buff, const size_t size);
+size_t waitReadMinStrBuff(StrBuff *buff, char *content, const size_t size);
 
 /* STRING BUFFER REPRESENTATION */
 

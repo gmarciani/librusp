@@ -4,14 +4,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
-#include <pthread.h>
+#include <sys/time.h>
 #include <time.h>
 #include <signal.h>
 #include <math.h>
 #include "macroutil.h"
+
+#define TIME_STR 20
 
 timer_t createTimer(void (*handler) (union sigval), void *arg);
 
@@ -30,5 +31,7 @@ struct timespec getTimespec(const long double millis);
 struct timeval getTimeval(const long double millis);
 
 struct timespec getTimestamp(void);
+
+void getTime(char *buff);
 
 #endif /* TIMEUTIL_H_ */

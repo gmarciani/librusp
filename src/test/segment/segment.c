@@ -5,6 +5,8 @@
 #include "../../util/macroutil.h"
 
 #define MSG "Hello World!"
+#define ADDR "192.168.0.1"
+#define PORT 8888
 
 static Segment sgm;
 
@@ -13,6 +15,8 @@ static void creation(void);
 static void stringRepresentation(void);
 
 static void serializationDeserialization(void);
+
+static void printInOutSegment(void);
 
 static void sequenceComparation(void);
 
@@ -26,6 +30,8 @@ int main(void) {
 
 	serializationDeserialization();
 
+	printInOutSegment();
+
 	sequenceComparation();
 
 	sequenceMatching();
@@ -34,38 +40,48 @@ int main(void) {
 }
 
 static void creation(void) {
-	printf("# Creating SYNACK segments (PLDS=%d) with urgp=5 wnds=324, seqn=51, ackn=22, pld=%s...", RUDP_PLDS, MSG);
+	printf("# Creating SYNACK segments (RUDP_PLDS=%d) with vers:1 urgp:5 plds:12 wnds:324 seqn:51 ackn:22 pld:%s...", RUDP_PLDS, MSG);
 
-	sgm = createSegment(RUDP_SYN | RUDP_ACK, 5, 324, 51, 22, MSG);
+	sgm = createSegment(RUDP_SYN | RUDP_ACK, 5, strlen(MSG), 324, 51, 22, MSG);
 
 	printf("OK\n");
 }
 
 static void stringRepresentation(void) {
-	char *strsgm = NULL;
+	char strsgm[RUDP_SGM_STR];
 
 	printf("# Segment to string...");
 
-	strsgm = segmentToString(sgm);
+	segmentToString(sgm, strsgm);
 
-	printf("%s\n", strsgm);
+	assert(strcmp(strsgm, "vers:1 ctrl:9 urgp:5 plds:12 wnds:324 seqn:51 ackn:22 Hello World!") == 0);
 
-	free(strsgm);
+	printf("OK\n");
 }
 
 static void serializationDeserialization(void) {
 	Segment sgmtwo;
-	char *ssgm = NULL;
+	char ssgm[RUDP_SGMS];
 
 	printf("# Serializing/Deserializing segment...");
 
-	ssgm = serializeSegment(sgm);
+	serializeSegment(sgm, ssgm);
 
-	sgmtwo = deserializeSegment(ssgm);
-
-	free(ssgm);
+	deserializeSegment(ssgm, &sgmtwo);
 
 	assert(isEqualSegment(sgm, sgmtwo));
+
+	printf("OK\n");
+}
+
+static void printInOutSegment(void) {
+	struct sockaddr_in addr = createAddress(ADDR, PORT);
+
+	printf("# Printing In/Out segments...\n");
+
+	printInSegment(addr, sgm);
+
+	printOutSegment(addr, sgm);
 
 	printf("OK\n");
 }
@@ -73,7 +89,7 @@ static void serializationDeserialization(void) {
 static void sequenceComparation(void) {
 	uint32_t seqnone, seqntwo;
 
-	printf("# Comparing less than...");
+	printf("# Comparing sequence numbers less than...");
 
 	seqnone = 10;
 	seqntwo = 20;

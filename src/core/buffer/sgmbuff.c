@@ -288,7 +288,7 @@ char *sgmBuffToString(SgmBuff *buff) {
 	char *strbuff, *strsgm = NULL;	
 	uint32_t i;
 
-	if (!(strbuff = malloc(sizeof(char) * (25 + buff->size * (RUDP_SGMSO + 1) + 1))))
+	if (!(strbuff = malloc(sizeof(char) * (25 + buff->size * (RUDP_SGM_STR + 1) + 1))))
 		ERREXIT("Cannot allocate memory for string representation of segment buffer.");
 
 	sprintf(strbuff, "size:%ld content:%s", buff->size, (buff->size == 0) ? "" : "\n");

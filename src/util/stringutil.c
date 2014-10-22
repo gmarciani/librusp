@@ -176,27 +176,6 @@ char **arrayDeserialization(const char *sarray, const char *delim, int *items) {
 
 /* VARIOUS */
 
-char *getTime(void) {
-	char *str = NULL;
-	char localTime[10];
-	size_t size = 40;
-	
-	struct timeval time;
-
-	if (!(str = malloc(sizeof(char) * size)))
-		ERREXIT("Cannot allocate memory for time string representation.");
-	
-	gettimeofday(&time, NULL);
-
-	struct tm *local = localtime(&time.tv_sec);
-
-	strftime(localTime, 10, "%H:%M:%S", local);
-
-	snprintf(str, size, "%s:%ld", localTime, time.tv_usec);
-	
-	return str;
-}
-
 char *getUserInput(const char *descr) {
 	char *input;
 	size_t size = 2048;	

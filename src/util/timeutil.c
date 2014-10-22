@@ -96,3 +96,17 @@ struct timespec getTimestamp(void) {
 
 	return now;
 }
+
+void getTime(char *buff) {
+	char localTime[9];
+
+	struct timeval time;
+
+	gettimeofday(&time, NULL);
+
+	struct tm *local = localtime(&time.tv_sec);
+
+	strftime(localTime, 10, "%H:%M:%S", local);
+
+	sprintf(buff, "%s:%ld", localTime, time.tv_usec);
+}

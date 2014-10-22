@@ -19,43 +19,19 @@ struct sockaddr_in createAddress(const char *ip, const int port) {
 }
 
 int isEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_in addrTwo) {
-	return ((addrOne.sin_family == addrTwo.sin_family ) &&
-			(addrOne.sin_port == addrTwo.sin_port) &&
+	return ((addrOne.sin_family == addrTwo.sin_family) &
+			(addrOne.sin_port == addrTwo.sin_port) &
 			(addrOne.sin_addr.s_addr == addrTwo.sin_addr.s_addr));
 }
 
-char *addressToString(const struct sockaddr_in addr) {
-	char *straddr = NULL;
-	char *strip = NULL;
+void addressToString(const struct sockaddr_in addr, char *buff) {
+	char ip[INET_ADDRSTRLEN];
 	int port;
 
-	strip = getIp(addr);
-
-	port = getPort(addr);
-
-	if (!(straddr = malloc(sizeof(char) * (ADDRESS_IPV4_MAX_OUTPUT + 1))))
-		ERREXIT("Cannot allocate memory for address to string.");
-
-	sprintf(straddr, "%s:%d", strip, port);
-
-	free(strip);
-
-	return straddr;
-
-}
-
-char *getIp(const struct sockaddr_in addr) {
-	char *str = NULL;
-
-	if (!(str = malloc(INET_ADDRSTRLEN)))
-		ERREXIT("Cannot allocate memory for address string representation.");
-
-	if (!inet_ntop(AF_INET, &(addr.sin_addr), str, INET_ADDRSTRLEN))
+	if (!inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN))
 		ERREXIT("Cannot get address string representation.");
 
-	return str;
-}
+	port = (int) ntohs(addr.sin_port);
 
-int getPort(const struct sockaddr_in address) {
-	return (int) ntohs(address.sin_port);
+	sprintf(buff, "%s:%d", ip, port);
 }

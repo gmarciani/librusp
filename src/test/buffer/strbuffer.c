@@ -45,41 +45,51 @@ static void creation(void) {
 }
 
 static void writeTo(void) {
+	size_t written;
+
 	printf("# Writing buffer...");
 
-	writeStrBuff(buff, STRING, STRINGSIZE);
+	written = writeStrBuff(buff, STRING, STRINGSIZE);
 
-	assert((strncmp(buff->content, STRING, buff->size) == 0));
+	assert(strncmp(buff->content, STRING, buff->size) == 0);
+
+	assert(written == buff->size);
 
 	printf("OK\n");
 }
 
 static void lookFrom(void) {
-	char *str = NULL;
+	char content[BUFFSIZE];
+	size_t looked;
 
 	printf("# Looking buffer...");
 
-	str = lookStrBuff(buff, 3);
+	looked = lookStrBuff(buff, content, 3);
 
-	assert((strcmp(str, "Lor") == 0 && buff->size == STRINGSIZE));
+	assert(strncmp(content, "Lor", 3) == 0);
+
+	assert(buff->size == STRINGSIZE);
+
+	assert(looked == 3);
 
 	printf("OK\n");
-
-	free(str);
 }
 
 static void readFrom(void) {
-	char *str = NULL;
+	char content[BUFFSIZE];
+	size_t read;
 
 	printf("# Reading buffer...");
 
-	str = readStrBuff(buff, 3);
+	read = readStrBuff(buff, content, 3);
 
-	assert((strcmp(str, "Lor") == 0 && buff->size == STRINGSIZE - 3));
+	assert(strncmp(content, "Lor", 3) == 0);
+
+	assert(buff->size == STRINGSIZE - 3);
+
+	assert(read == 3);
 
 	printf("OK\n");
-
-	free(str);
 }
 
 static void deallocation(void) {

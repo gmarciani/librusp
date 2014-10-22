@@ -4,12 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <pthread.h>
-#include <sys/time.h>
-#include <time.h>
-#include <sys/types.h>
-#include "threadutil.h"
 #include "macroutil.h"
 
 /* STRING MANAGEMENT */
@@ -37,8 +31,6 @@ char *arraySerialization(char **array, const int items, const char *delim);
 char **arrayDeserialization(const char *sarray, const char *delim, int *items);
 
 /* VARIOUS */
-
-char *getTime(void);
 
 char *getUserInput(const char *descr);
 

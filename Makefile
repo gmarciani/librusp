@@ -46,7 +46,7 @@ TESTPREFIX = test_
 
 LIBS = -pthread -lrt -lm -lcrypto -lssl
 
-UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
+UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c fileutil.h fileutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
 
 SEGMENTS = $(addprefix $(SEGMENTDIR)/, sgm.h sgm.c seqn.h seqn.c) $(UTILS)
 
@@ -85,15 +85,18 @@ sgmbuffer: $(BUFFER_TESTDIR)/sgmbuffer.c
 strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
 	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$(TESTPREFIX)$@
 
-segment: $(SEGMENT_TESTDIR)/sgm.c
+segment: $(SEGMENT_TESTDIR)/segment.c
 	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
 	
-base: sync timer str rnd macro
+base: sync timer file str rnd macro
 
 sync: $(BASE_TESTDIR)/sync.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 timer: $(BASE_TESTDIR)/timer.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	
+file: $(BASE_TESTDIR)/file.c
 	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
 
 str: $(BASE_TESTDIR)/str.c

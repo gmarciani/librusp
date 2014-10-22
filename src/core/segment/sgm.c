@@ -2,11 +2,8 @@
 
 /* SEGMENT */
 
-const static size_t RUDP_HDRF_SIZE[RUDP_HDRF] = {3, 3, 5, 5, 5, 10, 10};
-
-Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wnds, unsigned long seqn, unsigned long ackn, const char *pld) {
+Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t plds, const uint16_t wnds, const uint32_t seqn, const uint32_t ackn, const char *pld) {
 	Segment sgm;
-	size_t plds = 0;
 
 	sgm.hdr.vers = RUDP_VERS;
 
@@ -22,68 +19,71 @@ Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t wn
 
 	if (pld) {
 
-		plds = (strlen(pld) < RUDP_PLDS) ? strlen(pld) : RUDP_PLDS;
+		sgm.hdr.plds = MIN(plds, RUDP_PLDS);
 
-		memcpy(sgm.pld, pld, sizeof(char) * plds);
+		memcpy(sgm.pld, pld, sizeof(char) * sgm.hdr.plds);
+
+	} else {
+
+		sgm.hdr.plds = 0;
 	}
-
-	sgm.pld[plds] = '\0';
-
-	sgm.hdr.plds = plds;
 
 	return sgm;	
 }
 
-Segment deserializeSegment(const char *ssgm) {
-	Segment sgm;
-	char *hdr = NULL;
-	char **hdrfields = NULL;
-	size_t plds;
-	int i;
+size_t serializeSegment(const Segment sgm, char *ssgm) {
+	size_t ssgmsize;
 
-	hdr = stringNDuplication(ssgm, RUDP_HDRS);
+	sprintf(ssgm, "%03u%03u%05u%05u%05u%010u%010u%.*s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, (int)sgm.hdr.plds, sgm.pld);
 
-	hdrfields = splitStringBySection(hdr, RUDP_HDRF_SIZE, RUDP_HDRF);
+	ssgmsize = strlen(ssgm);
 
-	sgm.hdr.vers = (uint8_t) atoi(hdrfields[0]);
-
-	sgm.hdr.ctrl = (uint8_t) atoi(hdrfields[1]);
-
-	sgm.hdr.urgp = (uint16_t) atoi(hdrfields[2]);
-
-	sgm.hdr.plds = (uint16_t) atoi(hdrfields[3]);
-
-	sgm.hdr.wnds = (uint16_t) atoi(hdrfields[4]);
-
-	sgm.hdr.seqn = (uint32_t) (strtoul(hdrfields[5], NULL, 10) % RUDP_MAXSEQN);
-
-	sgm.hdr.ackn = (uint32_t) (strtoul(hdrfields[6], NULL, 10) % RUDP_MAXSEQN);
-
-	plds = (sgm.hdr.plds < RUDP_PLDS) ? sgm.hdr.plds : RUDP_PLDS;
-
-	memcpy(sgm.pld, ssgm + RUDP_HDRS, sizeof(char) * plds);
-
-	sgm.pld[plds] = '\0';	
-
-	for (i = 0; i < RUDP_HDRF; i++)
-		free(hdrfields[i]);
-
-	free(hdrfields);
-
-	free(hdr);
-
-	return sgm;
+	return ssgmsize;
 }
 
-char *serializeSegment(const Segment sgm) {
-	char *ssgm = NULL;
+void deserializeSegment(const char *ssgm, Segment *sgm) {
+	char hdr[RUDP_HDRS + 1];
+	char hdrf[RUDP_HDRF][11];
 
-	if (!(ssgm = malloc(sizeof(char) * (RUDP_SGMS + 1)))) 
-		ERREXIT("Cannot allocate memory for segment serialization.");
+	memcpy(hdr, ssgm, RUDP_HDRS);
+	hdr[RUDP_HDRS] = '\0';
 
-	sprintf(ssgm, "%03u%03u%05u%05u%05u%010u%010u%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, sgm.pld);
+	memcpy(hdrf[0], ssgm, sizeof(char) * 3);
+	hdrf[0][4] = '\0';
 
-	return ssgm;
+	memcpy(hdrf[1], ssgm + 3, sizeof(char) * 3);
+	hdrf[1][4] = '\0';
+
+	memcpy(hdrf[2], ssgm + 6, sizeof(char) * 5);
+	hdrf[2][5] = '\0';
+
+	memcpy(hdrf[3], ssgm + 11, sizeof(char) * 5);
+	hdrf[3][5] = '\0';
+
+	memcpy(hdrf[4], ssgm + 16, sizeof(char) * 5);
+	hdrf[4][5] = '\0';
+
+	memcpy(hdrf[5], ssgm + 21, sizeof(char) * 10);
+	hdrf[5][10] = '\0';
+
+	memcpy(hdrf[6], ssgm + 31, sizeof(char) * 10);
+	hdrf[6][10] = '\0';
+
+	sgm->hdr.vers = (uint8_t) atoi(hdrf[0]);
+
+	sgm->hdr.ctrl = (uint8_t) atoi(hdrf[1]);
+
+	sgm->hdr.urgp = (uint16_t) atoi(hdrf[2]);
+
+	sgm->hdr.plds = (uint16_t) MIN(atoi(hdrf[3]), RUDP_PLDS);
+
+	sgm->hdr.wnds = (uint16_t) atoi(hdrf[4]);
+
+	sgm->hdr.seqn = (uint32_t) (strtoul(hdrf[5], NULL, 10) % RUDP_MAXSEQN);
+
+	sgm->hdr.ackn = (uint32_t) (strtoul(hdrf[6], NULL, 10) % RUDP_MAXSEQN);
+
+	memcpy(sgm->pld, ssgm + RUDP_HDRS, sizeof(char) * sgm->hdr.plds);
 }
 
 int isEqualSegment(const Segment sgmone, const Segment sgmtwo) {
@@ -94,62 +94,33 @@ int isEqualSegment(const Segment sgmone, const Segment sgmtwo) {
 			sgmone.hdr.wnds == sgmtwo.hdr.wnds &&
 			sgmone.hdr.seqn == sgmtwo.hdr.seqn &&
 			sgmone.hdr.ackn == sgmtwo.hdr.ackn &&
-			strcmp(sgmone.pld, sgmtwo.pld) == 0);
+			memcmp(sgmone.pld, sgmtwo.pld, sgmone.hdr.plds) == 0);
 }
 
-char *segmentToString(const Segment sgm) {
-	char *str = NULL;
-
-	if (!(str = malloc(sizeof(char) * (RUDP_SGMSO + 1))))
-		ERREXIT("Error in segment to string allocation.");
-
-	sprintf(str, "vers:%u ctrl:%u urgp:%u plds:%u wnds:%u seqn:%u ackn:%u pld:%s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, sgm.pld);
-
-	return str;
+void segmentToString(const Segment sgm, char *str) {
+	sprintf(str, "vers:%u ctrl:%u urgp:%u plds:%u wnds:%u seqn:%u ackn:%u %.*s", sgm.hdr.vers, sgm.hdr.ctrl, sgm.hdr.urgp, sgm.hdr.plds, sgm.hdr.wnds, sgm.hdr.seqn, sgm.hdr.ackn, (int)sgm.hdr.plds, sgm.pld);
 }
 
 void printInSegment(const struct sockaddr_in sndaddr, const Segment sgm) {
-	char *time;
-	char *addr = NULL;
-	char *strsgm = NULL;
-	int port;
+	char strsgm[RUDP_SGM_STR], time[TIME_STR], addr[ADDRIPV4_STR];
 
-	time = getTime();
+	getTime(time);
 
-	addr = getIp(sndaddr);
+	addressToString(sndaddr, addr);
 
-	port = getPort(sndaddr);
+	segmentToString(sgm, strsgm);
 
-	strsgm = segmentToString(sgm);
-
-	printf("[<- SGM] %s src: %s:%d %s\n", time, addr, port, strsgm);
-
-	free(time);
-
-	free(addr);
-
-	free(strsgm);
+	printf("[<- SGM] %s src: %s %s\n", time, addr, strsgm);
 }
 
 void printOutSegment(const struct sockaddr_in rcvaddr, const Segment sgm) {
-	char *time;
-	char *addr = NULL;
-	char *strsgm = NULL;
-	int port;
+	char strsgm[RUDP_SGM_STR], time[TIME_STR], addr[ADDRIPV4_STR];
 
-	time = getTime();
+	getTime(time);
 
-	addr = getIp(rcvaddr);
+	addressToString(rcvaddr, addr);
 
-	port = getPort(rcvaddr);
-
-	strsgm = segmentToString(sgm);
+	segmentToString(sgm, strsgm);
 	
-	printf("[SGM ->] %s dst: %s:%d %s\n", time, addr, port, strsgm);
-
-	free(time);
-
-	free(addr);
-
-	free(strsgm);
+	printf("[SGM ->] %s dst: %s %s\n", time, addr, strsgm);
 }

@@ -7,16 +7,12 @@
 #include <arpa/inet.h>
 #include "macroutil.h"
 
-#define ADDRESS_IPV4_MAX_OUTPUT 21
+#define ADDRIPV4_STR 22
 
 struct sockaddr_in createAddress(const char *ip, const int port);
 
 int isEqualAddress(const struct sockaddr_in addrOne, const struct sockaddr_in addrTwo);
 
-char *addressToString(const struct sockaddr_in addr);
-
-char *getIp(const struct sockaddr_in addr);
-
-int getPort(const struct sockaddr_in addr);
+void addressToString(const struct sockaddr_in addr, char *buff);
 
 #endif /* ADDRUTIL_H_ */

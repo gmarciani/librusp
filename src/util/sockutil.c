@@ -25,65 +25,39 @@ void bindSocket(const int sock, const struct sockaddr_in *addr) {
 
 /* SOCKET I/O */
 
-void writeUnconnectedSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff) {
+void writeUSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff, const size_t size) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 
-	if (sendto(sock, buff, strlen(buff), 0, (struct sockaddr *)&rcvaddr, socksize) == -1)
-		ERREXIT("Cannot write to unconnected socket.");
+	errno = 0;
+	if (sendto(sock, buff, size, 0, (struct sockaddr *)&rcvaddr, socksize) != size)
+		ERREXIT("Cannot write unconnected socket: %s.", strerror(errno));
 }
 
-char *readUnconnectedSocket(const int sock, struct sockaddr_in *sndaddr, const size_t rcvsize) {
+size_t readUSocket(const int sock, struct sockaddr_in *sndaddr, char *buff, const size_t size) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
-	char *buff = NULL;
-	ssize_t rcvd = 0;
-
-	if (!(buff = malloc(sizeof(char) * (rcvsize + 1))))
-		ERREXIT("Cannot allocate memory for reading unconnected socket.");
-
-	if ((rcvd = recvfrom(sock, buff, rcvsize, 0, (struct sockaddr *)sndaddr, &socksize)) == -1) {
-
-		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) {
-			free(buff);
-			return NULL;
-		}
-
-		ERREXIT("Cannot read unconnected socket.");
-	}
-
-	buff[rcvd] = '\0';
-
-	return buff;
-}
-
-void writeConnectedSocket(const int sock, const char *buff) {
+	size_t rd;
 
 	errno = 0;
-	if (write(sock, buff, strlen(buff)) == -1) {
+	if ((rd = (size_t)recvfrom(sock, buff, size, 0, (struct sockaddr *)sndaddr, &socksize)) == -1)
+		ERREXIT("Cannot read unconnected socket: %s.", strerror(errno));
 
-		if ((errno == EPIPE) | (errno == EINVAL))
-			return;
-
-		fprintf(stderr, "Cannot write connected socket: %s\n", strerror(errno));
-
-		exit(EXIT_FAILURE);		
-	}
+	return rd;
 }
 
-char *readConnectedSocket(const int sock, const size_t rcvsize) {
-	char *buff = NULL;
-	ssize_t rcvd = 0;
+void writeCSocket(const int sock, const char *buff, const size_t size) {
+	errno = 0;
+	if (write(sock, buff, strlen(buff)) == -1)
+		ERREXIT("Cannot write connected socket: %s.", strerror(errno));
+}
 
-	if (!(buff = malloc(sizeof(char) * (rcvsize + 1))))
-		ERREXIT("Cannot allocate memory for reading connected socket.");
+size_t readCSocket(const int sock, char *buff, const size_t size) {
+	size_t rd;
 
 	errno = 0;
-
-	if ((rcvd = read(sock, buff, rcvsize)) == -1)
+	if ((rd = (size_t)read(sock, buff, size)) == -1)
 		ERREXIT("Cannot read connected socket: %s\n", strerror(errno));
 
-	buff[rcvd] = '\0';
-
-	return buff;
+	return rd;
 }
 
 /* SOCKET MULTIPLEXING */

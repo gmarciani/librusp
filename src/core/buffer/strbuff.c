@@ -52,66 +52,71 @@ size_t getStrBuffSize(StrBuff *buff) {
 
 /* STRING BUFFER I/O */
 
-char *lookStrBuff(StrBuff *buff, const size_t size) {
-	char *str = NULL;
-	size_t sizeToLook;
+size_t lookStrBuff(StrBuff *buff, char *content, const size_t size) {
+	size_t looked;
 
 	lockRead(buff->rwlock);
 
-	sizeToLook = (size < buff->size) ? size : buff->size;
+	looked = MIN(size, buff->size);
 
-	if (!(str = malloc(sizeof(char) * (sizeToLook + 1))))
-		ERREXIT("Cannot allocate memory for buffer get.");
-
-	memcpy(str, buff->content, sizeof(char) * sizeToLook);
+	memcpy(content, buff->content, sizeof(char) * looked);
 
 	unlockRWLock(buff->rwlock);
 
-	str[sizeToLook] = '\0';
-
-	return str;
+	return looked;
 }
 
-char *readStrBuff(StrBuff *buff, const size_t size) {
-	char *str = NULL;
+size_t readStrBuff(StrBuff *buff, char *content, const size_t size) {
+	size_t read;
 
-	str = lookStrBuff(buff, size);
+	read = lookStrBuff(buff, content, size);
 
-	popStrBuff(buff, strlen(str));
+	popStrBuff(buff, read);
 
-	return str;
+	return read;
 }
 
-void writeStrBuff(StrBuff *buff, const char *str, const size_t size) {
-	if (size == 0)
-		return;
+size_t writeStrBuff(StrBuff *buff, const char *content, const size_t size) {
+	size_t written;
 
-	lockWrite(buff->rwlock);
+	written = MIN(size, BUFFSIZE - buff->size);
 
-	memcpy(buff->content + buff->size, str, sizeof(char) * size);
+	if (written > 0) {
 
-	buff->size += size;
+		lockWrite(buff->rwlock);
 
-	unlockRWLock(buff->rwlock);
+		memcpy(buff->content + buff->size, content, sizeof(char) * written);
 
-	broadcastConditionVariable(buff->insert_cnd);
+		buff->size += written;
+
+		unlockRWLock(buff->rwlock);
+
+		broadcastConditionVariable(buff->insert_cnd);
+
+	}
+
+	return written;
 }
 
-void popStrBuff(StrBuff *buff, const size_t size) {
-	size_t sizeToPop;
+size_t popStrBuff(StrBuff *buff, const size_t size) {
+	size_t popped;
 
-	sizeToPop = (size < buff->size) ? size : buff->size;
+	popped = MIN(size, buff->size);
 
-	lockWrite(buff->rwlock);
+	if (popped > 0) {
 
-	if (sizeToPop != 0)
-		memmove(buff->content, buff->content + sizeToPop, sizeof(char) * (buff->size - sizeToPop));
+		lockWrite(buff->rwlock);
 
-	buff->size -= sizeToPop;
+		memmove(buff->content, buff->content + popped, sizeof(char) * (buff->size - popped));
 
-	unlockRWLock(buff->rwlock);
+		buff->size -= popped;
 
-	broadcastConditionVariable(buff->remove_cnd);
+		unlockRWLock(buff->rwlock);
+
+		broadcastConditionVariable(buff->remove_cnd);
+	}
+
+	return popped;
 }
 
 /* STRING BUFFER WAITING */
@@ -125,8 +130,8 @@ void waitEmptyStrBuff(StrBuff *buff) {
 	unlockMutex(buff->mtx);
 }
 
-char *waitLookMaxStrBuff(StrBuff *buff, const size_t size) {
-	char *result = NULL;
+size_t waitLookMaxStrBuff(StrBuff *buff, char *content, const size_t size) {
+	size_t looked;
 
 	lockMutex(buff->mtx);
 
@@ -135,13 +140,13 @@ char *waitLookMaxStrBuff(StrBuff *buff, const size_t size) {
 
 	unlockMutex(buff->mtx);
 
-	result = lookStrBuff(buff, size);
+	looked = lookStrBuff(buff, content, size);
 
-	return result;
+	return looked;
 }
 
-char *waitReadMinStrBuff(StrBuff *buff, const size_t size) {
-	char *result = NULL;
+size_t waitReadMinStrBuff(StrBuff *buff, char *content, const size_t size) {
+	size_t read;
 
 	lockMutex(buff->mtx);
 
@@ -150,25 +155,23 @@ char *waitReadMinStrBuff(StrBuff *buff, const size_t size) {
 
 	unlockMutex(buff->mtx);
 
-	result = readStrBuff(buff, size);
+	read = readStrBuff(buff, content, size);
 
-	return result;
+	return read;
 }
 
 /* STRING BUFFER REPRESENTATION */
 
 char *strBuffToString(StrBuff *buff) {
 	char *strbuff = NULL;
-	char *strcontent = NULL;
+	char cnt[buff->size];
 
-	strcontent = lookStrBuff(buff, buff->size);
+	lookStrBuff(buff, cnt, buff->size);
 
-	if (!(strbuff = malloc(sizeof(char) * (25 + strlen(strcontent) + 1))))
+	if (!(strbuff = malloc(sizeof(char) * (25 + buff->size + 1))))
 		ERREXIT("Cannot allocate memory for buffer string representation.");
 
-	sprintf(strbuff, "csize:%zu content:%s", strlen(strcontent), strcontent);
-
-	free(strcontent);
+	sprintf(strbuff, "csize:%zu content:%s", buff->size, cnt);
 
 	return strbuff;
 }
