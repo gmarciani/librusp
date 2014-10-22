@@ -11,9 +11,13 @@
 #define MSGSIZE strlen(MSG)
 
 static char *ADDRESS;
+
 static int PORT;
-static long ITERATIONS;
+
 static long double DROPRATE;
+
+static unsigned long ITERATIONS;
+
 static int DEBUGMODE;
 
 static ConnectionId conn;
@@ -35,7 +39,7 @@ int main(int argc, char **argv) {
 
 	DROPRATE = strtold(argv[3], NULL);
 
-	ITERATIONS = strtol(argv[4], NULL, 10);
+	ITERATIONS = strtoul(argv[4], NULL, 10);
 
 	DEBUGMODE = atoi(argv[5]);
 
@@ -48,6 +52,8 @@ int main(int argc, char **argv) {
 	profileEcho();
 
 	//disconnectConnection();
+
+	free(ADDRESS);
 
 	exit(EXIT_SUCCESS);
 }
@@ -81,12 +87,13 @@ static void showConnectionDetails(void) {
 }
 
 static void profileEcho() {
+	char rcvdata[MSGSIZE];
+	size_t rcvd;
+	unsigned long iteration;
 	struct timespec start, end;
 	long double milliselaps, Kbps, KB;
-	char *rcvdata = NULL;
-	unsigned long iteration;
 
-	printf("# Profiling echoing on established connection (%ld iterations on %zu bytes with drop %LF%%)\n", ITERATIONS, MSGSIZE, DROPRATE * 100.0);
+	printf("# Profiling echo on established connection (drop %LF%%): %lu iterations on %zu bytes...\n", DROPRATE * 100.0, ITERATIONS, MSGSIZE);
 
 	setDropRate(DROPRATE);
 
@@ -94,7 +101,7 @@ static void profileEcho() {
 
 	for (iteration = 1; iteration <= ITERATIONS; iteration++) {
 
-		printf("\nECHO %ld\n", iteration);
+		printf("\nECHO %lu\n", iteration);
 		
 		start = getTimestamp();
 
@@ -102,18 +109,17 @@ static void profileEcho() {
 
 		printf("[SENT]>%s\n", MSG);
 
-		rcvdata = rudpReceive(conn, MSGSIZE);
+		rcvd = rudpReceive(conn, rcvdata, MSGSIZE);
 
 		end = getTimestamp();
 
 		milliselaps += getElapsed(start, end);
 
-		printf("[RCVD]>%s\n", rcvdata);
+		assert(rcvd == MSGSIZE);
 
-		if (strcmp(rcvdata, MSG) != 0)
-			ERREXIT("ECHO FAILURE");
+		assert(strncmp(rcvdata, MSG, MSGSIZE) == 0);
 
-		free(rcvdata);
+		printf("[RCVD]>%.*s\n", (int)rcvd, rcvdata);
 	}
 
 	KB = (long double)(2.0 * ITERATIONS * MSGSIZE / 1000.0);

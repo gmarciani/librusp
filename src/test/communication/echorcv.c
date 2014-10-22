@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include "../../rudp.h"
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
@@ -112,10 +113,11 @@ static void showEstablishedConnectionDetails(void) {
 }
 
 static void echo(void) {
-	char *rcvdata = NULL;
+	char rcvdata[MSGSIZE];
+	size_t rcvd;
 	unsigned long iteration;
 
-	printf("# Echoing on established connection\n");
+	printf("# Echo on established connection...\n");
 
 	iteration = 1;
 
@@ -123,18 +125,17 @@ static void echo(void) {
 		
 		printf("\nECHO %lu\n", iteration);
 
-		rcvdata = rudpReceive(aconn, MSGSIZE);
+		rcvd = rudpReceive(aconn, rcvdata, MSGSIZE);
 
-		printf("[RCVD]>%s\n", rcvdata);
+		printf("[RCVD]>%.*s\n", (int)rcvd, rcvdata);
 
-		if (strcmp(rcvdata, MSG) != 0)
-			ERREXIT("ECHO FAILURE");
+		assert(rcvd == MSGSIZE);
 
-		rudpSend(aconn, rcvdata, strlen(rcvdata));
+		assert(strncmp(rcvdata, MSG, MSGSIZE) == 0);
 
-		printf("[SENT]>%s\n", rcvdata);
+		rudpSend(aconn, rcvdata, rcvd);
 
-		free(rcvdata);
+		printf("[SENT]>%.*s\n", (int)rcvd, rcvdata);
 
 		iteration++;
 	}

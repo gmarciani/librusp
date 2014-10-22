@@ -1,16 +1,21 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <assert.h>
+#include <string.h>
+#include <errno.h>
 #include "../../rudp.h"
-#include "../../util/sockutil.h"
-#include "../../util/macroutil.h"
+#include "../../util/fileutil.h"
 
-#define PORT 55000
+#define BUFFSIZE 1024
 
-#define MSG2 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur? At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat."
+static int PORT;
 
-#define MSG "aaaaabbbbbcccccdddddeeeeefffff"
+static char *FILERCV;
 
-#define MSGSIZE strlen(MSG)
+static char *FILEMTX;
+
+static int DEBUGMODE;
 
 static ConnectionId lconn;
 
@@ -26,9 +31,22 @@ static void stopListen(void);
 
 static void showEstablishedConnectionDetails(void);
 
-static void echo(void);
+static void fileReceive(void);
 
-int main(void) {	
+int main(int argc, char **argv) {
+
+	if (argc < 3)
+		ERREXIT("usage: %s [port] [filercv] [filemtx] [debug]", argv[0]);
+
+	PORT = atoi(argv[1]);
+
+	FILERCV = stringDuplication(argv[2]);
+
+	FILEMTX = stringDuplication(argv[3]);
+
+	DEBUGMODE = atoi(argv[4]);
+
+	setConnectionDebugMode(DEBUGMODE);
 
 	startListen();
 
@@ -40,7 +58,11 @@ int main(void) {
 
 	showEstablishedConnectionDetails();	
 
-	echo();	
+	fileReceive();	
+
+	free(FILERCV);
+
+	free(FILEMTX);
 
 	exit(EXIT_SUCCESS);
 }
@@ -102,27 +124,36 @@ static void showEstablishedConnectionDetails(void) {
 	free(strcaddr);
 }
 
-static void echo(void) {
+static void fileReceive(void) {
 	char *rcvdata = NULL;
-	unsigned long iteration;
+	size_t rcvd;
+	int fdrcv, fdmtx;
 
-	printf("# Echoing on established connection\n");
+	fdrcv = openFile(FILERCV, O_RDWR|O_CREAT|O_TRUNC);
 
-	iteration = 1;
+	printf("# Receiving file on established connection...");
 
 	while (1) {
-		
-		printf("\nECHO %lu\n", iteration);
 
-		rcvdata = rudpReceive(aconn, MSGSIZE);
+		rcvdata = rudpReceive(aconn, BUFFSIZE);
 
-		if (strcmp(rcvdata, MSG) != 0)
-			ERREXIT("ECHO FAILURE");
+		if (!rcvdata)
+			break;
 
-		rudpSend(aconn, rcvdata, strlen(rcvdata));
+		errno = 0;
+		if (write(fdrcv, rcvdata, strlen(rcvdata)) != rcvd)
+			ERREXIT("Cannot write to file: %s.", strerror(errno));
 
 		free(rcvdata);
-
-		iteration++;
 	}
+
+	fdmtx = openFile(FILEMTX, O_RDONLY);
+
+	assert(isEqualFile(fdrcv, fdmtx));
+
+	closeFile(fdrcv);
+
+	closeFile(fdmtx);
+
+	printf("OK\n");
 }
