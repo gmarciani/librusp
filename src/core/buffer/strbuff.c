@@ -8,6 +8,8 @@ void initializeStrBuff(StrBuff *buff) {
 		ERREXIT("Cannot initialize string buffer sync-block.");
 
 	buff->size = 0;
+
+	buff->usrsize = 0;
 }
 
 void destroyStrBuff(StrBuff *buff) {
@@ -18,6 +20,8 @@ void destroyStrBuff(StrBuff *buff) {
 		ERREXIT("Cannot destroy string buffer sync-block.");
 
 	buff->size = 0;
+
+	buff->usrsize = 0;
 }
 
 /* BUFFER SIZE */
@@ -29,6 +33,36 @@ size_t getStrBuffSize(StrBuff *buff) {
 		ERREXIT("Cannot acquire read-lock.");
 
 	size = buff->size;
+
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
+
+	return size;
+}
+
+size_t getStrBuffSizeUsr(StrBuff *buff) {
+	size_t size;
+
+	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
+
+	size = buff->usrsize;
+
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
+
+	return size;
+}
+
+size_t allignStrBuffSizeUsr(StrBuff *buff) {
+	size_t size;
+
+	if (pthread_rwlock_wrlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
+
+	buff->usrsize = buff->size;
+
+	size = buff->usrsize;
 
 	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
 		ERREXIT("Cannot release read-write lock.");
@@ -102,6 +136,8 @@ size_t popStrBuff(StrBuff *buff, const size_t size) {
 
 		buff->size -= popped;
 
+		buff->usrsize = MAX(0, buff->usrsize - popped);
+
 		if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
 			ERREXIT("Cannot release read-write lock.");
 
@@ -113,18 +149,6 @@ size_t popStrBuff(StrBuff *buff, const size_t size) {
 }
 
 /* STRING BUFFER WAITING */
-
-void waitEmptyStrBuff(StrBuff *buff) {
-	if (pthread_mutex_lock(&(buff->mtx)) > 0)
-		ERREXIT("Cannot lock mutex.");
-
-	while (getStrBuffSize(buff) > 0)
-		if (pthread_cond_wait(&(buff->remove_cnd), &(buff->mtx)) > 0)
-			ERREXIT("Cannot wait for condition variable.");
-
-	if (pthread_mutex_unlock(&(buff->mtx)) > 0)
-		ERREXIT("Cannot unlock mutex.");
-}
 
 size_t waitLookMaxStrBuff(StrBuff *buff, char *content, const size_t size) {
 	size_t looked;
@@ -142,22 +166,4 @@ size_t waitLookMaxStrBuff(StrBuff *buff, char *content, const size_t size) {
 	looked = lookStrBuff(buff, content, size);
 
 	return looked;
-}
-
-size_t waitReadMinStrBuff(StrBuff *buff, char *content, const size_t size) {
-	size_t read;
-
-	if (pthread_mutex_lock(&(buff->mtx)) > 0)
-		ERREXIT("Cannot lock mutex.");
-
-	while (getStrBuffSize(buff) < size)
-		if (pthread_cond_wait(&(buff->insert_cnd), &(buff->mtx)) > 0)
-				ERREXIT("Cannot wait for condition variable.");
-
-	if (pthread_mutex_unlock(&(buff->mtx)) > 0)
-		ERREXIT("Cannot unlock mutex.");
-
-	read = readStrBuff(buff, content, size);
-
-	return read;
 }

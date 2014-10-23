@@ -14,6 +14,7 @@
 
 typedef struct StrBuff {
 	size_t size;
+	size_t usrsize;
 	char content[BUFFSIZE];
 
 	pthread_rwlock_t rwlock;
@@ -32,6 +33,10 @@ void destroyStrBuff(StrBuff *buff);
 
 size_t getStrBuffSize(StrBuff *buff);
 
+size_t getStrBuffSizeUsr(StrBuff *buff);
+
+size_t allignStrBuffSizeUsr(StrBuff *buff);
+
 /* STRING BUFFER I/O */
 
 size_t lookStrBuff(StrBuff *buff, char *content, const size_t size);
@@ -44,10 +49,6 @@ size_t popStrBuff(StrBuff *buff, const size_t size);
 
 /* STRING BUFFER WAITING */
 
-void waitEmptyStrBuff(StrBuff *buff);
-
 size_t waitLookMaxStrBuff(StrBuff *buff, char *content, const size_t size);
-
-size_t waitReadMinStrBuff(StrBuff *buff, char *content, const size_t size);
 
 #endif /* STRBUFF_H_ */

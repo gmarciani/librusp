@@ -62,11 +62,11 @@ typedef struct Connection {
 	ConnectionSocket sock;
 
 	Window sndwnd;
-	StrBuff sndbuff;
+	StrBuff sndusrbuff;
 	SgmBuff sndsgmbuff;
 
 	Window rcvwnd;
-	StrBuff rcvbuff;
+	StrBuff rcvusrbuff;
 	SgmBuff rcvsgmbuff;
 
 	Timeout timeout;

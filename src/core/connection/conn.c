@@ -81,9 +81,9 @@ void destroyConnection(Connection *conn) {
 
 		destroySgmBuff(&(conn->rcvsgmbuff));
 
-		destroyStrBuff(&(conn->sndbuff));
+		destroyStrBuff(&(conn->sndusrbuff));
 
-		destroyStrBuff(&(conn->rcvbuff));
+		destroyStrBuff(&(conn->rcvusrbuff));
 
 		destroyWindow(&(conn->sndwnd));
 
@@ -113,9 +113,9 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 
 	initializeWindow(&(conn->rcvwnd), rcvwndb, rcvwndb + (RUDP_PLDS * RUDP_CON_WNDS));
 
-	initializeStrBuff(&(conn->sndbuff));
+	initializeStrBuff(&(conn->sndusrbuff));
 
-	initializeStrBuff(&(conn->rcvbuff));
+	initializeStrBuff(&(conn->rcvusrbuff));
 
 	initializeSgmBuff(&(conn->sndsgmbuff));
 
@@ -214,9 +214,9 @@ static void *senderLoop(void *arg) {
 
 	while (1) {
 
-		plds = waitLookMaxStrBuff(&(conn->sndbuff), payload, RUDP_PLDS);
+		plds = waitLookMaxStrBuff(&(conn->sndusrbuff), payload, RUDP_PLDS);
 
-		Segment sgm = createSegment(0, 0, plds, 0, getWindowNext(&(conn->sndwnd)), 0, payload);
+		Segment sgm = createSegment((conn->sndusrbuff.size == plds) ? RUDP_PSH : 0, 0, plds, 0, getWindowNext(&(conn->sndwnd)), 0, payload);
 
 		waitWindowSpace(&(conn->sndwnd), plds);
 
@@ -226,9 +226,9 @@ static void *senderLoop(void *arg) {
 
 		slideWindowNext(&(conn->sndwnd), sgm.hdr.plds);
 
-		DBGPRINT(DEBUG, "SNDWND SLIDENXT: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(&(conn->sndwnd)), getWindowNext(&(conn->sndwnd)), getWindowEnd(&(conn->sndwnd)), getStrBuffSize(&(conn->sndbuff)), getSgmBuffSize(&(conn->sndsgmbuff)));
+		DBGPRINT(DEBUG, "SNDWND SLIDENXT: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(&(conn->sndwnd)), getWindowNext(&(conn->sndwnd)), getWindowEnd(&(conn->sndwnd)), getStrBuffSize(&(conn->sndusrbuff)), getSgmBuffSize(&(conn->sndsgmbuff)));
 
-		popStrBuff(&(conn->sndbuff), plds);
+		popStrBuff(&(conn->sndusrbuff), plds);
 	}
 
 	return NULL;
@@ -299,25 +299,34 @@ static void *receiverLoop(void *arg) {
 
 				if (rcvsgm.hdr.seqn == getWindowBase(&(conn->rcvwnd))) {
 
-					writeStrBuff(&(conn->rcvbuff), rcvsgm.pld, rcvsgm.hdr.plds);
+					writeStrBuff(&(conn->rcvusrbuff), rcvsgm.pld, rcvsgm.hdr.plds);
+
+					if (rcvsgm.hdr.ctrl & RUDP_PSH)
+						allignStrBuffSizeUsr(&(conn->rcvusrbuff));
 
 					slideWindow(&(conn->rcvwnd), rcvsgm.hdr.plds);
 
-					DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
+					DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 
-					SgmBuffElem *curr = NULL;
+					if (getSgmBuffSize(&(conn->rcvsgmbuff)) > 0) {
 
-					while ((curr = findSgmBuffSeqn(&(conn->rcvsgmbuff), getWindowBase(&(conn->rcvwnd))))) {
+						SgmBuffElem *curr = NULL;
 
-						Segment sgm = curr->segment;
+						while ((curr = findSgmBuffSeqn(&(conn->rcvsgmbuff), getWindowBase(&(conn->rcvwnd))))) {
 
-						removeSgmBuff(&(conn->rcvsgmbuff), curr);
+							Segment sgm = curr->segment;
 
-						writeStrBuff(&(conn->rcvbuff), sgm.pld, sgm.hdr.plds);
+							removeSgmBuff(&(conn->rcvsgmbuff), curr);
 
-						slideWindow(&(conn->rcvwnd), sgm.hdr.plds);
+							writeStrBuff(&(conn->rcvusrbuff), sgm.pld, sgm.hdr.plds);
 
-						DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
+							if (curr->segment.hdr.ctrl & RUDP_PSH)
+								allignStrBuffSizeUsr(&(conn->rcvusrbuff));
+
+							slideWindow(&(conn->rcvwnd), sgm.hdr.plds);
+
+							DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
+						}
 					}
 
 				} else {
@@ -348,7 +357,7 @@ static void *receiverLoop(void *arg) {
 
 						slideWindow(&(conn->sndwnd), sgm.hdr.plds);
 
-						DBGPRINT(DEBUG, "SNDWND SLIDE: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(&(conn->sndwnd)), getWindowNext(&(conn->sndwnd)), getWindowEnd(&(conn->sndwnd)), getStrBuffSize(&(conn->sndbuff)), getSgmBuffSize(&(conn->sndsgmbuff)));
+						DBGPRINT(DEBUG, "SNDWND SLIDE: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(&(conn->sndwnd)), getWindowNext(&(conn->sndwnd)), getWindowEnd(&(conn->sndwnd)), getStrBuffSize(&(conn->sndusrbuff)), getSgmBuffSize(&(conn->sndsgmbuff)));
 
 					}
 

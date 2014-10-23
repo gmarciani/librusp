@@ -89,23 +89,23 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 
 	timeout = getTimespec(conn->timeout.value);
 
-	if (pthread_mutex_lock(&(conn->sndbuff.mtx)) > 0)
+	if (pthread_mutex_lock(&(conn->sndusrbuff.mtx)) > 0)
 		ERREXIT("Cannot lock mutex.");
 
-	while (BUFFSIZE - getStrBuffSize(&(conn->sndbuff)) < size)
-		if ((error = pthread_cond_timedwait(&(conn->sndbuff.remove_cnd), &(conn->sndbuff.mtx), &timeout)) > 0)
+	while (BUFFSIZE - getStrBuffSize(&(conn->sndusrbuff)) < size)
+		if ((error = pthread_cond_timedwait(&(conn->sndusrbuff.remove_cnd), &(conn->sndusrbuff.mtx), &timeout)) > 0)
 			if (error != ETIMEDOUT)
 				ERREXIT("Cannot timed wait condition variable.");
 
-	if (pthread_mutex_unlock(&(conn->sndbuff.mtx)) > 0)
+	if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
 
-	writeStrBuff(&(conn->sndbuff), msg, size);
+	writeStrBuff(&(conn->sndusrbuff), msg, size);
 
 	if (pthread_mutex_lock(&(conn->sndsgmbuff.mtx)) > 0)
 		ERREXIT("Cannot lock mutex.");
 
-	while (getStrBuffSize(&(conn->sndbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0)
+	while (getStrBuffSize(&(conn->sndusrbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0)
 		if ((error = pthread_cond_timedwait(&(conn->sndsgmbuff.remove_cnd), &(conn->sndsgmbuff.mtx), &timeout)) > 0)
 			if (error != ETIMEDOUT)
 				ERREXIT("Cannot timed wait condition variable.");
@@ -128,18 +128,18 @@ size_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 
 	timeout = getTimespec(conn->timeout.value);
 
-	if (pthread_mutex_unlock(&(conn->rcvbuff.mtx)) > 0)
+	if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
 
-	while (conn->rcvbuff.size < size)
-		if ((error = pthread_cond_timedwait(&(conn->rcvbuff.insert_cnd), &(conn->rcvbuff.mtx), &timeout)) > 0)
+	while (getStrBuffSizeUsr(&(conn->rcvusrbuff)) == 0)
+		if ((error = pthread_cond_timedwait(&(conn->rcvusrbuff.insert_cnd), &(conn->rcvusrbuff.mtx), &timeout)) > 0)
 			if (error != ETIMEDOUT)
 				ERREXIT("Cannot timed wait condition variable.");
 
-	if (pthread_mutex_unlock(&(conn->rcvbuff.mtx)) > 0)
+	if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
 
-	rcvd = readStrBuff(&(conn->rcvbuff), msg, size);
+	rcvd = readStrBuff(&(conn->rcvusrbuff), msg, MIN(size, getStrBuffSizeUsr(&(conn->rcvusrbuff))));
 
 	return rcvd;
 }
