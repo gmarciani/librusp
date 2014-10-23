@@ -37,6 +37,10 @@ long getFileSize(const int fd) {
 	if ((size = lseek(fd, 0, SEEK_END)) == -1)
 		ERREXIT("Cannot lseek file: %s.", strerror(errno));
 
+	errno = 0;
+	if (lseek(fd, 0, SEEK_SET) == -1)
+		ERREXIT("Cannot lseek file: %s.", strerror(errno));
+
 	return size;
 }
 
