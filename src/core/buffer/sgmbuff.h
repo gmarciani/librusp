@@ -1,9 +1,11 @@
 #ifndef SGMBUFF_H_
 #define SGMBUFF_H_
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
 #include "../segment/sgm.h"
 #include "../../util/timeutil.h"
-#include "../../util/threadutil.h"
 #include "../../util/macroutil.h"
 
 /* SEGMENT BUFFER STRUCTURES */
@@ -19,7 +21,7 @@ typedef struct SgmBuffElem {
 	struct SgmBuffElem *next;
 	struct SgmBuffElem *prev;
 
-	pthread_rwlock_t *rwlock;
+	pthread_rwlock_t rwlock;
 } SgmBuffElem;
 
 typedef struct SgmBuff {
@@ -28,19 +30,19 @@ typedef struct SgmBuff {
 	SgmBuffElem *head;
 	SgmBuffElem *tail;
 
-	pthread_rwlock_t *rwlock;
+	pthread_rwlock_t rwlock;
 
-	pthread_mutex_t *mtx;
-	pthread_cond_t *insert_cnd;
-	pthread_cond_t *remove_cnd;
-	pthread_cond_t *status_cnd;
+	pthread_mutex_t mtx;
+	pthread_cond_t insert_cnd;
+	pthread_cond_t remove_cnd;
+	pthread_cond_t status_cnd;
 } SgmBuff;
 
 /* SEGMENT BUFFER CREATION/DISTRUCTION */
 
-SgmBuff *createSgmBuff(void);
+void initializeSgmBuff(SgmBuff *buff);
 
-void freeSgmBuff(SgmBuff *buff);
+void destroySgmBuff(SgmBuff *buff);
 
 /* SEGMENT BUFFER INSERTION/REMOVAL */
 
@@ -73,9 +75,5 @@ void waitStrategicInsertion(SgmBuff *buff);
 SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn);
 
 SgmBuffElem *findSgmBuffAckn(SgmBuff *buff, const uint32_t ackn);
-
-/* SEGMENT BUFFER REPRESENTATION */
-
-char *sgmBuffToString(SgmBuff *buff);
 
 #endif /* SGMBUFF_H_ */

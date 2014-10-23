@@ -1,45 +1,41 @@
 #include "wnd.h"
 
-Window *createWindow(const uint32_t base, const uint32_t end) {
-	Window *wnd = NULL;
-
-	if (!(wnd = malloc(sizeof(Window))))
-		ERREXIT("Cannot allocate memory for window");
-
-	wnd->mtx = createMutex();
-
-	wnd->cnd = createConditionVariable();
-
-	wnd->rwlock = createRWLock();
+void initializeWindow(Window *wnd, const uint32_t base, const uint32_t end) {
+	if ((pthread_rwlock_init(&(wnd->rwlock), NULL) > 0) |
+		(pthread_mutex_init(&(wnd->mtx), NULL) > 0) |
+		(pthread_cond_init(&(wnd->cnd), NULL) > 0))
+		ERREXIT("Cannot initialize window sync-block.");
 
 	wnd->base = base;
 
 	wnd->end = end;
 
 	wnd->next = base;
-
-	return wnd;
 }
 
-void freeWindow(Window *wnd) {
+void destroyWindow(Window *wnd) {
+	if ((pthread_rwlock_destroy(&(wnd->rwlock)) > 0) |
+		(pthread_mutex_destroy(&(wnd->mtx)) > 0) |
+		(pthread_cond_destroy(&(wnd->cnd)) > 0))
+		ERREXIT("Cannot destroy window sync-block.");
 
-	freeRWLock(wnd->rwlock);
+	wnd->base = 0;
 
-	freeMutex(wnd->mtx);
+	wnd->end = 0;
 
-	freeConditionVariable(wnd->cnd);
-
-	free(wnd);
+	wnd->next = 0;
 }
 
 uint32_t getWindowBase(Window *wnd) {
 	uint32_t wndbase;
 
-	lockRead(wnd->rwlock);
+	if (pthread_rwlock_rdlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	wndbase = wnd->base;
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return wndbase;
 }
@@ -47,11 +43,13 @@ uint32_t getWindowBase(Window *wnd) {
 uint32_t getWindowEnd(Window *wnd) {
 	uint32_t wndend;
 
-	lockRead(wnd->rwlock);
+	if (pthread_rwlock_rdlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	wndend = wnd->end;
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return wndend;
 }
@@ -59,11 +57,13 @@ uint32_t getWindowEnd(Window *wnd) {
 uint32_t getWindowNext(Window *wnd) {
 	uint32_t wndnext;
 
-	lockRead(wnd->rwlock);
+	if (pthread_rwlock_rdlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	wndnext = wnd->next;
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return wndnext;
 }
@@ -71,52 +71,64 @@ uint32_t getWindowNext(Window *wnd) {
 long getWindowSpace(Window *wnd) {
 	long space;
 
-	lockRead(wnd->rwlock);
+	if (pthread_rwlock_rdlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	space = (wnd->end - wnd->next);
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return space;
 }
 
 void slideWindow(Window *wnd, const uint32_t offset) {
-	lockWrite(wnd->rwlock);
+	if (pthread_rwlock_wrlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	wnd->base = RUDP_NXTSEQN(wnd->base, offset);
 
 	wnd->end = RUDP_NXTSEQN(wnd->end, offset);
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
-	broadcastConditionVariable(wnd->cnd);
+	if (pthread_cond_broadcast(&(wnd->cnd)) > 0)
+		ERREXIT("Cannot broadcast condition variable.");
 }
 
 void slideWindowNext(Window *wnd, const uint32_t offset) {
-	lockWrite(wnd->rwlock);
+	if (pthread_rwlock_wrlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	wnd->next = RUDP_NXTSEQN(wnd->next, offset);
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 }
 
 short matchWindow(Window *wnd, const uint32_t value) {
 	short match;
 
-	lockRead(wnd->rwlock);
+	if (pthread_rwlock_rdlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	match = matchSequenceAgainstWindow(wnd->base, wnd->end, value);
 
-	unlockRWLock(wnd->rwlock);
+	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return match;
 }
 
 void waitWindowSpace(Window *wnd, const long space) {
-	lockMutex(wnd->mtx);
+	if (pthread_mutex_lock(&(wnd->mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
 	while (getWindowSpace(wnd) < space)
-		waitConditionVariable(wnd->cnd, wnd->mtx);
+		if (pthread_cond_wait(&(wnd->cnd), &(wnd->mtx)) > 0)
+			ERREXIT("Cannot wait for condition variable.");
 
-	unlockMutex(wnd->mtx);
+	if (pthread_mutex_unlock(&(wnd->mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 }

@@ -1,6 +1,9 @@
 #ifndef STRBUFF_H_
 #define STRBUFF_H_
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
 #include "../../util/stringutil.h"
 #include "../../util/threadutil.h"
 #include "../../util/macroutil.h"
@@ -13,17 +16,17 @@ typedef struct StrBuff {
 	size_t size;
 	char content[BUFFSIZE];
 
-	pthread_rwlock_t *rwlock;
-	pthread_mutex_t *mtx;
-	pthread_cond_t *insert_cnd;
-	pthread_cond_t *remove_cnd;
+	pthread_rwlock_t rwlock;
+	pthread_mutex_t mtx;
+	pthread_cond_t insert_cnd;
+	pthread_cond_t remove_cnd;
 } StrBuff;
 
 /* STRING BUFFER CREATION/DISTRUCTION */
 
-StrBuff *createStrBuff(void);
+void initializeStrBuff(StrBuff *buff);
 
-void freeStrBuff(StrBuff *buff);
+void destroyStrBuff(StrBuff *buff);
 
 /* BUFFER SIZE */
 
@@ -46,9 +49,5 @@ void waitEmptyStrBuff(StrBuff *buff);
 size_t waitLookMaxStrBuff(StrBuff *buff, char *content, const size_t size);
 
 size_t waitReadMinStrBuff(StrBuff *buff, char *content, const size_t size);
-
-/* STRING BUFFER REPRESENTATION */
-
-char *strBuffToString(StrBuff *buff);
 
 #endif /* STRBUFF_H_ */

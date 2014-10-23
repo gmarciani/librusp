@@ -2,47 +2,39 @@
 
 /* SEGMENT BUFFER CREATION/DISTRUCTION */
 
-SgmBuff *createSgmBuff(void) {
-	SgmBuff *buff = NULL;
+void initializeSgmBuff(SgmBuff *buff) {
 
-	if (!(buff = malloc(sizeof(SgmBuff))))
-		ERREXIT("Cannot allocate memory for segment buffer.");
-
-	buff->rwlock = createRWLock();
-
-	buff->mtx = createMutex();
-
-	buff->insert_cnd = createConditionVariable();
-
-	buff->remove_cnd = createConditionVariable();
-
-	buff->status_cnd = createConditionVariable();
+	if ((pthread_rwlock_init(&(buff->rwlock), NULL) > 0) |
+		(pthread_mutex_init(&(buff->mtx), NULL) > 0) |
+		(pthread_cond_init(&(buff->insert_cnd), NULL) > 0) |
+		(pthread_cond_init(&(buff->remove_cnd), NULL) > 0) |
+		(pthread_cond_init(&(buff->status_cnd), NULL) > 0))
+		ERREXIT("Cannot initialize segment buffer sync-block.");
 
 	buff->size = 0;
-	
+
 	buff->head = NULL;
 
 	buff->tail = NULL;
-
-	return buff;
 }
 
-void freeSgmBuff(SgmBuff *buff) {
+void destroySgmBuff(SgmBuff *buff) {
 
 	while (buff->head)
 		removeSgmBuff(buff, buff->head);
 
-	freeRWLock(buff->rwlock);
+	if ((pthread_rwlock_destroy(&(buff->rwlock)) > 0) |
+		(pthread_mutex_destroy(&(buff->mtx)) > 0) |
+		(pthread_cond_destroy(&(buff->insert_cnd)) > 0) |
+		(pthread_cond_destroy(&(buff->remove_cnd)) > 0) |
+		(pthread_cond_destroy(&(buff->status_cnd)) > 0))
+		ERREXIT("Cannot destroy segment buffer sync-block.");
 
-	freeMutex(buff->mtx);
+	buff->size = 0;
 
-	freeConditionVariable(buff->insert_cnd);
+	buff->head = NULL;
 
-	freeConditionVariable(buff->remove_cnd);
-
-	freeConditionVariable(buff->status_cnd);
-
-	free(buff);
+	buff->tail = NULL;
 }
 
 /* SEGMENT BUFFER INSERTION/REMOVAL */
@@ -63,9 +55,11 @@ SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const short status) {
 
 	new->segment = sgm;
 
-	new->rwlock = createRWLock();
+	if (pthread_rwlock_init(&(new->rwlock), NULL) > 0)
+		ERREXIT("Cannot initialize read-write lock.");
 
-	lockWrite(buff->rwlock);
+	if (pthread_rwlock_wrlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	if (buff->size == 0) {
 
@@ -90,9 +84,11 @@ SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const short status) {
 
 	buff->size++;
 
-	unlockRWLock(buff->rwlock);
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
-	broadcastConditionVariable(buff->insert_cnd);
+	if (pthread_cond_broadcast(&(buff->insert_cnd)) > 0)
+		ERREXIT("Cannot broadcast condition variable.");
 
 	return new;
 }
@@ -102,7 +98,8 @@ void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem) {
 	if (!elem)
 		return;
 
-	lockWrite(buff->rwlock);
+	if (pthread_rwlock_wrlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	if ((elem == buff->head) && (elem == buff->tail)) {
 
@@ -132,11 +129,14 @@ void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem) {
 
 	buff->size--;
 
-	unlockRWLock(buff->rwlock);
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
-	broadcastConditionVariable(buff->remove_cnd);
+	if (pthread_cond_broadcast(&(buff->remove_cnd)) > 0)
+		ERREXIT("Cannot broadcast condition variable.");
 
-	freeRWLock(elem->rwlock);
+	if (pthread_rwlock_destroy(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot destroy read-write lock.");
 
 	free(elem);
 }
@@ -144,11 +144,13 @@ void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem) {
 long getSgmBuffSize(SgmBuff *buff) {
 	long size;
 
-	lockRead(buff->rwlock);
+	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	size = buff->size;
 
-	unlockRWLock(buff->rwlock);
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return size;
 }
@@ -158,34 +160,40 @@ long getSgmBuffSize(SgmBuff *buff) {
 short getSgmBuffElemStatus(SgmBuffElem *elem) {
 	short status;
 
-	lockRead(elem->rwlock);
+	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	status = elem->status;
 
-	unlockRWLock(elem->rwlock);
+	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return status;
 }
 
 void setSgmBuffElemStatus(SgmBuffElem *elem, const short status) {
-	lockWrite(elem->rwlock);
+	if (pthread_rwlock_wrlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	elem->status = status;
 
-	unlockRWLock(elem->rwlock);
+	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 }
 
 long double getSgmBuffElemElapsed(SgmBuffElem *elem) {
 	struct timespec now;
 	long double elapsed;
 
-	lockRead(elem->rwlock);
+	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	elapsed = getElapsed(elem->time, now);
 
-	unlockRWLock(elem->rwlock);
+	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return elapsed;
 }
@@ -194,19 +202,22 @@ short testSgmBuffElemAttributes(SgmBuffElem *elem, const short status, const lon
 	struct timespec now;
 	short result;
 
-	lockRead(elem->rwlock);
+	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	result = (elem->status == status) & ((getElapsed(elem->time, now) - elem->delay) > elapsed);
 
-	unlockRWLock(elem->rwlock);
+	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return result;
 }
 
 void updateSgmBuffElemAttributes(SgmBuffElem *elem, const long retransoffset, const long double delay) {
-	lockWrite(elem->rwlock);
+	if (pthread_rwlock_wrlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	elem->retrans += retransoffset;
 
@@ -214,29 +225,37 @@ void updateSgmBuffElemAttributes(SgmBuffElem *elem, const long retransoffset, co
 
 	elem->delay = delay;
 
-	unlockRWLock(elem->rwlock);
+	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 }
 
 /* SEGMENT BUFFER WAITING */
 
 void waitSgmBuffEmptiness(SgmBuff *buff) {
-	lockMutex(buff->mtx);
+	if (pthread_mutex_lock(&(buff->mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
 	while (getSgmBuffSize(buff) > 0)
-		waitConditionVariable(buff->remove_cnd, buff->mtx);
+		if (pthread_cond_wait(&(buff->remove_cnd), &(buff->mtx)) > 0)
+			ERREXIT("Cannot wait for condition variable.");
 
-	unlockMutex(buff->mtx);
+	if (pthread_mutex_unlock(&(buff->mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 }
 
 void waitStrategicInsertion(SgmBuff *buff) {
-	lockMutex(buff->mtx);
+	if (pthread_mutex_lock(&(buff->mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
-	while (buff->size == 0)
-		waitConditionVariable(buff->insert_cnd, buff->mtx);
+	while (getSgmBuffSize(buff) == 0)
+		if (pthread_cond_wait(&(buff->insert_cnd), &(buff->mtx)) > 0)
+			ERREXIT("Cannot wait for condition variable.");
 
-	waitConditionVariable(buff->status_cnd, buff->mtx);
+	if (pthread_cond_wait(&(buff->status_cnd), &(buff->mtx)) > 0)
+			ERREXIT("Cannot wait for condition variable.");
 
-	unlockMutex(buff->mtx);
+	if (pthread_mutex_unlock(&(buff->mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 }
 
 /* SEGMENT BUFFER SEARCH */
@@ -244,7 +263,8 @@ void waitStrategicInsertion(SgmBuff *buff) {
 SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn) {
 	SgmBuffElem *curr = NULL;
 
-	lockRead(buff->rwlock);
+	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	curr = buff->head;
 
@@ -256,7 +276,8 @@ SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn) {
 		curr = curr->next;
 	}
 
-	unlockRWLock(buff->rwlock);
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return curr;
 }
@@ -264,7 +285,8 @@ SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn) {
 SgmBuffElem *findSgmBuffAckn(SgmBuff *buff, const uint32_t ackn) {
 	SgmBuffElem *curr = NULL;
 
-	lockRead(buff->rwlock);
+	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	curr = buff->head;
 
@@ -276,48 +298,8 @@ SgmBuffElem *findSgmBuffAckn(SgmBuff *buff, const uint32_t ackn) {
 		curr = curr->next;
 	}
 
-	unlockRWLock(buff->rwlock);
+	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return curr;
-}
-
-/* SEGMENT BUFFER REPRESENTATION */
-
-char *sgmBuffToString(SgmBuff *buff) {
-	SgmBuffElem *curr = NULL;
-	char *strbuff, *strsgm = NULL;	
-	uint32_t i;
-
-	if (!(strbuff = malloc(sizeof(char) * (25 + buff->size * (RUDP_SGM_STR + 1) + 1))))
-		ERREXIT("Cannot allocate memory for string representation of segment buffer.");
-
-	sprintf(strbuff, "size:%ld content:%s", buff->size, (buff->size == 0) ? "" : "\n");
-
-	curr = buff->head;
-
-	i = (uint32_t) strlen(strbuff);
-
-	while (curr) {
-
-		strsgm = segmentToString(curr->segment);
-
-		memcpy(strbuff + i, strsgm, sizeof(char) * strlen(strsgm));		
-
-		i += (uint32_t) strlen(strsgm);
-
-		free(strsgm);
-
-		if (curr->next) {
-
-			strbuff[i] = '\n';
-
-			i++;
-		}		
-
-		curr = curr->next;
-	}
-
-	strbuff[i] = '\0';
-	
-	return strbuff;
 }

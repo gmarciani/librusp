@@ -9,7 +9,7 @@
 
 #define STRINGSIZE strlen(STRING)
 
-static StrBuff *buff;
+static StrBuff buff;
 
 static void creation(void);
 
@@ -39,7 +39,7 @@ int main(void) {
 static void creation(void) {
 	printf("# Creating buffer...");
 
-	buff = createStrBuff();
+	initializeStrBuff(&buff);
 
 	printf("OK\n");
 }
@@ -49,11 +49,11 @@ static void writeTo(void) {
 
 	printf("# Writing buffer...");
 
-	written = writeStrBuff(buff, STRING, STRINGSIZE);
+	written = writeStrBuff(&buff, STRING, STRINGSIZE);
 
-	assert(strncmp(buff->content, STRING, buff->size) == 0);
+	assert(strncmp(buff.content, STRING, buff.size) == 0);
 
-	assert(written == buff->size);
+	assert(written == buff.size);
 
 	printf("OK\n");
 }
@@ -64,11 +64,11 @@ static void lookFrom(void) {
 
 	printf("# Looking buffer...");
 
-	looked = lookStrBuff(buff, content, 3);
+	looked = lookStrBuff(&buff, content, 3);
 
 	assert(strncmp(content, "Lor", 3) == 0);
 
-	assert(buff->size == STRINGSIZE);
+	assert(buff.size == STRINGSIZE);
 
 	assert(looked == 3);
 
@@ -81,11 +81,11 @@ static void readFrom(void) {
 
 	printf("# Reading buffer...");
 
-	read = readStrBuff(buff, content, 3);
+	read = readStrBuff(&buff, content, 3);
 
 	assert(strncmp(content, "Lor", 3) == 0);
 
-	assert(buff->size == STRINGSIZE - 3);
+	assert(buff.size == STRINGSIZE - 3);
 
 	assert(read == 3);
 
@@ -95,7 +95,7 @@ static void readFrom(void) {
 static void deallocation(void) {
 	printf("# Freeing buffer...");
 
-	freeStrBuff(buff);
+	destroyStrBuff(&buff);
 
 	printf("OK\n");
 }

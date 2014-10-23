@@ -4,22 +4,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "../segment/seqn.h"
-#include "../../util/threadutil.h"
+#include "../../util/macroutil.h"
 
 typedef struct Window {
 	uint32_t base;
 	uint32_t end;
 	uint32_t next;
 
-	pthread_rwlock_t *rwlock;
-	pthread_mutex_t *mtx;
-	pthread_cond_t *cnd;
+	pthread_rwlock_t rwlock;
+	pthread_mutex_t mtx;
+	pthread_cond_t cnd;
 } Window;
 
-Window *createWindow(const uint32_t base, const uint32_t end);
+void initializeWindow(Window *wnd, const uint32_t base, const uint32_t end);
 
-void freeWindow(Window *wnd);
+void destroyWindow(Window *wnd);
 
 uint32_t getWindowBase(Window *wnd);
 

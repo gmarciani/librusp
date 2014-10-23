@@ -3,10 +3,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
+#include <pthread.h>
 #include <math.h>
 #include "../../util/timeutil.h"
-#include "../../util/threadutil.h"
 #include "../../util/macroutil.h"
 
 // EXTIMATED RTT
@@ -29,12 +28,12 @@ typedef struct Timeout {
 	long double devRTT;
 	long double value;
 
-	pthread_rwlock_t *rwlock;
+	pthread_rwlock_t rwlock;
 } Timeout;
 
-Timeout *createTimeout(long double sampleRTT);
+void initializeTimeout(Timeout *timeout, const long double sampleRTT);
 
-void freeTimeout(Timeout *timeout);
+void destroyTimeout(Timeout *timeout);
 
 long double getTimeoutValue(Timeout *timeout);
 

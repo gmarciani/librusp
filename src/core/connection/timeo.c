@@ -1,43 +1,39 @@
 #include "timeo.h"
 
-Timeout *createTimeout(long double sampleRTT) {
-	Timeout *timeout = NULL;
+void initializeTimeout(Timeout *timeout, const long double sampleRTT) {
 
-	if (!(timeout = malloc(sizeof(Timeout))))
-		ERREXIT("Cannot allocate memory for timeout");
+	if (pthread_rwlock_init(&(timeout->rwlock), NULL) > 0)
+		ERREXIT("Cannot initialize timeout sync-block.");
 
 	timeout->extRTT = sampleRTT;
 
 	timeout->devRTT = 0.0;
 
 	timeout->value = sampleRTT;
-
-	timeout->rwlock = createRWLock();
-
-	return timeout;
 }
 
-void freeTimeout(Timeout *timeout) {
-
-	freeRWLock(timeout->rwlock);
-
-	free(timeout);
+void destroyTimeout(Timeout *timeout) {
+	if (pthread_rwlock_destroy(&(timeout->rwlock)) > 0)
+		ERREXIT("Cannot destroy timeout sync-block.");
 }
 
 long double getTimeoutValue(Timeout *timeout) {
 	long double value;
 
-	lockRead(timeout->rwlock);
+	if (pthread_rwlock_rdlock(&(timeout->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	value = timeout->value;
 
-	unlockRWLock(timeout->rwlock);
+	if (pthread_rwlock_unlock(&(timeout->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return value;
 }
 
 void updateTimeout(Timeout *timeout, const long double sampleRTT) {
-	lockWrite(timeout->rwlock);
+	if (pthread_rwlock_wrlock(&(timeout->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	timeout->extRTT = RUDP_EXTRTT_A * timeout->extRTT + RUDP_EXTRTT_B * sampleRTT;
 
@@ -45,5 +41,6 @@ void updateTimeout(Timeout *timeout, const long double sampleRTT) {
 
 	timeout->value = RUDP_TIMEO_A * timeout->extRTT + RUDP_TIMEO_B * timeout->devRTT;
 
-	unlockRWLock(timeout->rwlock);
+	if (pthread_rwlock_unlock(&(timeout->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 }
