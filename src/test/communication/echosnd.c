@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 	if (argc < 6)
 		ERREXIT("usage: %s [address] [port] [drop] [iterations] [debug]", argv[0]);
 
-	ADDRESS = stringDuplication(argv[1]);
+	ADDRESS = argv[1];
 
 	PORT = atoi(argv[2]);
 
@@ -52,8 +52,6 @@ int main(int argc, char **argv) {
 	profileEcho();
 
 	//disconnectConnection();
-
-	free(ADDRESS);
 
 	exit(EXIT_SUCCESS);
 }
