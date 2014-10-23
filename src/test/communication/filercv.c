@@ -123,12 +123,8 @@ static void fileReceive(void) {
 
 	while ((rcvd = rudpReceive(aconn, rcvdata, 500)) > 0) {
 
-		if (rcvd == 1 && rcvdata[0] == 0x01) {
-			printf("Received: EOF\n");
+		if (rcvd == 1 && rcvdata[0] == 0x01)
 			break;
-		}
-
-		printf("Received (%zu): %.*s\n", rcvd, (int) rcvd, rcvdata);
 
 		errno = 0;
 		if (write(fdrcv, rcvdata, rcvd) == -1)

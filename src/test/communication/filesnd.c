@@ -98,13 +98,17 @@ static void profileFileSend() {
 
 	milliselaps = 0.0;
 
-	start = getTimestamp();
+	errno = 0;
 
 	while ((rd = read(fd, sndbuff, 500)) > 0) {
 		
-		printf("Sending (%zu): %.*s\n", rd, (int)rd, sndbuff);
+		start = getTimestamp();
 
 		rudpSend(conn, sndbuff, rd);
+
+		end = getTimestamp();
+
+		milliselaps += getElapsed(start, end);
 
 		memset(sndbuff, 0, sizeof(char) * 500);
 
@@ -118,13 +122,9 @@ static void profileFileSend() {
 
 	rudpSend(conn, &eof, 1);
 
-	end = getTimestamp();
-
 	closeFile(fd);
 
 	printf("OK\n");
-
-	milliselaps += getElapsed(start, end);
 
 	KB = (long double)(size / 1000.0);
 
