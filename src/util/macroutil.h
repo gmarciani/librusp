@@ -1,6 +1,9 @@
 #ifndef MACROUTIL_H_
 #define MACROUTIL_H_
 
+#include <stdlib.h>
+#include <stdio.h>
+
 #ifndef MAX
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 #endif
