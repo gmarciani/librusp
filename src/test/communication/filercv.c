@@ -38,9 +38,9 @@ int main(int argc, char **argv) {
 
 	PORT = atoi(argv[1]);
 
-	FILERCV = stringDuplication(argv[2]);
+	FILERCV = argv[2];
 
-	FILEMTX = stringDuplication(argv[3]);
+	FILEMTX = argv[3];
 
 	DEBUGMODE = atoi(argv[4]);
 
@@ -57,10 +57,6 @@ int main(int argc, char **argv) {
 	showEstablishedConnectionDetails();	
 
 	fileReceive();	
-
-	free(FILERCV);
-
-	free(FILEMTX);
 
 	exit(EXIT_SUCCESS);
 }
@@ -117,19 +113,28 @@ static void showEstablishedConnectionDetails(void) {
 }
 
 static void fileReceive(void) {
-	char rcvdata[1024];
+	char rcvdata[500];
 	size_t rcvd;
 	int fdrcv, fdmtx;
 
 	fdrcv = openFile(FILERCV, O_RDWR|O_CREAT|O_TRUNC);
 
-	printf("# Receiving file on established connection...");
+	printf("# Receiving file on established connection...\n");
 
-	while ((rcvd = rudpReceive(aconn, rcvdata, 1024)) > 0) {
+	while ((rcvd = rudpReceive(aconn, rcvdata, 500)) > 0) {
+
+		if (rcvd == 1 && rcvdata[0] == 0x01) {
+			printf("Received: EOF\n");
+			break;
+		}
+
+		printf("Received (%zu): %.*s\n", rcvd, (int) rcvd, rcvdata);
 
 		errno = 0;
 		if (write(fdrcv, rcvdata, rcvd) == -1)
 			ERREXIT("Cannot write to file: %s.", strerror(errno));
+
+		memset(rcvdata, 0, 500);
 	}
 
 	fdmtx = openFile(FILEMTX, O_RDONLY);

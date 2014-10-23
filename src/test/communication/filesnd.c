@@ -1,10 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #include <time.h>
 #include "../../rudp.h"
 #include "../../util/fileutil.h"
 #include "../../util/timeutil.h"
+#include "../../util/macroutil.h"
 
 static char *ADDRESS;
 
@@ -29,13 +32,13 @@ int main(int argc, char **argv) {
 	if (argc < 6)
 		ERREXIT("usage: %s [address] [port] [drop] [file] [debug]", argv[0]);
 
-	ADDRESS = stringDuplication(argv[1]);
+	ADDRESS = argv[1];
 
 	PORT = atoi(argv[2]);
 
 	DROPRATE = strtold(argv[3], NULL);
 
-	FILESND = stringDuplication(argv[4]);
+	FILESND = argv[4];
 
 	DEBUGMODE = atoi(argv[5]);
 
@@ -48,10 +51,6 @@ int main(int argc, char **argv) {
 	profileFileSend();
 
 	//disconnectConnection();
-
-	free(ADDRESS);
-
-	free(FILESND);
 
 	exit(EXIT_SUCCESS);
 }
@@ -81,7 +80,8 @@ static void showConnectionDetails(void) {
 }
 
 static void profileFileSend() {
-	char sndbuff[1024];
+	char sndbuff[500];
+	char eof = 0x01;
 	int fd;
 	long size;
 	ssize_t rd;
@@ -92,7 +92,7 @@ static void profileFileSend() {
 
 	size = getFileSize(fd);
 
-	printf("# Profiling file send on established connection (drop: %LF%%): %s (%ld bytes)...", DROPRATE * 100.0, FILESND, size);
+	printf("# Profiling file send on established connection (drop: %LF%%): %s (%ld bytes)...\n", DROPRATE * 100.0, FILESND, size);
 
 	setDropRate(DROPRATE);
 
@@ -100,12 +100,23 @@ static void profileFileSend() {
 
 	start = getTimestamp();
 
-	while ((rd = read(fd, sndbuff, 1024)) > 0) {
+	while ((rd = read(fd, sndbuff, 500)) > 0) {
 		
+		printf("Sending (%zu): %.*s\n", rd, (int)rd, sndbuff);
+
 		rudpSend(conn, sndbuff, rd);
 
-		memset(sndbuff, 0, sizeof(char) * 1024);
+		memset(sndbuff, 0, sizeof(char) * 500);
+
+		errno = 0;
 	}
+
+	if (rd == -1)
+		ERREXIT("Cannot read file: %s.", strerror(errno));
+
+	printf("Sending: EOF\n");
+
+	rudpSend(conn, &eof, 1);
 
 	end = getTimestamp();
 
