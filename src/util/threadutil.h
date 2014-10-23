@@ -27,6 +27,10 @@ pthread_mutex_t *createMutex();
 
 void freeMutex(pthread_mutex_t *mtx);
 
+void initializeMutex(pthread_mutex_t *mtx);
+
+void destroyMutex(pthread_mutex_t *mtx);
+
 void lockMutex(pthread_mutex_t *mtx);
 
 void unlockMutex(pthread_mutex_t *mtx);

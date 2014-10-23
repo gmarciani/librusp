@@ -63,7 +63,7 @@ test: testdir communication buffer segment base performance
 testdir: 
 	mkdir -pv $(BINDIR)
 	
-communication: echosnd echorcv
+communication: echosnd echorcv filesnd filercv
 
 echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)

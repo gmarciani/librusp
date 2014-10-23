@@ -47,7 +47,7 @@ void *joinThread(pthread_t tid) {
 /* MUTEX */
 
 pthread_mutex_t *createMutex() {
-	pthread_mutex_t *mtx = NULL;
+	pthread_mutex_t *mtx;
 
 	if (!(mtx = malloc(sizeof(pthread_mutex_t))))
 		ERREXIT("Cannot allocate memory for mutex.");
@@ -59,11 +59,20 @@ pthread_mutex_t *createMutex() {
 }
 
 void freeMutex(pthread_mutex_t *mtx) {
-
 	if (pthread_mutex_destroy(mtx) > 0)
 		ERREXIT("Cannot destroy mutex.");
 
 	free(mtx);
+}
+
+void initializeMutex(pthread_mutex_t *mtx) {
+	if (pthread_mutex_init(mtx, NULL) > 0)
+		ERREXIT("Cannot initialize mutex.");
+}
+
+void destroyMutex(pthread_mutex_t *mtx) {
+	if (pthread_mutex_destroy(mtx) > 0)
+		ERREXIT("Cannot destroy mutex.");
 }
 
 void lockMutex(pthread_mutex_t *mtx) {

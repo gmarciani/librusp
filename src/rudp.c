@@ -79,6 +79,7 @@ void rudpClose(const ConnectionId connid) {
 void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	Connection *conn = NULL;
 	struct timespec timeout;
+	int error;
 
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);		
@@ -86,45 +87,59 @@ void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	if (getConnectionState(conn) != RUDP_CON_ESTA)
 		ERREXIT("Cannot write message: connection not established.");
 
-	timeout = getTimespec(conn->timeout->value);
+	timeout = getTimespec(conn->timeout.value);
 
-	lockMutex(conn->sndbuff->mtx);
+	if (pthread_mutex_lock(&(conn->sndbuff.mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
-	while (BUFFSIZE - getStrBuffSize(conn->sndbuff) < size)
-		waitTimeoutConditionVariable(conn->sndbuff->remove_cnd, conn->sndbuff->mtx, timeout);
+	while (BUFFSIZE - getStrBuffSize(&(conn->sndbuff)) < size)
+		if ((error = pthread_cond_timedwait(&(conn->sndbuff.remove_cnd), &(conn->sndbuff.mtx), &timeout)) > 0)
+			if (error != ETIMEDOUT)
+				ERREXIT("Cannot timed wait condition variable.");
 
-	unlockMutex(conn->sndbuff->mtx);
+	if (pthread_mutex_unlock(&(conn->sndbuff.mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 
-	writeStrBuff(conn->sndbuff, msg, size);
+	writeStrBuff(&(conn->sndbuff), msg, size);
 
-	lockMutex(conn->sndsgmbuff->mtx);
+	if (pthread_mutex_lock(&(conn->sndsgmbuff.mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
-	while (getStrBuffSize(conn->sndbuff) > 0 || getSgmBuffSize(conn->sndsgmbuff) > 0)
-		waitTimeoutConditionVariable(conn->sndsgmbuff->remove_cnd, conn->sndsgmbuff->mtx, timeout);
+	while (getStrBuffSize(&(conn->sndbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0)
+		if ((error = pthread_cond_timedwait(&(conn->sndsgmbuff.remove_cnd), &(conn->sndsgmbuff.mtx), &timeout)) > 0)
+			if (error != ETIMEDOUT)
+				ERREXIT("Cannot timed wait condition variable.");
 
-	unlockMutex(conn->sndsgmbuff->mtx);
+	if (pthread_mutex_unlock(&(conn->sndsgmbuff.mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 }
 
 size_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 	Connection *conn = NULL;
 	size_t rcvd;
 	struct timespec timeout;
+	int error;
+
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %ld", connid);	
 
 	if (getConnectionState(conn) != RUDP_CON_ESTA)
 		ERREXIT("Cannot read message: connection not established.");
 
-	timeout = getTimespec(conn->timeout->value);
+	timeout = getTimespec(conn->timeout.value);
 
-	lockMutex(conn->rcvbuff->mtx);
+	if (pthread_mutex_unlock(&(conn->rcvbuff.mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 
-	while (conn->rcvbuff->size < size)
-		waitTimeoutConditionVariable(conn->rcvbuff->insert_cnd, conn->rcvbuff->mtx, timeout);
+	while (conn->rcvbuff.size < size)
+		if ((error = pthread_cond_timedwait(&(conn->rcvbuff.insert_cnd), &(conn->rcvbuff.mtx), &timeout)) > 0)
+			if (error != ETIMEDOUT)
+				ERREXIT("Cannot timed wait condition variable.");
 
-	unlockMutex(conn->rcvbuff->mtx);
+	if (pthread_mutex_unlock(&(conn->rcvbuff.mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 
-	rcvd = readStrBuff(conn->rcvbuff, msg, size);
+	rcvd = readStrBuff(&(conn->rcvbuff), msg, size);
 
 	return rcvd;
 }

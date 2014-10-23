@@ -46,14 +46,14 @@ typedef long ConnectionId;
 
 typedef struct ConnectionState {
 	short value;
-	pthread_rwlock_t *rwlock;
-	pthread_mutex_t *mtx;
-	pthread_cond_t *cnd;
+	pthread_rwlock_t rwlock;
+	pthread_mutex_t mtx;
+	pthread_cond_t cnd;
 } ConnectionState;
 
 typedef struct ConnectionSocket {
 	int fd;
-	pthread_mutex_t *mtx;
+	pthread_mutex_t mtx;
 } ConnectionSocket;
 
 typedef struct Connection {
@@ -61,15 +61,15 @@ typedef struct Connection {
 	ConnectionState state;
 	ConnectionSocket sock;
 
-	Window *sndwnd;
-	StrBuff *sndbuff;
-	SgmBuff *sndsgmbuff;
+	Window sndwnd;
+	StrBuff sndbuff;
+	SgmBuff sndsgmbuff;
 
-	Window *rcvwnd;
-	StrBuff *rcvbuff;
-	SgmBuff *rcvsgmbuff;
+	Window rcvwnd;
+	StrBuff rcvbuff;
+	SgmBuff rcvsgmbuff;
 
-	Timeout *timeout;
+	Timeout timeout;
 
 	pthread_t sender;
 	pthread_t receiver;

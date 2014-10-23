@@ -20,7 +20,7 @@ static pthread_mutex_t CONPOOL_MTX = PTHREAD_MUTEX_INITIALIZER;
 
 static void *senderLoop(void *arg);
 
-static void timeoutFunction(void *arg);
+static void timeoutFunction(Connection *conn);
 
 static void sendAck(Connection *conn, const uint32_t ackn);
 
@@ -36,17 +36,15 @@ Connection *createConnection(void) {
 	if (!(conn = malloc(sizeof(Connection))))
 		ERREXIT("Cannot allocate memory for connection.");
 
+	if ((pthread_rwlock_init(&(conn->state.rwlock), NULL) > 0) |
+		(pthread_mutex_init(&(conn->state.mtx), NULL) > 0) |
+		(pthread_cond_init(&(conn->state.cnd), NULL) > 0) |
+		(pthread_mutex_init(&(conn->sock.mtx), NULL) > 0))
+		ERREXIT("Cannot initialize connection sync-block.");
+
 	conn->state.value = RUDP_CON_CLOS;
 
-	conn->state.rwlock = createRWLock();
-
-	conn->state.mtx = createMutex();
-
-	conn->state.cnd = createConditionVariable();
-
 	conn->sock.fd = -1;
-
-	conn->sock.mtx = createMutex();
 
 	allocateConnectionInPool(conn);
 
@@ -59,13 +57,11 @@ void destroyConnection(Connection *conn) {
 		
 		setConnectionState(conn, RUDP_CON_CLOS);
 
-		freeRWLock(conn->state.rwlock);
-
-		freeMutex(conn->state.mtx);
-
-		freeConditionVariable(conn->state.cnd);
-
-		freeMutex(conn->sock.mtx);
+		if ((pthread_rwlock_destroy(&(conn->state.rwlock)) > 0) |
+			(pthread_mutex_destroy(&(conn->state.mtx)) > 0) |
+			(pthread_cond_destroy(&(conn->state.cnd)) > 0) |
+			(pthread_mutex_destroy(&(conn->sock.mtx)) > 0))
+			ERREXIT("Cannot destroy connection sync-block.");
 
 		closeSocket(conn->sock.fd);
 
@@ -79,27 +75,25 @@ void destroyConnection(Connection *conn) {
 
 		cancelThread(conn->slider);
 
-		freeTimeout(conn->timeout);
+		destroyTimeout(&(conn->timeout));
 
-		freeSgmBuff(conn->sndsgmbuff);
+		destroySgmBuff(&(conn->sndsgmbuff));
 
-		freeSgmBuff(conn->rcvsgmbuff);
+		destroySgmBuff(&(conn->rcvsgmbuff));
 
-		freeStrBuff(conn->sndbuff);		
+		destroyStrBuff(&(conn->sndbuff));
 
-		freeStrBuff(conn->rcvbuff);
+		destroyStrBuff(&(conn->rcvbuff));
 
-		freeWindow(conn->sndwnd);
+		destroyWindow(&(conn->sndwnd));
 
-		freeWindow(conn->rcvwnd);
+		destroyWindow(&(conn->rcvwnd));
 
-		freeRWLock(conn->state.rwlock);
-
-		freeMutex(conn->state.mtx);
-
-		freeConditionVariable(conn->state.cnd);
-
-		freeMutex(conn->sock.mtx);
+		if ((pthread_rwlock_destroy(&(conn->state.rwlock)) > 0) |
+			(pthread_mutex_destroy(&(conn->state.mtx)) > 0) |
+			(pthread_cond_destroy(&(conn->state.cnd)) > 0) |
+			(pthread_mutex_destroy(&(conn->sock.mtx)) > 0))
+			ERREXIT("Cannot destroy connection sync-block.");
 
 		closeSocket(conn->sock.fd);
 	}		
@@ -113,19 +107,19 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 
 	setSocketConnected(conn->sock.fd, paddr);
 
-	conn->timeout = createTimeout(sampleRTT);
+	initializeTimeout(&(conn->timeout), sampleRTT);
 
-	conn->sndwnd = createWindow(sndwndb, sndwndb + (RUDP_PLDS * RUDP_CON_WNDS));
+	initializeWindow(&(conn->sndwnd),sndwndb, sndwndb + (RUDP_PLDS * RUDP_CON_WNDS));
 
-	conn->rcvwnd = createWindow(rcvwndb, rcvwndb + (RUDP_PLDS * RUDP_CON_WNDS));
+	initializeWindow(&(conn->rcvwnd), rcvwndb, rcvwndb + (RUDP_PLDS * RUDP_CON_WNDS));
 
-	conn->sndbuff = createStrBuff();
+	initializeStrBuff(&(conn->sndbuff));
 
-	conn->sndsgmbuff = createSgmBuff();
+	initializeStrBuff(&(conn->rcvbuff));
 
-	conn->rcvbuff = createStrBuff();
+	initializeSgmBuff(&(conn->sndsgmbuff));
 
-	conn->rcvsgmbuff = createSgmBuff();
+	initializeSgmBuff(&(conn->rcvsgmbuff));
 
 	conn->sender = createThread(senderLoop, conn, THREAD_JOINABLE);
 
@@ -135,24 +129,29 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 short getConnectionState(Connection *conn) {
 	short state;
 
-	lockRead(conn->state.rwlock);
+	if (pthread_rwlock_rdlock(&(conn->state.rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
 	state = conn->state.value;
 
-	unlockRWLock(conn->state.rwlock);
+	if (pthread_rwlock_unlock(&(conn->state.rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	return state;
 }
 
 void setConnectionState(Connection *conn, const short state) {
 
-	lockWrite(conn->state.rwlock);
+	if (pthread_rwlock_wrlock(&(conn->state.rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
 
 	conn->state.value = state;
 
-	unlockRWLock(conn->state.rwlock);
+	if (pthread_rwlock_unlock(&(conn->state.rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
-	broadcastConditionVariable(conn->state.cnd);
+	if (pthread_cond_broadcast(&(conn->state.cnd)) > 0)
+		ERREXIT("Cannot broadcast condition variable.");
 }
 
 /* SEGMENTS I/O */
@@ -165,18 +164,20 @@ void sendSegment(Connection *conn, Segment sgm) {
 
 		sgm.hdr.ctrl |= RUDP_ACK;
 
-		sgm.hdr.ackn = getWindowBase(conn->rcvwnd);
+		sgm.hdr.ackn = getWindowBase(&(conn->rcvwnd));
 	}
 
 	ssgmsize = serializeSegment(sgm, ssgm);
 
-	lockMutex(conn->sock.mtx);
+	if (pthread_mutex_lock(&(conn->sock.mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
 	writeCSocket(conn->sock.fd, ssgm, ssgmsize);
 
 	DBGFUNC(DEBUG, printOutSegment(getSocketPeer(conn->sock.fd), sgm));
 
-	unlockMutex(conn->sock.mtx);
+	if (pthread_mutex_unlock(&(conn->sock.mtx)) > 0)
+		ERREXIT("Cannot unlock mutex.");
 }
 
 int receiveSegment(Connection *conn, Segment *sgm) {
@@ -190,7 +191,7 @@ int receiveSegment(Connection *conn, Segment *sgm) {
 		return 0;
 	}
 
-	timeout = getTimeoutValue(conn->timeout);
+	timeout = getTimeoutValue(&(conn->timeout));
 
 	if (selectSocket(conn->sock.fd, timeout) == 0)
 		return 0;
@@ -213,41 +214,41 @@ static void *senderLoop(void *arg) {
 
 	while (1) {
 
-		plds = waitLookMaxStrBuff(conn->sndbuff, payload, RUDP_PLDS);
+		plds = waitLookMaxStrBuff(&(conn->sndbuff), payload, RUDP_PLDS);
 
-		Segment sgm = createSegment(0, 0, plds, 0, getWindowNext(conn->sndwnd), 0, payload);
+		Segment sgm = createSegment(0, 0, plds, 0, getWindowNext(&(conn->sndwnd)), 0, payload);
 
-		waitWindowSpace(conn->sndwnd, plds);
+		waitWindowSpace(&(conn->sndwnd), plds);
 
-		addSgmBuff(conn->sndsgmbuff, sgm, RUDP_SGM_NACK);
+		addSgmBuff(&(conn->sndsgmbuff), sgm, RUDP_SGM_NACK);
 
 		sendSegment(conn, sgm);
 
-		slideWindowNext(conn->sndwnd, sgm.hdr.plds);
+		slideWindowNext(&(conn->sndwnd), sgm.hdr.plds);
 
-		DBGPRINT(DEBUG, "SNDWND SLIDENXT: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(conn->sndwnd), getWindowNext(conn->sndwnd), getWindowEnd(conn->sndwnd), getStrBuffSize(conn->sndbuff), getSgmBuffSize(conn->sndsgmbuff));
+		DBGPRINT(DEBUG, "SNDWND SLIDENXT: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(&(conn->sndwnd)), getWindowNext(&(conn->sndwnd)), getWindowEnd(&(conn->sndwnd)), getStrBuffSize(&(conn->sndbuff)), getSgmBuffSize(&(conn->sndsgmbuff)));
 
-		popStrBuff(conn->sndbuff, plds);
+		popStrBuff(&(conn->sndbuff), plds);
 	}
 
 	return NULL;
 }
 
-static void timeoutFunction(void *arg) {
-	Connection *conn = (Connection *) arg;
+static void timeoutFunction(Connection *conn) {
 	SgmBuffElem *curr = NULL;
 
-	DBGPRINT(DEBUG, "INSIDE TIMEOUT: %LF", getTimeoutValue(conn->timeout));
+	DBGPRINT(DEBUG, "INSIDE TIMEOUT: %LF", getTimeoutValue(&(conn->timeout)));
 
-	lockRead(conn->sndsgmbuff->rwlock);
+	if (pthread_rwlock_rdlock(&(conn->sndsgmbuff.rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
 
-	curr = conn->sndsgmbuff->head;
+	curr = conn->sndsgmbuff.head;
 
 	while (curr) {
 
-		if (testSgmBuffElemAttributes(curr, RUDP_SGM_NACK, getTimeoutValue(conn->timeout))) {
+		if (testSgmBuffElemAttributes(curr, RUDP_SGM_NACK, getTimeoutValue(&(conn->timeout)))) {
 
-			updateSgmBuffElemAttributes(curr, 1, getTimeoutValue(conn->timeout));
+			updateSgmBuffElemAttributes(curr, 1, getTimeoutValue(&(conn->timeout)));
 
 			sendSegment(conn, curr->segment);
 		}
@@ -255,7 +256,8 @@ static void timeoutFunction(void *arg) {
 		curr = curr->next;
 	}
 
-	unlockRWLock(conn->sndsgmbuff->rwlock);
+	if (pthread_rwlock_unlock(&(conn->sndsgmbuff.rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
 
 	DBGPRINT(DEBUG, "ENDOF TIMEOUT");
 }
@@ -263,7 +265,7 @@ static void timeoutFunction(void *arg) {
 static void sendAck(Connection *conn, const uint32_t ackn) {
 	Segment acksgm;
 
-	acksgm = createSegment(RUDP_ACK, 0, 0, 0, getWindowNext(conn->sndwnd), ackn, NULL);
+	acksgm = createSegment(RUDP_ACK, 0, 0, 0, getWindowNext(&(conn->sndwnd)), ackn, NULL);
 
 	sendSegment(conn, acksgm);
 }
@@ -281,13 +283,13 @@ static void *receiverLoop(void *arg) {
 
 		if (!receiveSegment(conn, &rcvsgm)) {
 
-			if (getSgmBuffSize(conn->sndsgmbuff) > 0)
+			if (getSgmBuffSize(&(conn->sndsgmbuff)) > 0)
 				timeoutFunction(conn);
 
 			continue;
 		}
 
-		rcvwndmatch = matchWindow(conn->rcvwnd, rcvsgm.hdr.seqn);
+		rcvwndmatch = matchWindow(&(conn->rcvwnd), rcvsgm.hdr.seqn);
 
 		if (rcvwndmatch == 0) {
 
@@ -295,62 +297,62 @@ static void *receiverLoop(void *arg) {
 
 				sendAck(conn, RUDP_NXTSEQN(rcvsgm.hdr.seqn, rcvsgm.hdr.plds));
 
-				if (rcvsgm.hdr.seqn == getWindowBase(conn->rcvwnd)) {
+				if (rcvsgm.hdr.seqn == getWindowBase(&(conn->rcvwnd))) {
 
-					writeStrBuff(conn->rcvbuff, rcvsgm.pld, rcvsgm.hdr.plds);
+					writeStrBuff(&(conn->rcvbuff), rcvsgm.pld, rcvsgm.hdr.plds);
 
-					slideWindow(conn->rcvwnd, rcvsgm.hdr.plds);
+					slideWindow(&(conn->rcvwnd), rcvsgm.hdr.plds);
 
-					DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(conn->rcvwnd), getWindowEnd(conn->rcvwnd), getStrBuffSize(conn->rcvbuff), getSgmBuffSize(conn->rcvsgmbuff));
+					DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 
 					SgmBuffElem *curr = NULL;
 
-					while ((curr = findSgmBuffSeqn(conn->rcvsgmbuff, getWindowBase(conn->rcvwnd)))) {
+					while ((curr = findSgmBuffSeqn(&(conn->rcvsgmbuff), getWindowBase(&(conn->rcvwnd))))) {
 
 						Segment sgm = curr->segment;
 
-						removeSgmBuff(conn->rcvsgmbuff, curr);
+						removeSgmBuff(&(conn->rcvsgmbuff), curr);
 
-						writeStrBuff(conn->rcvbuff, sgm.pld, sgm.hdr.plds);
+						writeStrBuff(&(conn->rcvbuff), sgm.pld, sgm.hdr.plds);
 
-						slideWindow(conn->rcvwnd, sgm.hdr.plds);
+						slideWindow(&(conn->rcvwnd), sgm.hdr.plds);
 
-						DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(conn->rcvwnd), getWindowEnd(conn->rcvwnd), getStrBuffSize(conn->rcvbuff), getSgmBuffSize(conn->rcvsgmbuff));
+						DBGPRINT(DEBUG, "RCVWND SLIDE: base:%u end:%u RCVBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 					}
 
 				} else {
 
-					if (!findSgmBuffSeqn(conn->rcvsgmbuff, rcvsgm.hdr.seqn))
-						addSgmBuff(conn->rcvsgmbuff, rcvsgm, 0);
+					if (!findSgmBuffSeqn(&(conn->rcvsgmbuff), rcvsgm.hdr.seqn))
+						addSgmBuff(&(conn->rcvsgmbuff), rcvsgm, 0);
 				}
 			}
 
-			if ((rcvsgm.hdr.ctrl & RUDP_ACK) && (ackedelem = findSgmBuffAckn(conn->sndsgmbuff, rcvsgm.hdr.ackn))) {
+			if ((rcvsgm.hdr.ctrl & RUDP_ACK) && (ackedelem = findSgmBuffAckn(&(conn->sndsgmbuff), rcvsgm.hdr.ackn))) {
 
 				setSgmBuffElemStatus(ackedelem, RUDP_SGM_YACK);
 
-				if (ackedelem->segment.hdr.seqn == getWindowBase(conn->sndwnd)) {
+				if (ackedelem->segment.hdr.seqn == getWindowBase(&(conn->sndwnd))) {
 
 					sampleRTT = getSgmBuffElemElapsed(ackedelem);
 
 					assert(sampleRTT > 0.0);
 
-					while (conn->sndsgmbuff->head) {
+					while (conn->sndsgmbuff.head) {
 
-						if (getSgmBuffElemStatus(conn->sndsgmbuff->head) != RUDP_SGM_YACK)
+						if (getSgmBuffElemStatus(conn->sndsgmbuff.head) != RUDP_SGM_YACK)
 							break;
 
-						Segment sgm = conn->sndsgmbuff->head->segment;
+						Segment sgm = conn->sndsgmbuff.head->segment;
 
-						removeSgmBuff(conn->sndsgmbuff, conn->sndsgmbuff->head);
+						removeSgmBuff(&(conn->sndsgmbuff), conn->sndsgmbuff.head);
 
-						slideWindow(conn->sndwnd, sgm.hdr.plds);
+						slideWindow(&(conn->sndwnd), sgm.hdr.plds);
 
-						DBGPRINT(DEBUG, "SNDWND SLIDE: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(conn->sndwnd), getWindowNext(conn->sndwnd), getWindowEnd(conn->sndwnd), getStrBuffSize(conn->sndbuff), getSgmBuffSize(conn->sndsgmbuff));
+						DBGPRINT(DEBUG, "SNDWND SLIDE: base:%u nxt:%u end:%u SNDBUFF:%zu SNDSGMBUFF:%ld", getWindowBase(&(conn->sndwnd)), getWindowNext(&(conn->sndwnd)), getWindowEnd(&(conn->sndwnd)), getStrBuffSize(&(conn->sndbuff)), getSgmBuffSize(&(conn->sndsgmbuff)));
 
 					}
 
-					updateTimeout(conn->timeout, sampleRTT);
+					updateTimeout(&(conn->timeout), sampleRTT);
 				}
 			}
 
@@ -371,7 +373,8 @@ static void *receiverLoop(void *arg) {
 
 Connection *allocateConnectionInPool(Connection *conn) {
 
-	lockMutex(&CONPOOL_MTX);
+	if (pthread_mutex_lock(&CONPOOL_MTX) > 0)
+		ERREXIT("Cannot lock mutex.");
 
 	conn->connid = CONPOOL_NXTID;
 
@@ -379,14 +382,16 @@ Connection *allocateConnectionInPool(Connection *conn) {
 
 	CONPOOL_NXTID++;		
 
-	unlockMutex(&CONPOOL_MTX);
+	if (pthread_mutex_unlock(&CONPOOL_MTX) > 0)
+		ERREXIT("Cannot unlock mutex.");
 
 	return conn;
 }
 
 void deallocateConnectionInPool(Connection *conn) {
 
-	lockMutex(&CONPOOL_MTX);	
+	if (pthread_mutex_lock(&CONPOOL_MTX) > 0)
+		ERREXIT("Cannot lock mutex.");
 
 	ListElement *curr = CONPOOL.head;
 
@@ -402,14 +407,16 @@ void deallocateConnectionInPool(Connection *conn) {
 		curr = curr->next;
 	}
 
-	unlockMutex(&CONPOOL_MTX);
+	if (pthread_mutex_unlock(&CONPOOL_MTX) > 0)
+		ERREXIT("Cannot unlock mutex.");
 }
 
 Connection *getConnectionById(const ConnectionId connid) {
 	Connection *conn = NULL;
 	ListElement *curr = NULL;
 
-	lockMutex(&CONPOOL_MTX);
+	if (pthread_mutex_lock(&CONPOOL_MTX) > 0)
+		ERREXIT("Cannot lock mutex.");
 
 	curr = CONPOOL.head;
 
@@ -425,7 +432,8 @@ Connection *getConnectionById(const ConnectionId connid) {
 		curr = curr->next;
 	}	
 
-	unlockMutex(&CONPOOL_MTX);
+	if (pthread_mutex_unlock(&CONPOOL_MTX) > 0)
+		ERREXIT("Cannot unlock mutex.");
 
 	return conn;		
 }
