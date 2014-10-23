@@ -66,15 +66,13 @@ static void startListen(void) {
 
 static void showListeningConnectionDetails(void) {
 	struct sockaddr_in laddr;
-	char *strladdr = NULL;
+	char strladdr[ADDRIPV4_STR];
 
 	laddr = rudpGetLocalAddress(lconn);
 
-	strladdr = addressToString(laddr);	
+	addressToString(laddr, strladdr);
 
 	printf("Connection (%ld) listening on: %s.\n", lconn, strladdr);		
-
-	free(strladdr);
 }
 
 static void acceptIncomingConnection(void) {
@@ -95,21 +93,17 @@ static void stopListen(void) {
 
 static void showEstablishedConnectionDetails(void) {
 	struct sockaddr_in aaddr, caddr;
-	char *straaddr, *strcaddr = NULL;
+	char straaddr[ADDRIPV4_STR], strcaddr[ADDRIPV4_STR];
 
 	aaddr = rudpGetLocalAddress(aconn);
 
-	straaddr = addressToString(aaddr);
+	addressToString(aaddr, straaddr);
 
 	caddr = rudpGetPeerAddress(aconn);
 
-	strcaddr = addressToString(caddr);	
+	addressToString(caddr, strcaddr);
 
 	printf("Connection (%ld) established on: %s with: %s.\n", aconn, straaddr, strcaddr);		
-
-	free(straaddr);	
-
-	free(strcaddr);
 }
 
 static void echo(void) {

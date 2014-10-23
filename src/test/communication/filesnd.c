@@ -6,8 +6,6 @@
 #include "../../util/fileutil.h"
 #include "../../util/timeutil.h"
 
-#define BUFFSIZE 1024
-
 static char *ADDRESS;
 
 static int PORT;
@@ -69,28 +67,24 @@ static void establishConnection(void) {
 
 static void showConnectionDetails(void) {
 	struct sockaddr_in caddr, saddr;
-	char *strcaddr, *strsaddr = NULL;
+	char strcaddr[ADDRIPV4_STR], strsaddr[ADDRIPV4_STR];
 
 	caddr = rudpGetLocalAddress(conn);
 
-	strcaddr = addressToString(caddr);
+	addressToString(caddr, strcaddr);
 	
 	saddr = rudpGetPeerAddress(conn);
 
-	strsaddr = addressToString(saddr);		
+	addressToString(saddr, strsaddr);
 
 	printf("Connection (%ld) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
-
-	free(strcaddr);
-
-	free(strsaddr);
 }
 
 static void profileFileSend() {
-	char sndbuff[BUFFSIZE];
+	char sndbuff[1024];
 	int fd;
 	long size;
-	ssize_t read;
+	ssize_t rd;
 	struct timespec start, end;
 	long double milliselaps, Kbps, KB;
 
@@ -106,11 +100,11 @@ static void profileFileSend() {
 
 	start = getTimestamp();
 
-	while ((read = read(fd, sndbuff, BUFFSIZE)) > 0) {
+	while ((rd = read(fd, sndbuff, 1024)) > 0) {
 		
-		rudpSend(conn, sndbuff, read);
+		rudpSend(conn, sndbuff, rd);
 
-		memset(sndbuff, 0, sizeof(char) * BUFFSIZE);
+		memset(sndbuff, 0, sizeof(char) * 1024);
 	}
 
 	end = getTimestamp();

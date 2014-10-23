@@ -7,8 +7,6 @@
 #include "../../rudp.h"
 #include "../../util/fileutil.h"
 
-#define BUFFSIZE 1024
-
 static int PORT;
 
 static char *FILERCV;
@@ -78,15 +76,13 @@ static void startListen(void) {
 
 static void showListeningConnectionDetails(void) {
 	struct sockaddr_in laddr;
-	char *strladdr = NULL;
+	char strladdr[ADDRIPV4_STR];
 
 	laddr = rudpGetLocalAddress(lconn);
 
-	strladdr = addressToString(laddr);	
+	addressToString(laddr, strladdr);
 
 	printf("Connection (%ld) listening on: %s.\n", lconn, strladdr);		
-
-	free(strladdr);
 }
 
 static void acceptIncomingConnection(void) {
@@ -107,25 +103,21 @@ static void stopListen(void) {
 
 static void showEstablishedConnectionDetails(void) {
 	struct sockaddr_in aaddr, caddr;
-	char *straaddr, *strcaddr = NULL;
+	char straaddr[ADDRIPV4_STR], strcaddr[ADDRIPV4_STR];
 
 	aaddr = rudpGetLocalAddress(aconn);
 
-	straaddr = addressToString(aaddr);
+	addressToString(aaddr, straaddr);
 
 	caddr = rudpGetPeerAddress(aconn);
 
-	strcaddr = addressToString(caddr);	
+	addressToString(caddr, strcaddr);
 
 	printf("Connection (%ld) established on: %s with: %s.\n", aconn, straaddr, strcaddr);		
-
-	free(straaddr);	
-
-	free(strcaddr);
 }
 
 static void fileReceive(void) {
-	char *rcvdata = NULL;
+	char rcvdata[1024];
 	size_t rcvd;
 	int fdrcv, fdmtx;
 
@@ -133,18 +125,11 @@ static void fileReceive(void) {
 
 	printf("# Receiving file on established connection...");
 
-	while (1) {
-
-		rcvdata = rudpReceive(aconn, BUFFSIZE);
-
-		if (!rcvdata)
-			break;
+	while ((rcvd = rudpReceive(aconn, rcvdata, 1024)) > 0) {
 
 		errno = 0;
-		if (write(fdrcv, rcvdata, strlen(rcvdata)) != rcvd)
+		if (write(fdrcv, rcvdata, rcvd) == -1)
 			ERREXIT("Cannot write to file: %s.", strerror(errno));
-
-		free(rcvdata);
 	}
 
 	fdmtx = openFile(FILEMTX, O_RDONLY);

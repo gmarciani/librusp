@@ -69,21 +69,17 @@ static void establishConnection(void) {
 
 static void showConnectionDetails(void) {
 	struct sockaddr_in caddr, saddr;
-	char *strcaddr, *strsaddr = NULL;
+	char strcaddr[ADDRIPV4_STR], strsaddr[ADDRIPV4_STR];
 
 	caddr = rudpGetLocalAddress(conn);
 
-	strcaddr = addressToString(caddr);
+	addressToString(caddr, strcaddr);
 	
 	saddr = rudpGetPeerAddress(conn);
 
-	strsaddr = addressToString(saddr);		
+	addressToString(saddr, strsaddr);
 
 	printf("Connection (%ld) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
-
-	free(strcaddr);
-
-	free(strsaddr);
 }
 
 static void profileEcho() {
