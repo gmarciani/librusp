@@ -121,7 +121,7 @@ static void *readerMTXFunc(void *arg) {
 
 	for (i = 0; i < iterations; i++) {
 		lockMutex(MTX);
-		value = VALUE / 2;
+		value += VALUE / 2;
 		unlockMutex(MTX);
 		usleep(10);
 	}
@@ -149,7 +149,7 @@ static void *readerRWLFunc(void *arg) {
 
 	for (i = 0; i < iterations; i++) {
 		lockRead(RWL);
-		value = VALUE / 2;
+		value += VALUE / 2;
 		unlockRWLock(RWL);
 		usleep(10);
 	}
@@ -177,7 +177,7 @@ static void *readerSPLFunc(void *arg) {
 
 	for (i = 0; i < iterations; i++) {
 		lockSpinLock(SPL);
-		value = VALUE / 2;
+		value += VALUE / 2;
 		unlockSpinLock(SPL);
 		usleep(10);
 	}

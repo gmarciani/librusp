@@ -27,6 +27,8 @@ static void showConnectionDetails(void);
 
 static void profileFileSend();
 
+static inline void progressBar(long i, long n);
+
 int main(int argc, char **argv) {	
 	
 	if (argc < 6)
@@ -83,7 +85,7 @@ static void profileFileSend() {
 	char sndbuff[500];
 	char eof = 0x01;
 	int fd;
-	long size;
+	long size, sent;
 	ssize_t rd;
 	struct timespec start, end;
 	long double milliselaps, Kbps, KB;
@@ -95,6 +97,8 @@ static void profileFileSend() {
 	printf("# Profiling file send on established connection (drop: %LF%%): %s (%ld bytes)...\n", DROPRATE * 100.0, FILESND, size);
 
 	setDropRate(DROPRATE);
+
+	sent = 0;
 
 	milliselaps = 0.0;
 
@@ -112,23 +116,46 @@ static void profileFileSend() {
 
 		memset(sndbuff, 0, sizeof(char) * 500);
 
+		sent += rd;
+
+		progressBar(sent, size);
+
 		errno = 0;
 	}
 
 	if (rd == -1)
 		ERREXIT("Cannot read file: %s.", strerror(errno));
 
-	printf("Sending: EOF\n");
-
 	rudpSend(conn, &eof, 1);
 
 	closeFile(fd);
 
-	printf("OK\n");
+	printf(" OK\n");
 
 	KB = (long double)(size / 1000.0);
 
 	Kbps = KB * 8.0 / (milliselaps / 1000.0);
 
 	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", KB, DROPRATE * 100.0, milliselaps / 1000.0, Kbps);
+}
+
+static char PROG_TRUE[20] = "====================";
+static char PROG_FALSE[20] = "                    ";
+
+static inline void progressBar(long i, long n) {
+	int ratio;
+	int curr;
+
+    ratio = i * 100 / n;
+
+    if (ratio % 5 != 0)
+    	return;
+
+    printf("\r");
+
+    fflush(stdout);
+
+    curr = ratio / 5;
+
+    printf("%3d%% [%.*s%.*s]", ratio, curr, PROG_TRUE, 20-curr, PROG_FALSE);
 }

@@ -12,6 +12,8 @@ PFLAGS = -pg
 
 BINDIR = bin
 
+SAMPLEDIR = $(BINDIR)/sample
+
 # Source Directories
 
 SRCDIR = src
@@ -40,8 +42,6 @@ SEGMENT_TESTDIR = $(TESTDIR)/segment
 
 PERFORMANCE_TESTDIR = $(TESTDIR)/performance
 
-TESTPREFIX = test_
-
 # Dependencies
 
 LIBS = -pthread -lrt -lm -lcrypto -lssl
@@ -58,62 +58,64 @@ PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(CONNECTION)
 
 # Targets
 
-test: testdir communication buffer segment base performance
+all: testdir communication filegen buffer segment base performance
 
 testdir: 
 	mkdir -pv $(BINDIR)
+	mkdir -pv $(SAMPLEDIR)
 	
 communication: echosnd echorcv filesnd filercv
 
 echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 
 echorcv: $(COMMUNICATION_TESTDIR)/echorcv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 	
 filesnd: $(COMMUNICATION_TESTDIR)/filesnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 
 filercv: $(COMMUNICATION_TESTDIR)/filercv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	
+filegen: $(BASE_TESTDIR)/filegen.c
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(SAMPLEDIR)/$@
 	
 buffer: sgmbuffer strbuffer
 
 sgmbuffer: $(BUFFER_TESTDIR)/sgmbuffer.c
-	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
 	
 strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
-	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
 
 segment: $(SEGMENT_TESTDIR)/segment.c
-	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$@
 	
-base: sync timer file str rnd macro
+base: sync timer str rnd macro
 
 sync: $(BASE_TESTDIR)/sync.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
 timer: $(BASE_TESTDIR)/timer.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
-	
-file: $(BASE_TESTDIR)/file.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
 str: $(BASE_TESTDIR)/str.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
 rnd: $(BASE_TESTDIR)/rnd.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
 macro: $(BASE_TESTDIR)/macro.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 	
 performance: syncperf baseperf
 	
 baseperf: $(PERFORMANCE_TESTDIR)/baseperf.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
 
 syncperf: $(PERFORMANCE_TESTDIR)/syncperf.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$(TESTPREFIX)$@ $(PFLAGS)
-clean-test: 
+	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
+	
+clean: 
 	rm -frv $(BINDIR)/*
