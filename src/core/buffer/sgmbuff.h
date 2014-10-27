@@ -11,7 +11,7 @@
 /* SEGMENT BUFFER STRUCTURES */
 
 typedef struct SgmBuffElem {
-	short status;
+	int status;
 	long retrans;
 	struct timespec time;
 	long double delay;
@@ -46,7 +46,7 @@ void destroySgmBuff(SgmBuff *buff);
 
 /* SEGMENT BUFFER INSERTION/REMOVAL */
 
-SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const short status);
+SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const int status);
 
 void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem);
 
@@ -54,9 +54,9 @@ long getSgmBuffSize(SgmBuff *buff);
 
 /* SEGMENT BUFFER ELEMENT */
 
-short getSgmBuffElemStatus(SgmBuffElem *elem);
+int getSgmBuffElemStatus(SgmBuffElem *elem);
 
-void setSgmBuffElemStatus(SgmBuffElem *elem, const short status);
+void setSgmBuffElemStatus(SgmBuffElem *elem, const int status);
 
 long double getSgmBuffElemElapsed(SgmBuffElem *elem);
 

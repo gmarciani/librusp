@@ -1,21 +1,18 @@
 #include "listutil.h"
 
-void cleanList(List *list) {
-	ListElement *curr = NULL;
-
-	curr = list->head;
-
-	while (curr)
-		removeElementFromList(list, curr);
-}
-
-void addElementToList(List *list, void *value) {
+long long addElementToList(List *list, void *value) {
 	ListElement *new = NULL;
+	long long id;
 
 	if (!(new = malloc(sizeof(ListElement))))
 		ERREXIT("Cannot allocate memory for list element.");
 
 	new->value = value;
+
+	if (pthread_rwlock_wrlock(&(list->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
+
+	new->id = list->nxtid;
 
 	if (list->size == 0) {
 
@@ -40,12 +37,40 @@ void addElementToList(List *list, void *value) {
 	}
 
 	list->size++;
+
+	list->nxtid++;
+
+	id = new->id;
+
+	if (pthread_rwlock_unlock(&(list->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
+
+	return id;
 }
 
-void removeElementFromList(List *list, ListElement *elem) {
-	
-	if (!elem)
+void removeElementFromList(List *list, const long long id) {
+	ListElement *elem = NULL;
+
+	if (pthread_rwlock_wrlock(&(list->rwlock)) > 0)
+		ERREXIT("Cannot acquire write-lock.");
+
+	elem = list->head;
+
+	while (elem) {
+
+		if (elem->id == id)
+			break;
+
+		elem = elem->next;
+	}
+
+	if (!elem) {
+
+		if (pthread_rwlock_unlock(&(list->rwlock)) > 0)
+			ERREXIT("Cannot release read-write lock.");
+
 		return;
+	}
 
 	if ((elem == list->head) && (elem == list->tail)) {
 
@@ -73,9 +98,45 @@ void removeElementFromList(List *list, ListElement *elem) {
 
 	}
 
+	list->size--;
+
+	if (pthread_rwlock_unlock(&(list->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
+
 	free(elem->value);
 
 	free(elem);
+}
 
-	list->size--;
+void *getElementById(List *list, const long long id) {
+	ListElement *elem = NULL;
+	void *value = NULL;
+
+	if (pthread_rwlock_rdlock(&(list->rwlock)) > 0)
+		ERREXIT("Cannot acquire read-lock.");
+
+	elem = list->head;
+
+	while (elem) {
+
+		if (elem->id == id)
+			break;
+
+		elem = elem->next;
+	}
+
+	if (!elem) {
+
+		if (pthread_rwlock_unlock(&(list->rwlock)) > 0)
+			ERREXIT("Cannot release read-write lock.");
+
+		return NULL;
+	}
+
+	value = elem->value;
+
+	if (pthread_rwlock_unlock(&(list->rwlock)) > 0)
+		ERREXIT("Cannot release read-write lock.");
+
+	return value;
 }

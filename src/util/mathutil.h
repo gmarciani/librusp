@@ -12,7 +12,7 @@
 
 unsigned long getRandomUL(void);
 
-unsigned short getRandomBit(const double onprob);
+int getRandomBit(const double onprob);
 
 unsigned long getMD5(const char *input);
 

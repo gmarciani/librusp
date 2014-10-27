@@ -12,9 +12,10 @@ int openSocket() {
 }
 
 void closeSocket(const int sock) {
+	errno = 0;
 
 	if (close(sock) == -1)
-		ERREXIT("Cannot close socket.");
+		ERREXIT("Cannot close socket: %s", strerror(errno));
 }
 
 void bindSocket(const int sock, const struct sockaddr_in *addr) {
@@ -25,37 +26,46 @@ void bindSocket(const int sock, const struct sockaddr_in *addr) {
 
 /* SOCKET I/O */
 
-void writeUSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff, const size_t size) {
+ssize_t writeUSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff, const size_t size) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
+	ssize_t wr;
 
 	errno = 0;
-	if (sendto(sock, buff, size, 0, (struct sockaddr *)&rcvaddr, socksize) != size)
+	if ((wr = sendto(sock, buff, size, 0, (struct sockaddr *)&rcvaddr, socksize)) != size)
 		ERREXIT("Cannot write unconnected socket: %s.", strerror(errno));
+
+	return wr;
 }
 
-size_t readUSocket(const int sock, struct sockaddr_in *sndaddr, char *buff, const size_t size) {
+ssize_t readUSocket(const int sock, struct sockaddr_in *sndaddr, char *buff, const size_t size) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
-	size_t rd;
+	ssize_t rd;
 
 	errno = 0;
-	if ((rd = (size_t)recvfrom(sock, buff, size, 0, (struct sockaddr *)sndaddr, &socksize)) == -1)
+	if ((rd = recvfrom(sock, buff, size, 0, (struct sockaddr *)sndaddr, &socksize)) == -1)
 		ERREXIT("Cannot read unconnected socket: %s.", strerror(errno));
 
 	return rd;
 }
 
-void writeCSocket(const int sock, const char *buff, const size_t size) {
+int writeCSocket(const int sock, const char *buff, const size_t size) {
+	int wr;
+
 	errno = 0;
-	if (write(sock, buff, strlen(buff)) == -1)
-		ERREXIT("Cannot write connected socket: %s.", strerror(errno));
+	if ((wr = write(sock, buff, strlen(buff))) == -1)
+		if (errno != 111)
+			ERREXIT("Cannot write connected socket (%d): %s.", errno, strerror(errno));
+
+	return wr;
 }
 
-size_t readCSocket(const int sock, char *buff, const size_t size) {
-	size_t rd;
+int readCSocket(const int sock, char *buff, const size_t size) {
+	int rd;
 
 	errno = 0;
-	if ((rd = (size_t)read(sock, buff, size)) == -1)
-		ERREXIT("Cannot read connected socket: %s\n", strerror(errno));
+	if ((rd = read(sock, buff, size)) == -1)
+		if (errno != 111)
+			ERREXIT("Cannot read connected socket (%d): %s\n", errno, strerror(errno));
 
 	return rd;
 }

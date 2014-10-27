@@ -2,8 +2,7 @@
 
 void initializeTimeout(Timeout *timeout, const long double sampleRTT) {
 
-	if (pthread_rwlock_init(&(timeout->rwlock), NULL) > 0)
-		ERREXIT("Cannot initialize timeout sync-block.");
+	pthread_rwlock_init(&(timeout->rwlock), NULL);
 
 	timeout->extRTT = sampleRTT;
 
@@ -14,7 +13,7 @@ void initializeTimeout(Timeout *timeout, const long double sampleRTT) {
 
 void destroyTimeout(Timeout *timeout) {
 	if (pthread_rwlock_destroy(&(timeout->rwlock)) > 0)
-		ERREXIT("Cannot destroy timeout sync-block.");
+		ERREXIT("Cannot destroy timeout read-write lock.");
 }
 
 long double getTimeoutValue(Timeout *timeout) {

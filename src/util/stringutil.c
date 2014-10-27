@@ -185,9 +185,9 @@ char *getUserInput(const char *descr) {
 
 	input[0] = '\0';
 
-	printf("\n%s", descr);
-
 	fflush(stdout);
+
+	printf("\n%s", descr);
 
   	if (getline(&input, &size, stdin) == -1)
 		ERREXIT("Cannot get line for user input.");

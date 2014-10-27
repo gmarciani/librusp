@@ -23,9 +23,9 @@ ConnectionId rudpAccept(const ConnectionId lconnid) {
 	ConnectionId aconnid;
 
 	if (!(lconn = getConnectionById(lconnid)))
-		ERREXIT("Cannot retrieve connection: %ld", lconnid);
+		ERREXIT("Cannot retrieve connection: %lld.", lconnid);
 
-	aconnid = acceptSynchonization(lconn);
+	aconnid = passiveOpen(lconn);
 
 	return aconnid;
 }
@@ -40,7 +40,7 @@ ConnectionId rudpConnect(const char *ip, const int port) {
 
 	conn = createConnection();
 
-	syncresult = synchronizeConnection(conn, laddr);
+	syncresult = activeOpen(conn, laddr);
 
 	if (syncresult == -1) {
 
@@ -54,87 +54,137 @@ ConnectionId rudpConnect(const char *ip, const int port) {
 	return connid;
 }
 
-void rudpDisconnect(const ConnectionId connid) {
-	Connection *conn = NULL;
-
-	conn = getConnectionById(connid);
-
-	if (!conn)
-		ERREXIT("Cannot retrieve connection: %ld", connid);	
-
-	desynchronizeConnection(conn);
-}
-
-void rudpClose(const ConnectionId connid) {	
+void rudpClose(const ConnectionId connid) {
 	Connection *conn = NULL;
 
 	if (!(conn = getConnectionById(connid)))
-		ERREXIT("Cannot retrieve connection: %ld", connid);
+		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	destroyConnection(conn);
+	switch (getConnectionState(conn)) {
+
+	case RUDP_CON_LISTEN:
+		setConnectionState(conn, RUDP_CON_CLOSED);
+		destroyConnection(conn);
+		break;
+
+	case RUDP_CON_ESTABL:
+		activeClose(conn);
+		break;
+
+	case RUDP_CON_CLOSWT:
+		passiveClose(conn);
+		break;
+
+	case RUDP_CON_CLOSED:
+		destroyConnection(conn);
+		break;
+
+	default:
+		ERREXIT("Cannot handle connection close: %lld.", connid);
+
+	}
 }
 
 /* COMMUNICATION */
 
-void rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
+ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
 	Connection *conn = NULL;
+	ssize_t snd;
 	struct timespec timeout;
 	int error;
 
 	if (!(conn = getConnectionById(connid)))
-		ERREXIT("Cannot retrieve connection: %ld", connid);		
+		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	if (getConnectionState(conn) != RUDP_CON_ESTA)
-		ERREXIT("Cannot write message: connection not established.");
+	if (getConnectionState(conn) != RUDP_CON_ESTABL)
+		return 0;
 
 	timeout = getTimespec(conn->timeout.value);
 
 	if (pthread_mutex_lock(&(conn->sndusrbuff.mtx)) > 0)
 		ERREXIT("Cannot lock mutex.");
 
-	while (BUFFSIZE - getStrBuffSize(&(conn->sndusrbuff)) < size)
+	while (BUFFSIZE - getStrBuffSize(&(conn->sndusrbuff)) < size) {
+
+		if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+
+			if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
+				ERREXIT("Cannot unlock mutex.");
+
+			return 0;
+		}
+
 		if ((error = pthread_cond_timedwait(&(conn->sndusrbuff.remove_cnd), &(conn->sndusrbuff.mtx), &timeout)) > 0)
 			if (error != ETIMEDOUT)
 				ERREXIT("Cannot timed wait condition variable.");
+	}
 
 	if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
 
-	writeStrBuff(&(conn->sndusrbuff), msg, size);
+	snd = writeStrBuff(&(conn->sndusrbuff), msg, size);
 
 	if (pthread_mutex_lock(&(conn->sndsgmbuff.mtx)) > 0)
 		ERREXIT("Cannot lock mutex.");
 
-	while (getStrBuffSize(&(conn->sndusrbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0)
+	while (getStrBuffSize(&(conn->sndusrbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0) {
+
+		if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+
+			if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
+				ERREXIT("Cannot unlock mutex.");
+
+			return 0;
+		}
+
 		if ((error = pthread_cond_timedwait(&(conn->sndsgmbuff.remove_cnd), &(conn->sndsgmbuff.mtx), &timeout)) > 0)
 			if (error != ETIMEDOUT)
 				ERREXIT("Cannot timed wait condition variable.");
+	}
 
 	if (pthread_mutex_unlock(&(conn->sndsgmbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
+
+	return snd;
 }
 
-size_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
+ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 	Connection *conn = NULL;
-	size_t rcvd;
+	ssize_t rcvd;
 	struct timespec timeout;
 	int error;
 
 	if (!(conn = getConnectionById(connid)))
-		ERREXIT("Cannot retrieve connection: %ld", connid);	
+		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	if (getConnectionState(conn) != RUDP_CON_ESTA)
-		ERREXIT("Cannot read message: connection not established.");
+	if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+
+		memset(msg, 0, sizeof(char) * size);
+
+		return 0;
+	}
 
 	timeout = getTimespec(conn->timeout.value);
 
-	if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
-		ERREXIT("Cannot unlock mutex.");
+	if (pthread_mutex_lock(&(conn->rcvusrbuff.mtx)) > 0)
+		ERREXIT("Cannot lock mutex.");
 
-	while (getStrBuffSizeUsr(&(conn->rcvusrbuff)) == 0)
+	while (getStrBuffSizeUsr(&(conn->rcvusrbuff)) == 0) {
+
+		if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+
+			if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
+				ERREXIT("Cannot unlock mutex.");
+
+			memset(msg, 0, sizeof(char) * size);
+
+			return 0;
+		}
+
 		if ((error = pthread_cond_timedwait(&(conn->rcvusrbuff.insert_cnd), &(conn->rcvusrbuff.mtx), &timeout)) > 0)
 			if (error != ETIMEDOUT)
 				ERREXIT("Cannot timed wait condition variable.");
+	}
 
 	if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
@@ -153,7 +203,7 @@ struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection: %ld", connid);
+		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
 	addr = getSocketLocal(conn->sock.fd);
 
@@ -167,7 +217,7 @@ struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
 	conn = getConnectionById(connid);
 
 	if (!conn)
-		ERREXIT("Cannot retrieve connection: %ld", connid);
+		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
 	addr = getSocketPeer(conn->sock.fd);
 

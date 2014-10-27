@@ -49,10 +49,10 @@ void deserializeSegment(const char *ssgm, Segment *sgm) {
 	hdr[RUDP_HDRS] = '\0';
 
 	memcpy(hdrf[0], ssgm, sizeof(char) * 3);
-	hdrf[0][4] = '\0';
+	hdrf[0][3] = '\0';
 
 	memcpy(hdrf[1], ssgm + 3, sizeof(char) * 3);
-	hdrf[1][4] = '\0';
+	hdrf[1][3] = '\0';
 
 	memcpy(hdrf[2], ssgm + 6, sizeof(char) * 5);
 	hdrf[2][5] = '\0';

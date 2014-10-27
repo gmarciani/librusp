@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "../../rudp.h"
+#include "../../util/cliutil.h"
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
@@ -56,12 +57,14 @@ int main(int argc, char **argv) {
 }
 
 static void startListen(void) {
-	printf("# Opening listening connection on port: %d\n", PORT);
+	printf("# Opening listening connection on port: %d...%s", PORT, (DEBUGMODE)?"\n":"");
 
 	lconn = rudpListen(PORT);
 
 	if (lconn == -1) 
 		ERREXIT("Cannot setup listening connection.");
+
+	printf("OK\n");
 }
 
 static void showListeningConnectionDetails(void) {
@@ -72,23 +75,23 @@ static void showListeningConnectionDetails(void) {
 
 	addressToString(laddr, strladdr);
 
-	printf("Connection (%ld) listening on: %s.\n", lconn, strladdr);		
+	printf("Connection (%lld) listening on: %s.\n", lconn, strladdr);
 }
 
 static void acceptIncomingConnection(void) {
-	printf("# Accepting incoming connection\n");
+	printf("# Accepting incoming connection...%s", (DEBUGMODE)?"\n":"");
 
 	aconn = rudpAccept(lconn);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void stopListen(void) {
-	printf("# Closing listening connection\n");
+	printf("# Closing listening connection...%s", (DEBUGMODE)?"\n":"");
 
 	rudpClose(lconn);
 
-	printf("SUCCESS\n");
+	printf("OK\n");
 }
 
 static void showEstablishedConnectionDetails(void) {
@@ -103,25 +106,30 @@ static void showEstablishedConnectionDetails(void) {
 
 	addressToString(caddr, strcaddr);
 
-	printf("Connection (%ld) established on: %s with: %s.\n", aconn, straaddr, strcaddr);		
+	printf("Connection (%lld) established on: %s with: %s.\n", aconn, straaddr, strcaddr);
 }
 
 static void echo(void) {
 	char rcvdata[MSGSIZE];
-	size_t rcvd;
-	unsigned long iteration;
+	ssize_t rcvd;
+	long long iteration;
 
-	printf("# Echo on established connection...\n");
+	printf("# Echo on established connection...\n\n");
 
 	iteration = 1;
 
 	while (1) {
-		
-		printf("\nECHO %lu\n", iteration);
+
+		printf("\n%lld\n", iteration);
 
 		rcvd = rudpReceive(aconn, rcvdata, MSGSIZE);
 
-		printf("[RCVD]>%.*s\n", (int)rcvd, rcvdata);
+		if (rcvd <= 0)
+			break;
+
+		printf("[RCV]>%.*s\n", (int) rcvd, rcvdata);
+
+		//progressCounter(iteration);
 
 		assert(rcvd == MSGSIZE);
 
@@ -129,8 +137,18 @@ static void echo(void) {
 
 		rudpSend(aconn, rcvdata, rcvd);
 
-		printf("[SENT]>%.*s\n", (int)rcvd, rcvdata);
+		printf("[SND]>%.*s\n", (int) rcvd, rcvdata);
+
+		memset(rcvdata, 0, sizeof(char) * MSGSIZE);
 
 		iteration++;
 	}
+
+	printf("Stop receiving on established connection...OK\n");
+
+	printf("# Closing established connection...%s", (DEBUGMODE)?"\n":"");
+
+	rudpClose(aconn);
+
+	printf("OK\n");
 }

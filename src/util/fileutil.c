@@ -30,8 +30,8 @@ void generateSampleFile(const int fd, const long size) {
 	}
 }
 
-long getFileSize(const int fd) {
-	long size;
+long long getFileSize(const int fd) {
+	long long size;
 
 	errno = 0;
 	if ((size = lseek(fd, 0, SEEK_END)) == -1)
@@ -45,14 +45,39 @@ long getFileSize(const int fd) {
 }
 
 int isEqualFile(const int fdone, const int fdtwo) {
+	ssize_t rdone, rdtwo;
 	char cone, ctwo;
 
-	if (getFileSize(fdone) != getFileSize(fdtwo))
-		return 0;
+	errno = 0;
+	if (lseek(fdone, 0, SEEK_SET) == -1)
+		ERREXIT("Cannot lseek file: %s.", strerror(errno));
 
-	while (read(fdone, &cone, sizeof(char)) && read(fdtwo, &ctwo, sizeof(char))) {
-		if (cone != ctwo)
+	errno = 0;
+	if (lseek(fdtwo, 0, SEEK_SET) == -1)
+		ERREXIT("Cannot lseek file: %s.", strerror(errno));
+
+	while (1) {
+
+		errno = 0;
+		if ((rdone = read(fdone, &cone, sizeof(char))) == -1)
+			ERREXIT("Cannot read file: %s.", strerror(errno));
+
+		errno = 0;
+		if ((rdtwo = read(fdtwo, &ctwo, sizeof(char))) == -1)
+			ERREXIT("Cannot read file: %s.", strerror(errno));
+
+		if (rdone == 0 && rdtwo == 0)
+			break;
+
+		if (rdone != rdtwo) {
+			printf("Difference: rdone=%zu rdtwo=%zu\n", rdone, rdtwo);
 			return 0;
+		}
+
+		if (cone != ctwo) {
+			printf("Difference: cone=%c ctwo=%c\n", cone, ctwo);
+			return 0;
+		}
 	}
 
 	return 1;

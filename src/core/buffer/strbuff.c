@@ -1,11 +1,14 @@
 #include "strbuff.h"
 
 void initializeStrBuff(StrBuff *buff) {
-	if ((pthread_rwlock_init(&(buff->rwlock), NULL) > 0) |
-		(pthread_mutex_init(&(buff->mtx), NULL) > 0) |
-		(pthread_cond_init(&(buff->insert_cnd), NULL) > 0) |
-		(pthread_cond_init(&(buff->remove_cnd), NULL) > 0))
-		ERREXIT("Cannot initialize string buffer sync-block.");
+
+	pthread_rwlock_init(&(buff->rwlock), NULL);
+
+	pthread_mutex_init(&(buff->mtx), NULL);
+
+	pthread_cond_init(&(buff->insert_cnd), NULL);
+
+	pthread_cond_init(&(buff->remove_cnd), NULL);
 
 	buff->size = 0;
 
@@ -13,11 +16,18 @@ void initializeStrBuff(StrBuff *buff) {
 }
 
 void destroyStrBuff(StrBuff *buff) {
-	if ((pthread_rwlock_destroy(&(buff->rwlock)) > 0) |
-		(pthread_mutex_destroy(&(buff->mtx)) > 0) |
-		(pthread_cond_destroy(&(buff->insert_cnd)) > 0) |
-		(pthread_cond_destroy(&(buff->remove_cnd)) > 0))
-		ERREXIT("Cannot destroy string buffer sync-block.");
+
+	if (pthread_cond_destroy(&(buff->insert_cnd)) > 0)
+		ERREXIT("Cannot destroy string-buffer insert condition variable.");
+
+	if (pthread_cond_destroy(&(buff->remove_cnd)) > 0)
+		ERREXIT("Cannot destroy string buffer remove condition variable.");
+
+	if (pthread_rwlock_destroy(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot destroy string-buffer read-write lock.");
+
+	if (pthread_mutex_destroy(&(buff->mtx)) > 0)
+		ERREXIT("Cannot destroy string-buffer mutex.");
 
 	buff->size = 0;
 

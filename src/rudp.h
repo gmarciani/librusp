@@ -2,7 +2,6 @@
 #define RUDP_H_
 
 #include "core/connection/conn.h"
-#include "core/connection/connmng.h"
 #include "util/addrutil.h"
 #include "util/sockutil.h"
 #include "util/macroutil.h"
@@ -15,15 +14,13 @@ ConnectionId rudpAccept(const ConnectionId lconnid);
 
 ConnectionId rudpConnect(const char *ip, const int port);
 
-void rudpDisconnect(const ConnectionId connid);
-
 void rudpClose(const ConnectionId connid);
 
 /* COMMUNICATIONS */
 
-void rudpSend(const ConnectionId connid, const char *msg, const size_t size);
+ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size);
 
-size_t rudpReceive(const ConnectionId connid, char *msg, const size_t size);
+ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size);
 
 /* UTILITY */
 

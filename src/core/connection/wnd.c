@@ -1,10 +1,12 @@
 #include "wnd.h"
 
 void initializeWindow(Window *wnd, const uint32_t base, const uint32_t end) {
-	if ((pthread_rwlock_init(&(wnd->rwlock), NULL) > 0) |
-		(pthread_mutex_init(&(wnd->mtx), NULL) > 0) |
-		(pthread_cond_init(&(wnd->cnd), NULL) > 0))
-		ERREXIT("Cannot initialize window sync-block.");
+
+	pthread_rwlock_init(&(wnd->rwlock), NULL);
+
+	pthread_mutex_init(&(wnd->mtx), NULL);
+
+	pthread_cond_init(&(wnd->cnd), NULL);
 
 	wnd->base = base;
 
@@ -14,10 +16,15 @@ void initializeWindow(Window *wnd, const uint32_t base, const uint32_t end) {
 }
 
 void destroyWindow(Window *wnd) {
-	if ((pthread_rwlock_destroy(&(wnd->rwlock)) > 0) |
-		(pthread_mutex_destroy(&(wnd->mtx)) > 0) |
-		(pthread_cond_destroy(&(wnd->cnd)) > 0))
-		ERREXIT("Cannot destroy window sync-block.");
+
+	if (pthread_rwlock_destroy(&(wnd->rwlock)) > 0)
+		ERREXIT("Cannot destroy window read-write lock.");
+
+	if (pthread_mutex_destroy(&(wnd->mtx)) > 0)
+		ERREXIT("Cannot destroy window mutex.");
+
+	if (pthread_cond_destroy(&(wnd->cnd)) > 0)
+		ERREXIT("Cannot destroy window condition variable.");
 
 	wnd->base = 0;
 

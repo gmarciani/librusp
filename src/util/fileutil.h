@@ -16,7 +16,7 @@ void closeFile(const int fd);
 
 void generateSampleFile(const int fd, const long size);
 
-long getFileSize(const int fd);
+long long getFileSize(const int fd);
 
 int isEqualFile(const int fdone, const int fdtwo);
 

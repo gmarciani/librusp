@@ -31,13 +31,13 @@ void bindSocket(const int sock, const struct sockaddr_in *addr);
 
 /* SOCKET I/O */
 
-void writeUSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff, const size_t size);
+ssize_t writeUSocket(const int sock, const struct sockaddr_in rcvaddr, const char *buff, const size_t size);
 
-size_t readUSocket(const int sock, struct sockaddr_in *sndaddr, char *buff, const size_t size);
+ssize_t readUSocket(const int sock, struct sockaddr_in *sndaddr, char *buff, const size_t size);
 
-void writeCSocket(const int sock, const char *buff, const size_t size);
+int writeCSocket(const int sock, const char *buff, const size_t size);
 
-size_t readCSocket(const int sock, char *buff, const size_t size);
+int readCSocket(const int sock, char *buff, const size_t size);
 
 /* SOCKET MULTIPLEXING */
 

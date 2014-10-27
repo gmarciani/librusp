@@ -26,6 +26,8 @@ short isTimerDisarmed(const timer_t timerid);
 
 long double getElapsed(const struct timespec start, const struct timespec end);
 
+long double getElapsedNow(const struct timespec start);
+
 struct timespec getTimespec(const long double millis);
 
 struct timeval getTimeval(const long double millis);

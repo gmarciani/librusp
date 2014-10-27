@@ -11,8 +11,8 @@ unsigned long getRandomUL(void) {
 	return random;
 }
 
-unsigned short getRandomBit(const double onprob) {
-	unsigned short random;
+int getRandomBit(const double onprob) {
+	int random;
 
 	random = drand48() < onprob;
 

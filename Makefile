@@ -46,13 +46,13 @@ PERFORMANCE_TESTDIR = $(TESTDIR)/performance
 
 LIBS = -pthread -lrt -lm -lcrypto -lssl
 
-UTILS = $(addprefix $(UTILDIR)/, sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c fileutil.h fileutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
+UTILS = $(addprefix $(UTILDIR)/, cliutil.h cliutil.c sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c fileutil.h fileutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
 
 SEGMENTS = $(addprefix $(SEGMENTDIR)/, sgm.h sgm.c seqn.h seqn.c) $(UTILS)
 
 BUFFERS = $(addprefix $(BUFFERDIR)/, sgmbuff.h sgmbuff.c strbuff.h strbuff.c) $(SEGMENTS)
 
-CONNECTION = $(addprefix $(CONNECTIONDIR)/, conn.h conn.c connmng.h connmng.c timeo.h timeo.c wnd.h wnd.c) $(BUFFERS)
+CONNECTION = $(addprefix $(CONNECTIONDIR)/, conn.h conn.c timeo.h timeo.c wnd.h wnd.c) $(BUFFERS)
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(CONNECTION)
 
@@ -64,7 +64,13 @@ testdir:
 	mkdir -pv $(BINDIR)
 	mkdir -pv $(SAMPLEDIR)
 	
-communication: echosnd echorcv filesnd filercv
+communication: snd rcv echosnd echorcv filesnd filercv
+
+snd: $(COMMUNICATION_TESTDIR)/snd.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+
+rcv: $(COMMUNICATION_TESTDIR)/rcv.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 
 echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@

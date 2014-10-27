@@ -81,7 +81,7 @@ void generateRandomUL(void) {
 }
 
 void generateRandomBit(const long double onprob) {
-	unsigned short randombit[NUMRAND];
+	int randombit[NUMRAND];
 	long double constraint;
 	unsigned long repetitions, i;
 

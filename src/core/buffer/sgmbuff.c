@@ -4,12 +4,15 @@
 
 void initializeSgmBuff(SgmBuff *buff) {
 
-	if ((pthread_rwlock_init(&(buff->rwlock), NULL) > 0) |
-		(pthread_mutex_init(&(buff->mtx), NULL) > 0) |
-		(pthread_cond_init(&(buff->insert_cnd), NULL) > 0) |
-		(pthread_cond_init(&(buff->remove_cnd), NULL) > 0) |
-		(pthread_cond_init(&(buff->status_cnd), NULL) > 0))
-		ERREXIT("Cannot initialize segment buffer sync-block.");
+	pthread_rwlock_init(&(buff->rwlock), NULL);
+
+	pthread_mutex_init(&(buff->mtx), NULL);
+
+	pthread_cond_init(&(buff->insert_cnd), NULL);
+
+	pthread_cond_init(&(buff->remove_cnd), NULL);
+
+	pthread_cond_init(&(buff->status_cnd), NULL);
 
 	buff->size = 0;
 
@@ -23,12 +26,20 @@ void destroySgmBuff(SgmBuff *buff) {
 	while (buff->head)
 		removeSgmBuff(buff, buff->head);
 
-	if ((pthread_rwlock_destroy(&(buff->rwlock)) > 0) |
-		(pthread_mutex_destroy(&(buff->mtx)) > 0) |
-		(pthread_cond_destroy(&(buff->insert_cnd)) > 0) |
-		(pthread_cond_destroy(&(buff->remove_cnd)) > 0) |
-		(pthread_cond_destroy(&(buff->status_cnd)) > 0))
-		ERREXIT("Cannot destroy segment buffer sync-block.");
+	if (pthread_cond_destroy(&(buff->insert_cnd)) > 0)
+		ERREXIT("Cannot destroy segment-buffer insert condition variable.");
+
+	if  (pthread_cond_destroy(&(buff->remove_cnd)) > 0)
+		ERREXIT("Cannot destroy segment-buffer remove condition variable.");
+
+	if  (pthread_cond_destroy(&(buff->status_cnd)) > 0)
+		ERREXIT("Cannot destroy segment-buffer status condition variable.");
+
+	if (pthread_rwlock_destroy(&(buff->rwlock)) > 0)
+		ERREXIT("Cannot destroy segment-buffer read-write lock.");
+
+	if (pthread_mutex_destroy(&(buff->mtx)) > 0)
+		ERREXIT("Cannot destroy segment-buffer mutex.");
 
 	buff->size = 0;
 
@@ -39,7 +50,7 @@ void destroySgmBuff(SgmBuff *buff) {
 
 /* SEGMENT BUFFER INSERTION/REMOVAL */
 
-SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const short status) {
+SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const int status) {
 	SgmBuffElem *new = NULL;
 
 	if (!(new = malloc(sizeof(SgmBuffElem))))
@@ -157,8 +168,8 @@ long getSgmBuffSize(SgmBuff *buff) {
 
 /* SEGMENT BUFFER ELEMENT */
 
-short getSgmBuffElemStatus(SgmBuffElem *elem) {
-	short status;
+int getSgmBuffElemStatus(SgmBuffElem *elem) {
+	int status;
 
 	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
 		ERREXIT("Cannot acquire read-lock.");
@@ -171,7 +182,7 @@ short getSgmBuffElemStatus(SgmBuffElem *elem) {
 	return status;
 }
 
-void setSgmBuffElemStatus(SgmBuffElem *elem, const short status) {
+void setSgmBuffElemStatus(SgmBuffElem *elem, const int status) {
 	if (pthread_rwlock_wrlock(&(elem->rwlock)) > 0)
 		ERREXIT("Cannot acquire write-lock.");
 
@@ -292,7 +303,8 @@ SgmBuffElem *findSgmBuffAckn(SgmBuff *buff, const uint32_t ackn) {
 
 	while (curr) {
 
-		if (RUDP_ISACKED(curr->segment.hdr.seqn, curr->segment.hdr.plds, ackn))
+		if (RUDP_ISACKED(curr->segment.hdr.seqn, curr->segment.hdr.plds, ackn) ||
+				((curr->segment.hdr.ctrl & RUDP_FIN) && RUDP_ISACKED(curr->segment.hdr.seqn, 1, ackn)))
 			break;
 
 		curr = curr->next;

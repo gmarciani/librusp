@@ -69,6 +69,17 @@ long double getElapsed(const struct timespec start, const struct timespec end) {
 	return millis;
 }
 
+long double getElapsedNow(const struct timespec start) {
+	long double millis;
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	millis = (now.tv_sec - start.tv_sec) * 1000.0 + (now.tv_nsec - start.tv_nsec) / 1000000.0;
+
+	return millis;
+}
+
 struct timespec getTimespec(const long double millis) {
 	struct timespec time;
 

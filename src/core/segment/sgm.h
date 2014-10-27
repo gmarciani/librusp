@@ -26,7 +26,7 @@
 #define RUDP_ERR 0b10000000
 
 // Payload
-#define RUDP_PLDS 500
+#define RUDP_PLDS 5
 
 //Segment Serialization
 #define RUDP_HDRF 7

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <time.h>
 #include "../../rudp.h"
+#include "../../util/cliutil.h"
 #include "../../util/fileutil.h"
 #include "../../util/timeutil.h"
 #include "../../util/macroutil.h"
@@ -13,7 +14,7 @@ static char *ADDRESS;
 
 static int PORT;
 
-static long double DROPRATE;
+static double DROPRATE;
 
 static char *FILESND;
 
@@ -27,8 +28,6 @@ static void showConnectionDetails(void);
 
 static void profileFileSend();
 
-static inline void progressBar(long i, long n);
-
 int main(int argc, char **argv) {	
 	
 	if (argc < 6)
@@ -38,11 +37,13 @@ int main(int argc, char **argv) {
 
 	PORT = atoi(argv[2]);
 
-	DROPRATE = strtold(argv[3], NULL);
+	DROPRATE = strtod(argv[3], NULL);
 
 	FILESND = argv[4];
 
 	DEBUGMODE = atoi(argv[5]);
+
+	setDropRate(DROPRATE);
 
 	setConnectionDebugMode(DEBUGMODE);
 
@@ -52,18 +53,18 @@ int main(int argc, char **argv) {
 
 	profileFileSend();
 
-	//disconnectConnection();
-
 	exit(EXIT_SUCCESS);
 }
 
 static void establishConnection(void) {
-	printf("# Connecting to %s:%d\n", ADDRESS, PORT);
+	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, (DEBUGMODE)?"\n":"");
 
 	conn = rudpConnect(ADDRESS, PORT);
 
 	if (conn == -1)
 		ERREXIT("Cannot establish connection.");
+
+	printf("OK\n");
 }
 
 static void showConnectionDetails(void) {
@@ -78,14 +79,13 @@ static void showConnectionDetails(void) {
 
 	addressToString(saddr, strsaddr);
 
-	printf("Connection (%ld) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
+	printf("Connection (%lld) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
 }
 
 static void profileFileSend() {
-	char sndbuff[500];
-	char eof = 0x01;
+	char snddata[500];
 	int fd;
-	long size, sent;
+	long long size, sent;
 	ssize_t rd;
 	struct timespec start, end;
 	long double milliselaps, Kbps, KB;
@@ -94,9 +94,7 @@ static void profileFileSend() {
 
 	size = getFileSize(fd);
 
-	printf("# Profiling file send on established connection (drop: %LF%%): %s (%ld bytes)...\n", DROPRATE * 100.0, FILESND, size);
-
-	setDropRate(DROPRATE);
+	printf("# Profiling file send on established connection (drop: %F%%): %s (%lld bytes)...\n", DROPRATE * 100.0, FILESND, size);
 
 	sent = 0;
 
@@ -104,17 +102,17 @@ static void profileFileSend() {
 
 	errno = 0;
 
-	while ((rd = read(fd, sndbuff, 500)) > 0) {
+	while ((rd = read(fd, snddata, 500)) > 0) {
 		
 		start = getTimestamp();
 
-		rudpSend(conn, sndbuff, rd);
+		rudpSend(conn, snddata, rd);
 
 		end = getTimestamp();
 
 		milliselaps += getElapsed(start, end);
 
-		memset(sndbuff, 0, sizeof(char) * 500);
+		memset(snddata, 0, sizeof(char) * 500);
 
 		sent += rd;
 
@@ -126,36 +124,21 @@ static void profileFileSend() {
 	if (rd == -1)
 		ERREXIT("Cannot read file: %s.", strerror(errno));
 
-	rudpSend(conn, &eof, 1);
-
 	closeFile(fd);
 
 	printf(" OK\n");
+
+	printf("# Stop sending on established connection...OK\n");
 
 	KB = (long double)(size / 1000.0);
 
 	Kbps = KB * 8.0 / (milliselaps / 1000.0);
 
-	printf("Sent: %LFKB Droprate: %LF%% Time: %LFs Speed: %LFKbps\n", KB, DROPRATE * 100.0, milliselaps / 1000.0, Kbps);
-}
+	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, DROPRATE * 100.0, milliselaps / 1000.0, Kbps);
 
-static char PROG_TRUE[20] = "====================";
-static char PROG_FALSE[20] = "                    ";
+	printf("# Closing established connection...%s", (DEBUGMODE)?"\n":"");
 
-static inline void progressBar(long i, long n) {
-	int ratio;
-	int curr;
+	rudpClose(conn);
 
-    ratio = i * 100 / n;
-
-    if (ratio % 5 != 0)
-    	return;
-
-    printf("\r");
-
-    fflush(stdout);
-
-    curr = ratio / 5;
-
-    printf("%3d%% [%.*s%.*s]", ratio, curr, PROG_TRUE, 20-curr, PROG_FALSE);
+	printf("OK\n");
 }
