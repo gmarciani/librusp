@@ -24,8 +24,8 @@ ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size);
 
 /* UTILITY */
 
-struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid);
+int rudpGetLocalAddress(const ConnectionId connid, struct sockaddr_in *addr);
 
-struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid);
+int rudpGetPeerAddress(const ConnectionId connid, struct sockaddr_in *addr);
 
 #endif /* RUDP_H_ */

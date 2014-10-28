@@ -72,11 +72,11 @@ static void showConnectionDetails(void) {
 	struct sockaddr_in caddr, saddr;
 	char strcaddr[ADDRIPV4_STR], strsaddr[ADDRIPV4_STR];
 
-	caddr = rudpGetLocalAddress(conn);
+	rudpGetLocalAddress(conn, &caddr);
 
 	addressToString(caddr, strcaddr);
 	
-	saddr = rudpGetPeerAddress(conn);
+	rudpGetPeerAddress(conn, &saddr);
 
 	addressToString(saddr, strsaddr);
 

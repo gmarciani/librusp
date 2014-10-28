@@ -8,6 +8,11 @@
 #include "../../util/timeutil.h"
 #include "../../util/macroutil.h"
 
+
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 // EXTIMATED RTT
 #define RUDP_EXTRTT_A 0.875
 #define RUDP_EXTRTT_B 0.125

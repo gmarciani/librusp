@@ -196,30 +196,32 @@ ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 
 /* UTILITY */
 
-struct sockaddr_in rudpGetLocalAddress(const ConnectionId connid) {
+int rudpGetLocalAddress(const ConnectionId connid, struct sockaddr_in *addr) {
+	socklen_t socksize = sizeof(struct sockaddr_in);
 	Connection *conn = NULL;
-	struct sockaddr_in addr;
 
-	conn = getConnectionById(connid);
+	if (!(conn = getConnectionById(connid)))
+		return -1;
 
-	if (!conn)
-		ERREXIT("Cannot retrieve connection: %lld.", connid);
+	errno = 0;
 
-	addr = getSocketLocal(conn->sock.fd);
+	if (getsockname(conn->sock.fd, (struct sockaddr *)addr, &socksize) == -1)
+		ERREXIT("Cannot get socket local address: %s", strerror(errno));
 
-	return addr;
+	return 0;
 }
 
-struct sockaddr_in rudpGetPeerAddress(const ConnectionId connid) {
+int rudpGetPeerAddress(const ConnectionId connid, struct sockaddr_in *addr) {
+	socklen_t socksize = sizeof(struct sockaddr_in);
 	Connection *conn = NULL;
-	struct sockaddr_in addr;
 
-	conn = getConnectionById(connid);
+	if (!(conn = getConnectionById(connid)))
+		return -1;
 
-	if (!conn)
-		ERREXIT("Cannot retrieve connection: %lld.", connid);
+	errno = 0;
 
-	addr = getSocketPeer(conn->sock.fd);
+	if (getpeername(conn->sock.fd, (struct sockaddr *)addr, &socksize) == -1)
+		ERREXIT("Cannot get socket peer address: %s", strerror(errno));
 
-	return addr;
+	return 0;
 }

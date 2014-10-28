@@ -694,14 +694,15 @@ static int receiveSegment(Connection *conn, Segment *sgm) {
 		return -1;
 	}
 
-	if (getRandomBit(DROPRATE)) {
+	deserializeSegment(ssgm, sgm);
 
-		DBGPRINT(DEBUG, "SEGMENT DROPPPED");
+	if (getRandomBit(DROPRATE)) {
+		char strsgm[RUDP_SGM_STR+1];
+		segmentToString(*sgm, strsgm);
+		DBGPRINT(DEBUG, "SEGMENT DROPPPED: %s", strsgm);
 
 		return 0;
 	}
-
-	deserializeSegment(ssgm, sgm);
 
 	DBGFUNC(DEBUG, printInSegment(getSocketPeer(conn->sock.fd), *sgm));
 

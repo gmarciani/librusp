@@ -66,7 +66,7 @@ static void showListeningConnectionDetails(void) {
 	struct sockaddr_in laddr;
 	char strladdr[ADDRIPV4_STR];
 
-	laddr = rudpGetLocalAddress(lconn);
+	rudpGetLocalAddress(lconn, &laddr);
 
 	addressToString(laddr, strladdr);
 
@@ -93,11 +93,11 @@ static void showEstablishedConnectionDetails(void) {
 	struct sockaddr_in aaddr, caddr;
 	char straaddr[ADDRIPV4_STR], strcaddr[ADDRIPV4_STR];
 
-	aaddr = rudpGetLocalAddress(aconn);
+	rudpGetLocalAddress(aconn, &aaddr);
 
 	addressToString(aaddr, straaddr);
 
-	caddr = rudpGetPeerAddress(aconn);
+	rudpGetPeerAddress(aconn, &caddr);
 
 	addressToString(caddr, strcaddr);
 
