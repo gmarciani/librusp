@@ -26,7 +26,7 @@
 #define RUDP_ERR 0b10000000
 
 // Payload
-#define RUDP_PLDS 5
+#define RUDP_PLDS 500
 
 //Segment Serialization
 #define RUDP_HDRF 7
@@ -57,6 +57,8 @@ typedef struct Segment {
 Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t plds, const uint16_t wnds, const uint32_t seqn, const uint32_t ackn, const char *pld);
 
 size_t serializeSegment(const Segment sgm, char *ssgm);
+
+void deserializeHeader(const char *shdr, Header *hdr);
 
 void deserializeSegment(const char *ssgm, Segment *sgm);
 

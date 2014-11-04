@@ -1,8 +1,8 @@
 #include "seqn.h"
 
 int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const uint32_t seqn) {
-	if ((wndb < wnde && seqn >= wndb && seqn <= wnde) ||
-		(wndb > wnde && (seqn >= wndb || seqn <= wnde))) 
+	if ((wndb < wnde && seqn >= wndb && seqn < wnde) ||
+		(wndb > wnde && (seqn >= wndb || seqn < wnde)))
 		return 0;
 	else if (wndb - seqn <= (RUDP_MAXSEQN / 2))
 		return -1;

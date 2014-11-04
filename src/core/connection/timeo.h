@@ -5,13 +5,13 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <math.h>
-#include "../../util/timeutil.h"
-#include "../../util/macroutil.h"
-
-
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include "../../util/timeutil.h"
+#include "../../util/macroutil.h"
 
 // EXTIMATED RTT
 #define RUDP_EXTRTT_A 0.875

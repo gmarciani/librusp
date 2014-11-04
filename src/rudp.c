@@ -194,7 +194,7 @@ ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 	return rcvd;
 }
 
-/* UTILITY */
+/* ADDRESS UTILITY */
 
 int rudpGetLocalAddress(const ConnectionId connid, struct sockaddr_in *addr) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
@@ -224,4 +224,22 @@ int rudpGetPeerAddress(const ConnectionId connid, struct sockaddr_in *addr) {
 		ERREXIT("Cannot get socket peer address: %s", strerror(errno));
 
 	return 0;
+}
+
+/* DEV UTILITY */
+
+double rudpGetDrop(void) {
+	return RUDP_DROP;
+}
+
+void rudpSetDrop(const double drop) {
+	RUDP_DROP = drop;
+}
+
+int rudpGetDebug(void) {
+	return RUDP_DEBUG;
+}
+
+void rudpSetDebug(const int debug) {
+	RUDP_DEBUG = debug;
 }

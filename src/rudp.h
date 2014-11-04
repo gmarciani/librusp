@@ -22,10 +22,20 @@ ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size);
 
 ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size);
 
-/* UTILITY */
+/* ADDRESS UTILITY */
 
 int rudpGetLocalAddress(const ConnectionId connid, struct sockaddr_in *addr);
 
 int rudpGetPeerAddress(const ConnectionId connid, struct sockaddr_in *addr);
+
+/* DEV UTILITY */
+
+double rudpGetDrop(void);
+
+void rudpSetDrop(const double drop);
+
+int rudpGetDebug(void);
+
+void rudpSetDebug(const int debug);
 
 #endif /* RUDP_H_ */

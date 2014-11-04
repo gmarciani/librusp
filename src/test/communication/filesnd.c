@@ -10,23 +10,30 @@
 #include "../../util/timeutil.h"
 #include "../../util/macroutil.h"
 
+#define DBG_NONE 0b000
+#define DBG_OPEN 0b001
+#define DBG_TRAN 0b010
+#define DBG_CLOS 0b100
+
 static char *ADDRESS;
 
 static int PORT;
 
-static double DROPRATE;
+static double DROP;
 
 static char *FILESND;
 
-static int DEBUGMODE;
+static int DBG;
 
-static ConnectionId conn;
+static ConnectionId CONN;
 
 static void establishConnection(void);
 
-static void showConnectionDetails(void);
+static void connectionDetails(void);
 
-static void profileFileSend();
+static void sendFile();
+
+static void closeConnection(void);
 
 int main(int argc, char **argv) {	
 	
@@ -37,52 +44,63 @@ int main(int argc, char **argv) {
 
 	PORT = atoi(argv[2]);
 
-	DROPRATE = strtod(argv[3], NULL);
+	DROP = strtod(argv[3], NULL);
 
 	FILESND = argv[4];
 
-	DEBUGMODE = atoi(argv[5]);
+	DBG = atoi(argv[5]);
 
-	setDropRate(DROPRATE);
-
-	setConnectionDebugMode(DEBUGMODE);
+	if (DBG & DBG_OPEN)
+		rudpSetDebug(1);
 
 	establishConnection();
 
-	showConnectionDetails();
+	rudpSetDebug(0);
 
-	profileFileSend();
+	connectionDetails();
+
+	if (DBG & DBG_TRAN)
+		rudpSetDebug(1);
+
+	sendFile();
+
+	rudpSetDebug(0);
+
+	if (DBG & DBG_CLOS)
+		rudpSetDebug(1);
+
+	closeConnection();
 
 	exit(EXIT_SUCCESS);
 }
 
 static void establishConnection(void) {
-	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, (DEBUGMODE)?"\n":"");
+	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, (rudpGetDebug())?"\n":"");
 
-	conn = rudpConnect(ADDRESS, PORT);
+	CONN = rudpConnect(ADDRESS, PORT);
 
-	if (conn == -1)
+	if (CONN == -1)
 		ERREXIT("Cannot establish connection.");
 
 	printf("OK\n");
 }
 
-static void showConnectionDetails(void) {
+static void connectionDetails(void) {
 	struct sockaddr_in caddr, saddr;
 	char strcaddr[ADDRIPV4_STR], strsaddr[ADDRIPV4_STR];
 
-	rudpGetLocalAddress(conn, &caddr);
+	rudpGetLocalAddress(CONN, &caddr);
 
 	addressToString(caddr, strcaddr);
 	
-	rudpGetPeerAddress(conn, &saddr);
+	rudpGetPeerAddress(CONN, &saddr);
 
 	addressToString(saddr, strsaddr);
 
-	printf("Connection (%lld) established on: %s with: %s.\n", conn, strcaddr, strsaddr);
+	printf("Connection (%lld) established on: %s with: %s.\n", CONN, strcaddr, strsaddr);
 }
 
-static void profileFileSend() {
+static void sendFile() {
 	char snddata[500];
 	int fd;
 	long long size, sent;
@@ -94,7 +112,7 @@ static void profileFileSend() {
 
 	size = getFileSize(fd);
 
-	printf("# Profiling file send on established connection (drop: %F%%): %s (%lld bytes)...\n", DROPRATE * 100.0, FILESND, size);
+	printf("# Profiling file send on established connection (drop: %F%%): %s (%lld bytes)...\n", rudpGetDrop() * 100.0, FILESND, size);
 
 	sent = 0;
 
@@ -106,7 +124,7 @@ static void profileFileSend() {
 		
 		start = getTimestamp();
 
-		rudpSend(conn, snddata, rd);
+		rudpSend(CONN, snddata, rd);
 
 		end = getTimestamp();
 
@@ -134,11 +152,13 @@ static void profileFileSend() {
 
 	Kbps = KB * 8.0 / (milliselaps / 1000.0);
 
-	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, DROPRATE * 100.0, milliselaps / 1000.0, Kbps);
+	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, rudpGetDrop() * 100.0, milliselaps / 1000.0, Kbps);
+}
 
-	printf("# Closing established connection...%s", (DEBUGMODE)?"\n":"");
+static void closeConnection(void) {
+	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
 
-	rudpClose(conn);
+	rudpClose(CONN);
 
 	printf("OK\n");
 }

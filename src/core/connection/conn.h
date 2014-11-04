@@ -46,6 +46,12 @@
 #define RUDP_SGM_NACK 0
 #define RUDP_SGM_YACK 1
 
+/* GLOBAL VARIABLES */
+
+extern int RUDP_DEBUG;
+
+extern double RUDP_DROP;
+
 /* CONNECTION STRUCTURE */
 
 typedef long long ConnectionId;
@@ -110,11 +116,5 @@ void passiveClose(Connection *conn);
 /* CONNECTIONS POOL */
 
 Connection *getConnectionById(const ConnectionId connid);
-
-/* UTILITY */
-
-void setDropRate(const double droprate);
-
-void setConnectionDebugMode(const int dbgmode);
 
 #endif /* CONN_H_ */

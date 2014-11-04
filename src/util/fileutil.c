@@ -46,6 +46,7 @@ long long getFileSize(const int fd) {
 
 int isEqualFile(const int fdone, const int fdtwo) {
 	ssize_t rdone, rdtwo;
+	off_t offone, offtwo;
 	char cone, ctwo;
 
 	errno = 0;
@@ -59,6 +60,14 @@ int isEqualFile(const int fdone, const int fdtwo) {
 	while (1) {
 
 		errno = 0;
+		if ((offone = lseek(fdone, 0, SEEK_CUR)) == -1)
+			ERREXIT("Cannot lseek file: %s.", strerror(errno));
+
+		errno = 0;
+		if ((offtwo = lseek(fdtwo, 0, SEEK_CUR)) == -1)
+			ERREXIT("Cannot lseek file: %s.", strerror(errno));
+
+		errno = 0;
 		if ((rdone = read(fdone, &cone, sizeof(char))) == -1)
 			ERREXIT("Cannot read file: %s.", strerror(errno));
 
@@ -70,12 +79,12 @@ int isEqualFile(const int fdone, const int fdtwo) {
 			break;
 
 		if (rdone != rdtwo) {
-			printf("Difference: rdone=%zu rdtwo=%zu\n", rdone, rdtwo);
+			printf("Diff (size): rdone=%zu rdtwo=%zu\n", rdone, rdtwo);
 			return 0;
 		}
 
 		if (cone != ctwo) {
-			printf("Difference: cone=%c ctwo=%c\n", cone, ctwo);
+			printf("Diff (content): cone=%c (at:%ld) ctwo=%c (at:%ld)\n", cone, offone, ctwo, offtwo);
 			return 0;
 		}
 	}

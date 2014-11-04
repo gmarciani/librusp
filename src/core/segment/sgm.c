@@ -41,6 +41,45 @@ size_t serializeSegment(const Segment sgm, char *ssgm) {
 	return ssgmsize;
 }
 
+void deserializeHeader(const char *shdr, Header *hdr) {
+	char hdrf[RUDP_HDRF][11];
+
+	memcpy(hdrf[0], shdr, sizeof(char) * 3);
+	hdrf[0][3] = '\0';
+
+	memcpy(hdrf[1], shdr + 3, sizeof(char) * 3);
+	hdrf[1][3] = '\0';
+
+	memcpy(hdrf[2], shdr + 6, sizeof(char) * 5);
+	hdrf[2][5] = '\0';
+
+	memcpy(hdrf[3], shdr + 11, sizeof(char) * 5);
+	hdrf[3][5] = '\0';
+
+	memcpy(hdrf[4], shdr + 16, sizeof(char) * 5);
+	hdrf[4][5] = '\0';
+
+	memcpy(hdrf[5], shdr + 21, sizeof(char) * 10);
+	hdrf[5][10] = '\0';
+
+	memcpy(hdrf[6], shdr + 31, sizeof(char) * 10);
+	hdrf[6][10] = '\0';
+
+	hdr->vers = (uint8_t) atoi(hdrf[0]);
+
+	hdr->ctrl = (uint8_t) atoi(hdrf[1]);
+
+	hdr->urgp = (uint16_t) atoi(hdrf[2]);
+
+	hdr->plds = (uint16_t) MIN(atoi(hdrf[3]), RUDP_PLDS);
+
+	hdr->wnds = (uint16_t) atoi(hdrf[4]);
+
+	hdr->seqn = (uint32_t) (strtoul(hdrf[5], NULL, 10) % RUDP_MAXSEQN);
+
+	hdr->ackn = (uint32_t) (strtoul(hdrf[6], NULL, 10) % RUDP_MAXSEQN);
+}
+
 void deserializeSegment(const char *ssgm, Segment *sgm) {
 	char hdr[RUDP_HDRS + 1];
 	char hdrf[RUDP_HDRF][11];
