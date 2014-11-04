@@ -431,7 +431,7 @@ static void *receiverLoop(void *arg) {
 
 			DBGPRINT(RUSP_DEBUG, "INSIDE RCVWND: base:%u end:%u RCVUSRBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 
-			if (!(rcvsgm.hdr.ctrl == RUSP_SACK && rcvsgm.hdr.plds == 0))
+			if (!((rcvsgm.hdr.ctrl == RUSP_SACK || rcvsgm.hdr.ctrl == RUSP_CACK) && rcvsgm.hdr.plds == 0))
 				sendSACK(conn, RUSP_NXTSEQN(rcvsgm.hdr.seqn, (rcvsgm.hdr.ctrl & RUSP_FIN) ? 1 : rcvsgm.hdr.plds));
 
 			if (rcvsgm.hdr.seqn == getWindowBase(&(conn->rcvwnd))) {
@@ -451,7 +451,7 @@ static void *receiverLoop(void *arg) {
 
 			} else {
 
-				if (!(rcvsgm.hdr.ctrl == RUSP_SACK && rcvsgm.hdr.plds == 0) && !findSgmBuffSeqn(&(conn->rcvsgmbuff), rcvsgm.hdr.seqn)) {
+				if (!((rcvsgm.hdr.ctrl == RUSP_SACK || rcvsgm.hdr.ctrl == RUSP_CACK) && rcvsgm.hdr.plds == 0) && !findSgmBuffSeqn(&(conn->rcvsgmbuff), rcvsgm.hdr.seqn)) {
 					DBGPRINT(RUSP_DEBUG, "BUFFERIZED: %u", rcvsgm.hdr.seqn);
 					addSgmBuff(&(conn->rcvsgmbuff), rcvsgm, 0);
 				} else {
@@ -465,7 +465,7 @@ static void *receiverLoop(void *arg) {
 
 			DBGPRINT(RUSP_DEBUG, "BEFORE RCVWND: base:%u end:%u RCVUSRBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 
-			if (!(rcvsgm.hdr.ctrl == RUSP_SACK && rcvsgm.hdr.plds == 0))
+			if (!((rcvsgm.hdr.ctrl == RUSP_SACK || rcvsgm.hdr.ctrl == RUSP_CACK) && rcvsgm.hdr.plds == 0))
 				sendCACK(conn, getWindowBase(&(conn->rcvwnd)));
 			break;
 
@@ -692,7 +692,7 @@ static int sendSegment(Connection *conn, Segment sgm) {
 	char ssgm[RUSP_SGMS + 1];
 	size_t ssgmsize;
 
-	if (!(sgm.hdr.ctrl & RUSP_SACK)) {
+	if (!(sgm.hdr.ctrl & RUSP_SACK) & !(sgm.hdr.ctrl & RUSP_CACK)) {
 
 		sgm.hdr.ctrl |= RUSP_SACK;
 
