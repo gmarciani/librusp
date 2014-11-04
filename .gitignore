@@ -1,6 +1,7 @@
 # Eclipse
 .project
 .cproject
+.settings
 
 # Bin
 bin/
