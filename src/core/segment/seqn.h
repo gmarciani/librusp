@@ -12,13 +12,13 @@
 #include "../../util/mathutil.h"
 #include "../../util/macroutil.h"
 
-#define RUDP_MAXSEQN (uint32_t) 4294967295
+#define RUSP_MAXSEQN (uint32_t) 4294967295
 
-#define RUDP_NXTSEQN(seqn, plds) (((seqn) + (plds)) % RUDP_MAXSEQN)
+#define RUSP_NXTSEQN(seqn, plds) (((seqn) + (plds)) % RUSP_MAXSEQN)
 
-#define RUDP_LTSEQN(seqnone, seqntwo) (seqntwo - seqnone > 0)
+#define RUSP_LTSEQN(seqnone, seqntwo) (seqntwo - seqnone > 0)
 
-#define RUDP_ISACKED(seqn, plds, ackn) ((ackn) == RUDP_NXTSEQN((seqn), (plds)))
+#define RUSP_ISACKED(seqn, plds, ackn) ((ackn) == RUSP_NXTSEQN((seqn), (plds)))
 
 int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const uint32_t seqn);
 

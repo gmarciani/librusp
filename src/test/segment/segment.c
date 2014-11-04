@@ -40,28 +40,28 @@ int main(void) {
 }
 
 static void creation(void) {
-	printf("# Creating SYNACK segments (RUDP_PLDS=%d) with vers:1 urgp:5 plds:12 wnds:324 seqn:51 ackn:22 pld:%s...", RUDP_PLDS, MSG);
+	printf("# Creating SYNACK segments (RUDP_PLDS=%d) with plds:12 seqn:51 ackn:22 pld:%s...", RUSP_PLDS, MSG);
 
-	sgm = createSegment(RUDP_SYN | RUDP_ACK, 5, strlen(MSG), 324, 51, 22, MSG);
+	sgm = createSegment(RUSP_SYN | RUSP_SACK, strlen(MSG), 51, 22, MSG);
 
 	printf("OK\n");
 }
 
 static void stringRepresentation(void) {
-	char strsgm[RUDP_SGM_STR];
+	char strsgm[RUSP_SGM_STR];
 
 	printf("# Segment to string...");
 
 	segmentToString(sgm, strsgm);
 
-	assert(strcmp(strsgm, "vers:1 ctrl:9 urgp:5 plds:12 wnds:324 seqn:51 ackn:22 Hello World!") == 0);
+	assert(strcmp(strsgm, "ctrl:9 plds:12 seqn:51 ackn:22 Hello World!") == 0);
 
 	printf("OK\n");
 }
 
 static void serializationDeserialization(void) {
 	Segment sgmtwo;
-	char ssgm[RUDP_SGMS];
+	char ssgm[RUSP_SGMS];
 
 	printf("# Serializing/Deserializing segment...");
 
@@ -96,11 +96,11 @@ static void sequenceComparation(void) {
 
 	while (seqnone != 9) {
 
-		assert(RUDP_LTSEQN(seqnone, seqntwo));
+		assert(RUSP_LTSEQN(seqnone, seqntwo));
 
-		seqnone = RUDP_NXTSEQN(seqnone, 1);
+		seqnone = RUSP_NXTSEQN(seqnone, 1);
 
-		seqntwo = RUDP_NXTSEQN(seqntwo, 1);
+		seqntwo = RUSP_NXTSEQN(seqntwo, 1);
 	}
 
 	printf("OK\n");
@@ -119,9 +119,9 @@ static void sequenceMatching(void) {
 		
 		assert(matchSequenceAgainstWindow(wndb, wnde, seqn) == 0);
 
-		wndb = RUDP_NXTSEQN(wndb, 1);
-		wnde = RUDP_NXTSEQN(wnde, 1);
-		seqn = RUDP_NXTSEQN(seqn, 1);
+		wndb = RUSP_NXTSEQN(wndb, 1);
+		wnde = RUSP_NXTSEQN(wnde, 1);
+		seqn = RUSP_NXTSEQN(seqn, 1);
 	}
 
 	printf("OK\n");
@@ -136,9 +136,9 @@ static void sequenceMatching(void) {
 		
 		assert(matchSequenceAgainstWindow(wndb, wnde, seqn) == -1);
 
-		wndb = RUDP_NXTSEQN(wndb, 1);
-		wnde = RUDP_NXTSEQN(wnde, 1);
-		seqn = RUDP_NXTSEQN(seqn, 1);
+		wndb = RUSP_NXTSEQN(wndb, 1);
+		wnde = RUSP_NXTSEQN(wnde, 1);
+		seqn = RUSP_NXTSEQN(seqn, 1);
 	}
 
 	printf("OK\n");
@@ -153,9 +153,9 @@ static void sequenceMatching(void) {
 		
 		assert(matchSequenceAgainstWindow(wndb, wnde, seqn) == 1);
 
-		wndb = RUDP_NXTSEQN(wndb, 1);
-		wnde = RUDP_NXTSEQN(wnde, 1);
-		seqn = RUDP_NXTSEQN(seqn, 1);
+		wndb = RUSP_NXTSEQN(wndb, 1);
+		wnde = RUSP_NXTSEQN(wnde, 1);
+		seqn = RUSP_NXTSEQN(seqn, 1);
 	}
 
 	printf("OK\n");

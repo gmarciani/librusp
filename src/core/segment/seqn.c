@@ -4,7 +4,7 @@ int matchSequenceAgainstWindow(const uint32_t wndb, const uint32_t wnde, const u
 	if ((wndb < wnde && seqn >= wndb && seqn < wnde) ||
 		(wndb > wnde && (seqn >= wndb || seqn < wnde)))
 		return 0;
-	else if (wndb - seqn <= (RUDP_MAXSEQN / 2))
+	else if (wndb - seqn <= (RUSP_MAXSEQN / 2))
 		return -1;
 	else
 		return 1;
@@ -18,7 +18,7 @@ uint32_t getRandomSequence(const struct sockaddr_in laddr, const struct sockaddr
 
 	addressToString(paddr, strladdr);
 
-	isn = (((getMD5(strladdr) + getMD5(strpaddr)) % clock()) + getRandomUL()) % RUDP_MAXSEQN;
+	isn = (((getMD5(strladdr) + getMD5(strpaddr)) % clock()) + getRandomUL()) % RUSP_MAXSEQN;
 	
 	return isn;	
 }

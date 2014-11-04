@@ -11,54 +11,46 @@
 #include "../../util/timeutil.h"
 #include "../../util/macroutil.h"
 
-// Version
-#define RUDP_VERS 1
-
 // Control Bits
-#define RUDP_NUL 0b00000000
-#define RUDP_SYN 0b00000001
-#define RUDP_FIN 0b00000010
-#define RUDP_RST 0b00000100
-#define RUDP_ACK 0b00001000
-#define RUDP_PSH 0b00010000
-#define RUDP_URG 0b00100000
-#define RUDP_KLV 0b01000000
-#define RUDP_ERR 0b10000000
+#define RUSP_NUL  0b00000000
+#define RUSP_SYN  0b00000001
+#define RUSP_FIN  0b00000010
+#define RUSP_RST  0b00000100
+#define RUSP_SACK 0b00001000
+#define RUSP_CACK 0b00010000
+#define RUSP_PSH  0b00100000
+#define RUSP_KLV  0b01000000
+#define RUSP_ERR  0b10000000
 
 // Payload
-#define RUDP_PLDS 500
+#define RUSP_PLDS 1000
 
 //Segment Serialization
-#define RUDP_HDRF 7
-#define RUDP_HDRS 41
-#define RUDP_SGMS (RUDP_HDRS + RUDP_PLDS)
+#define RUSP_HDRF 4
+#define RUSP_HDRS 28
+#define RUSP_SGMS (RUSP_HDRS + RUSP_PLDS)
 
 //Segment String
-#define RUDP_HDR_STR (RUDP_HDRS + 42)
-#define RUDP_SGM_STR (RUDP_HDR_STR + RUDP_PLDS)
+#define RUSP_HDR_STR (RUSP_HDRS + 24 + 1)
+#define RUSP_SGM_STR (RUSP_HDR_STR + RUSP_PLDS)
 
 typedef struct Header {
-	uint8_t vers;
 	uint8_t ctrl;
-	uint16_t urgp;
 	uint16_t plds;
-	uint16_t wnds;
 	uint32_t seqn;
 	uint32_t ackn;
 } Header;
 
 typedef struct Segment {
 	Header hdr;
-	char pld[RUDP_PLDS];
+	char pld[RUSP_PLDS];
 } Segment;
 
 /* SEGMENT */
 
-Segment createSegment(const uint8_t ctrl, const uint16_t urgp, const uint16_t plds, const uint16_t wnds, const uint32_t seqn, const uint32_t ackn, const char *pld);
+Segment createSegment(const uint8_t ctrl, const uint16_t plds, const uint32_t seqn, const uint32_t ackn, const char *pld);
 
 size_t serializeSegment(const Segment sgm, char *ssgm);
-
-void deserializeHeader(const char *shdr, Header *hdr);
 
 void deserializeSegment(const char *ssgm, Segment *sgm);
 
