@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
-#include "../../rudp.h"
+#include "../../rusp.h"
 #include "../../util/fileutil.h"
 
 #define DBG_NONE 0b000
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 static void startListen(void) {
 	printf("# Opening listening connection on port: %d...%s", PORT, (rudpGetDebug())?"\n":"");
 
-	LCONN = rudpListen(PORT);
+	LCONN = ruspListen(PORT);
 
 	if (LCONN == -1) 
 		ERREXIT("Cannot setup listening connection.");
@@ -100,7 +100,7 @@ static void listenDetails(void) {
 	struct sockaddr_in laddr;
 	char strladdr[ADDRIPV4_STR];
 
-	rudpGetLocalAddress(LCONN, &laddr);
+	ruspLocal(LCONN, &laddr);
 
 	addressToString(laddr, strladdr);
 
@@ -110,7 +110,7 @@ static void listenDetails(void) {
 static void acceptConnection(void) {
 	printf("# Accepting incoming connection...%s", (rudpGetDebug())?"\n":"");
 
-	CONN = rudpAccept(LCONN);
+	CONN = ruspAccept(LCONN);
 
 	printf("OK\n");
 }
@@ -118,7 +118,7 @@ static void acceptConnection(void) {
 static void stopListen(void) {
 	printf("# Closing listening connection...%s", (DBG)?"\n":"");
 
-	rudpClose(LCONN);
+	ruspClose(LCONN);
 
 	printf("OK\n");
 }
@@ -127,11 +127,11 @@ static void connectionDetails(void) {
 	struct sockaddr_in aaddr, caddr;
 	char straaddr[ADDRIPV4_STR], strcaddr[ADDRIPV4_STR];
 
-	rudpGetLocalAddress(CONN, &aaddr);
+	ruspLocal(CONN, &aaddr);
 
 	addressToString(aaddr, straaddr);
 
-	rudpGetPeerAddress(CONN, &caddr);
+	ruspPeer(CONN, &caddr);
 
 	addressToString(caddr, strcaddr);
 
@@ -147,7 +147,7 @@ static void receiveFile(void) {
 
 	printf("# Receiving file on established connection...");
 
-	while ((rcvd = rudpReceive(CONN, rcvdata, 500)) > 0) {
+	while ((rcvd = ruspReceive(CONN, rcvdata, 500)) > 0) {
 
 		errno = 0;
 		if (write(fdrcv, rcvdata, rcvd) == -1)
@@ -166,7 +166,7 @@ static void receiveFile(void) {
 static void closeConnection(void) {
 	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
 
-	rudpClose(CONN);
+	ruspClose(CONN);
 
 	printf("OK\n");
 }

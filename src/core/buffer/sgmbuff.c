@@ -70,7 +70,7 @@ SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const int status) {
 		ERREXIT("Cannot initialize read-write lock.");
 
 	if (pthread_rwlock_wrlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot acquire write-lock.");
+		ERREXIT("Cannot acquire sgmbuff write-lock for add.");
 
 	if (buff->size == 0) {
 
@@ -96,7 +96,7 @@ SgmBuffElem *addSgmBuff(SgmBuff *buff, const Segment sgm, const int status) {
 	buff->size++;
 
 	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for add.");
 
 	if (pthread_cond_broadcast(&(buff->insert_cnd)) > 0)
 		ERREXIT("Cannot broadcast condition variable.");
@@ -110,7 +110,7 @@ void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem) {
 		return;
 
 	if (pthread_rwlock_wrlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot acquire write-lock.");
+		ERREXIT("Cannot acquire sgmbuff write-lock for remove.");
 
 	if ((elem == buff->head) && (elem == buff->tail)) {
 
@@ -141,7 +141,7 @@ void removeSgmBuff(SgmBuff *buff, SgmBuffElem *elem) {
 	buff->size--;
 
 	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for remove.");
 
 	if (pthread_cond_broadcast(&(buff->remove_cnd)) > 0)
 		ERREXIT("Cannot broadcast condition variable.");
@@ -156,12 +156,12 @@ long getSgmBuffSize(SgmBuff *buff) {
 	long size;
 
 	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot acquire read-lock.");
+		ERREXIT("Cannot acquire sgmbuff read-lock for getting size.");
 
 	size = buff->size;
 
 	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for getting size.");
 
 	return size;
 }
@@ -172,24 +172,24 @@ int getSgmBuffElemStatus(SgmBuffElem *elem) {
 	int status;
 
 	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot acquire read-lock.");
+		ERREXIT("Cannot acquire sgmbuff read-lock for getting status.");
 
 	status = elem->status;
 
 	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for getting status.");
 
 	return status;
 }
 
 void setSgmBuffElemStatus(SgmBuffElem *elem, const int status) {
 	if (pthread_rwlock_wrlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot acquire write-lock.");
+		ERREXIT("Cannot acquire sgmbuff write-lock for setting status.");
 
 	elem->status = status;
 
 	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for setting status.");
 }
 
 long double getSgmBuffElemElapsed(SgmBuffElem *elem) {
@@ -197,14 +197,14 @@ long double getSgmBuffElemElapsed(SgmBuffElem *elem) {
 	long double elapsed;
 
 	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot acquire read-lock.");
+		ERREXIT("Cannot acquire sgmbuff read-lock for getting elapsed.");
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	elapsed = getElapsed(elem->time, now);
 
 	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for getting elapsed.");
 
 	return elapsed;
 }
@@ -214,21 +214,21 @@ short testSgmBuffElemAttributes(SgmBuffElem *elem, const short status, const lon
 	short result;
 
 	if (pthread_rwlock_rdlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot acquire read-lock.");
+		ERREXIT("Cannot acquire sgmbuff read-lock for testing attributes.");
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	result = (elem->status == status) & ((getElapsed(elem->time, now) - elem->delay) > elapsed);
 
 	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for testing attributes.");
 
 	return result;
 }
 
 void updateSgmBuffElemAttributes(SgmBuffElem *elem, const long retransoffset, const long double delay) {
 	if (pthread_rwlock_wrlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot acquire write-lock.");
+		ERREXIT("Cannot acquire sgmbuff write-lock for updating attributes.");
 
 	elem->retrans += retransoffset;
 
@@ -237,7 +237,7 @@ void updateSgmBuffElemAttributes(SgmBuffElem *elem, const long retransoffset, co
 	elem->delay = delay;
 
 	if (pthread_rwlock_unlock(&(elem->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for updating attributes.");
 }
 
 /* SEGMENT BUFFER WAITING */
@@ -275,7 +275,7 @@ SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn) {
 	SgmBuffElem *curr = NULL;
 
 	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot acquire read-lock.");
+		ERREXIT("Cannot acquire sgmbuff read-lock for search by seqn.");
 
 	curr = buff->head;
 
@@ -288,7 +288,7 @@ SgmBuffElem *findSgmBuffSeqn(SgmBuff *buff, const uint32_t seqn) {
 	}
 
 	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for search by seqn.");
 
 	return curr;
 }
@@ -297,21 +297,21 @@ SgmBuffElem *findSgmBuffAckn(SgmBuff *buff, const uint32_t ackn) {
 	SgmBuffElem *curr = NULL;
 
 	if (pthread_rwlock_rdlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot acquire read-lock.");
+		ERREXIT("Cannot acquire sgmbuff read-lock for search by ackn.");
 
 	curr = buff->head;
 
 	while (curr) {
 
-		if (RUDP_ISACKED(curr->segment.hdr.seqn, curr->segment.hdr.plds, ackn) ||
-				((curr->segment.hdr.ctrl & RUDP_FIN) && RUDP_ISACKED(curr->segment.hdr.seqn, 1, ackn)))
+		if (RUSP_ISACKED(curr->segment.hdr.seqn, curr->segment.hdr.plds, ackn) ||
+				((curr->segment.hdr.ctrl & RUSP_FIN) && RUSP_ISACKED(curr->segment.hdr.seqn, 1, ackn)))
 			break;
 
 		curr = curr->next;
 	}
 
 	if (pthread_rwlock_unlock(&(buff->rwlock)) > 0)
-		ERREXIT("Cannot release read-write lock.");
+		ERREXIT("Cannot release sgmbuff read-write lock for search by ackn.");
 
 	return curr;
 }

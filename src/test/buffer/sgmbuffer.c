@@ -51,14 +51,14 @@ static void insertion(void) {
 
 	for (i = 0; i < NUM_ELEMENTS; i++) {
 	
-		sgm = createSegment(RUDP_ACK, 0, strlen(PLD), 0, seqn, i, PLD);
+		sgm = createSegment(RUSP_SACK, strlen(PLD), seqn, i, PLD);
 
 		addSgmBuff(&buff, sgm, 0);
 
 		assert(isEqualSegment(sgm, findSgmBuffSeqn(&buff, sgm.hdr.seqn)->segment) &&
-				isEqualSegment(sgm, findSgmBuffAckn(&buff, RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment));
+				isEqualSegment(sgm, findSgmBuffAckn(&buff, RUSP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds))->segment));
 
-		seqn = RUDP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);
+		seqn = RUSP_NXTSEQN(sgm.hdr.seqn, sgm.hdr.plds);
 	}
 
 	printf("OK\n");

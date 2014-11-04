@@ -1,8 +1,8 @@
-#include "rudp.h"
+#include "rusp.h"
 
 /* CONNECTION */
 
-ConnectionId rudpListen(const int lport) {
+ConnectionId ruspListen(const int lport) {
 	ConnectionId connid;
 	Connection *conn = NULL;
 	struct sockaddr_in laddr;
@@ -18,7 +18,7 @@ ConnectionId rudpListen(const int lport) {
 	return connid;
 }
 
-ConnectionId rudpAccept(const ConnectionId lconnid) {
+ConnectionId ruspAccept(const ConnectionId lconnid) {
 	Connection *lconn = NULL;
 	ConnectionId aconnid;
 
@@ -30,7 +30,7 @@ ConnectionId rudpAccept(const ConnectionId lconnid) {
 	return aconnid;
 }
 
-ConnectionId rudpConnect(const char *ip, const int port) {
+ConnectionId ruspConnect(const char *ip, const int port) {
 	ConnectionId connid;
 	Connection *conn = NULL;
 	struct sockaddr_in laddr;
@@ -54,7 +54,7 @@ ConnectionId rudpConnect(const char *ip, const int port) {
 	return connid;
 }
 
-void rudpClose(const ConnectionId connid) {
+void ruspClose(const ConnectionId connid) {
 	Connection *conn = NULL;
 
 	if (!(conn = getConnectionById(connid)))
@@ -62,20 +62,20 @@ void rudpClose(const ConnectionId connid) {
 
 	switch (getConnectionState(conn)) {
 
-	case RUDP_CON_LISTEN:
-		setConnectionState(conn, RUDP_CON_CLOSED);
+	case RUSP_CON_LISTEN:
+		setConnectionState(conn, RUSP_CON_CLOSED);
 		destroyConnection(conn);
 		break;
 
-	case RUDP_CON_ESTABL:
+	case RUSP_CON_ESTABL:
 		activeClose(conn);
 		break;
 
-	case RUDP_CON_CLOSWT:
+	case RUSP_CON_CLOSWT:
 		passiveClose(conn);
 		break;
 
-	case RUDP_CON_CLOSED:
+	case RUSP_CON_CLOSED:
 		destroyConnection(conn);
 		break;
 
@@ -87,7 +87,7 @@ void rudpClose(const ConnectionId connid) {
 
 /* COMMUNICATION */
 
-ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size) {
+ssize_t ruspSend(const ConnectionId connid, const char *msg, const size_t msgs) {
 	Connection *conn = NULL;
 	ssize_t snd;
 	struct timespec timeout;
@@ -96,7 +96,7 @@ ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size) 
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	if (getConnectionState(conn) != RUDP_CON_ESTABL)
+	if (getConnectionState(conn) != RUSP_CON_ESTABL)
 		return 0;
 
 	timeout = getTimespec(conn->timeout.value);
@@ -104,9 +104,9 @@ ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size) 
 	if (pthread_mutex_lock(&(conn->sndusrbuff.mtx)) > 0)
 		ERREXIT("Cannot lock mutex.");
 
-	while (BUFFSIZE - getStrBuffSize(&(conn->sndusrbuff)) < size) {
+	while (BUFFSIZE - getStrBuffSize(&(conn->sndusrbuff)) < msgs) {
 
-		if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+		if (getConnectionState(conn) != RUSP_CON_ESTABL) {
 
 			if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 				ERREXIT("Cannot unlock mutex.");
@@ -122,14 +122,14 @@ ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size) 
 	if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
 
-	snd = writeStrBuff(&(conn->sndusrbuff), msg, size);
+	snd = writeStrBuff(&(conn->sndusrbuff), msg, msgs);
 
 	if (pthread_mutex_lock(&(conn->sndsgmbuff.mtx)) > 0)
 		ERREXIT("Cannot lock mutex.");
 
 	while (getStrBuffSize(&(conn->sndusrbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0) {
 
-		if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+		if (getConnectionState(conn) != RUSP_CON_ESTABL) {
 
 			if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 				ERREXIT("Cannot unlock mutex.");
@@ -148,7 +148,7 @@ ssize_t rudpSend(const ConnectionId connid, const char *msg, const size_t size) 
 	return snd;
 }
 
-ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
+ssize_t ruspReceive(const ConnectionId connid, char *msg, const size_t msgs) {
 	Connection *conn = NULL;
 	ssize_t rcvd;
 	struct timespec timeout;
@@ -157,9 +157,9 @@ ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+	if (getConnectionState(conn) != RUSP_CON_ESTABL) {
 
-		memset(msg, 0, sizeof(char) * size);
+		memset(msg, 0, sizeof(char) * msgs);
 
 		return 0;
 	}
@@ -171,12 +171,12 @@ ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 
 	while (getStrBuffSizeUsr(&(conn->rcvusrbuff)) == 0) {
 
-		if (getConnectionState(conn) != RUDP_CON_ESTABL) {
+		if (getConnectionState(conn) != RUSP_CON_ESTABL) {
 
 			if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
 				ERREXIT("Cannot unlock mutex.");
 
-			memset(msg, 0, sizeof(char) * size);
+			memset(msg, 0, sizeof(char) * msgs);
 
 			return 0;
 		}
@@ -189,14 +189,14 @@ ssize_t rudpReceive(const ConnectionId connid, char *msg, const size_t size) {
 	if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
 		ERREXIT("Cannot unlock mutex.");
 
-	rcvd = readStrBuff(&(conn->rcvusrbuff), msg, MIN(size, getStrBuffSizeUsr(&(conn->rcvusrbuff))));
+	rcvd = readStrBuff(&(conn->rcvusrbuff), msg, MIN(msgs, getStrBuffSizeUsr(&(conn->rcvusrbuff))));
 
 	return rcvd;
 }
 
 /* ADDRESS UTILITY */
 
-int rudpGetLocalAddress(const ConnectionId connid, struct sockaddr_in *addr) {
+int ruspLocal(const ConnectionId connid, struct sockaddr_in *addr) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 	Connection *conn = NULL;
 
@@ -211,7 +211,7 @@ int rudpGetLocalAddress(const ConnectionId connid, struct sockaddr_in *addr) {
 	return 0;
 }
 
-int rudpGetPeerAddress(const ConnectionId connid, struct sockaddr_in *addr) {
+int ruspPeer(const ConnectionId connid, struct sockaddr_in *addr) {
 	socklen_t socksize = sizeof(struct sockaddr_in);
 	Connection *conn = NULL;
 
@@ -229,17 +229,17 @@ int rudpGetPeerAddress(const ConnectionId connid, struct sockaddr_in *addr) {
 /* DEV UTILITY */
 
 double rudpGetDrop(void) {
-	return RUDP_DROP;
+	return RUSP_DROP;
 }
 
 void rudpSetDrop(const double drop) {
-	RUDP_DROP = drop;
+	RUSP_DROP = drop;
 }
 
 int rudpGetDebug(void) {
-	return RUDP_DEBUG;
+	return RUSP_DEBUG;
 }
 
 void rudpSetDebug(const int debug) {
-	RUDP_DEBUG = debug;
+	RUSP_DEBUG = debug;
 }

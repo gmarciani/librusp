@@ -1,8 +1,8 @@
-# RUDP
+# RUSP
 
 ## What is it?
 
-RUDP is a Realiable User Datagram Protocol library.
+RUSP is a Realiable User Segment Protocol library.
 
 ## Author
 
@@ -14,10 +14,7 @@ RUDP is a Realiable User Datagram Protocol library.
 
 ## Documentation
 
-The documentation available as of the date of this release is
-included in HTML format in the docs/manual/ directory.  The most
-up-to-date documentation can be found at
-http://gmarciani.com/portfolio/rudp/manual.
+The documentation about librusp and the RUSP protocol is available in folder docs/.
 
 ## How to install
 

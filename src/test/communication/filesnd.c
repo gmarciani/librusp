@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include "../../rudp.h"
+#include "../../rusp.h"
 #include "../../util/cliutil.h"
 #include "../../util/fileutil.h"
 #include "../../util/timeutil.h"
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 static void establishConnection(void) {
 	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, (rudpGetDebug())?"\n":"");
 
-	CONN = rudpConnect(ADDRESS, PORT);
+	CONN = ruspConnect(ADDRESS, PORT);
 
 	if (CONN == -1)
 		ERREXIT("Cannot establish connection.");
@@ -89,11 +89,11 @@ static void connectionDetails(void) {
 	struct sockaddr_in caddr, saddr;
 	char strcaddr[ADDRIPV4_STR], strsaddr[ADDRIPV4_STR];
 
-	rudpGetLocalAddress(CONN, &caddr);
+	ruspLocal(CONN, &caddr);
 
 	addressToString(caddr, strcaddr);
 	
-	rudpGetPeerAddress(CONN, &saddr);
+	ruspPeer(CONN, &saddr);
 
 	addressToString(saddr, strsaddr);
 
@@ -124,7 +124,7 @@ static void sendFile() {
 		
 		start = getTimestamp();
 
-		rudpSend(CONN, snddata, rd);
+		ruspSend(CONN, snddata, rd);
 
 		end = getTimestamp();
 
@@ -158,7 +158,7 @@ static void sendFile() {
 static void closeConnection(void) {
 	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
 
-	rudpClose(CONN);
+	ruspClose(CONN);
 
 	printf("OK\n");
 }

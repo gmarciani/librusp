@@ -1,4 +1,4 @@
-# RUDP MAKEFILE #
+# RUSP MAKEFILE #
 
 # Compiler
 
@@ -54,7 +54,7 @@ BUFFERS = $(addprefix $(BUFFERDIR)/, sgmbuff.h sgmbuff.c strbuff.h strbuff.c) $(
 
 CONNECTION = $(addprefix $(CONNECTIONDIR)/, conn.h conn.c timeo.h timeo.c wnd.h wnd.c) $(BUFFERS)
 
-PROTOCOL =  $(addprefix $(SRCDIR)/, rudp.h rudp.c) $(CONNECTION)
+PROTOCOL =  $(addprefix $(SRCDIR)/, rusp.h rusp.c) $(CONNECTION)
 
 # Targets
 

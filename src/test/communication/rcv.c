@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "../../rudp.h"
+#include "../../rusp.h"
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 static void startListen(void) {
 	printf("# Opening listening connection on port: %d...%s", PORT, (rudpGetDebug())?"\n":"");
 
-	LCONN = rudpListen(PORT);
+	LCONN = ruspListen(PORT);
 
 	if (LCONN == -1) 
 		ERREXIT("Cannot setup listening connection.");
@@ -86,7 +86,7 @@ static void listenDetails(void) {
 	struct sockaddr_in laddr;
 	char strladdr[ADDRIPV4_STR];
 
-	rudpGetLocalAddress(LCONN, &laddr);
+	ruspLocal(LCONN, &laddr);
 
 	addressToString(laddr, strladdr);
 
@@ -96,7 +96,7 @@ static void listenDetails(void) {
 static void acceptConnection(void) {
 	printf("# Accepting incoming connection...%s", (rudpGetDebug())?"\n":"");
 
-	CONN = rudpAccept(LCONN);
+	CONN = ruspAccept(LCONN);
 
 	printf("OK\n");
 }
@@ -104,7 +104,7 @@ static void acceptConnection(void) {
 static void stopListen(void) {
 	printf("# Closing listening connection...%s", (rudpGetDebug())?"\n":"");
 
-	rudpClose(LCONN);
+	ruspClose(LCONN);
 
 	printf("OK\n");
 }
@@ -113,11 +113,11 @@ static void connectionDetails(void) {
 	struct sockaddr_in aaddr, caddr;
 	char straaddr[ADDRIPV4_STR], strcaddr[ADDRIPV4_STR];
 
-	rudpGetLocalAddress(CONN, &aaddr);
+	ruspLocal(CONN, &aaddr);
 
 	addressToString(aaddr, straaddr);
 
-	rudpGetPeerAddress(CONN, &caddr);
+	ruspPeer(CONN, &caddr);
 
 	addressToString(caddr, strcaddr);
 
@@ -130,7 +130,7 @@ static void receiveInput(void) {
 
 	printf("# Receiving on established connection...\n");
 
-	while ((rcvd = rudpReceive(CONN, rcvdata, 500)) > 0) {
+	while ((rcvd = ruspReceive(CONN, rcvdata, 500)) > 0) {
 
 		printf("[RCVD] %.*s\n", (int) rcvd, rcvdata);
 		
@@ -143,7 +143,7 @@ static void receiveInput(void) {
 static void closeConnection(void) {
 	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
 
-	rudpClose(CONN);
+	ruspClose(CONN);
 
 	printf("OK\n");
 }

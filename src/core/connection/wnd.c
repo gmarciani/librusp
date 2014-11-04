@@ -93,9 +93,9 @@ void slideWindow(Window *wnd, const uint32_t offset) {
 	if (pthread_rwlock_wrlock(&(wnd->rwlock)) > 0)
 		ERREXIT("Cannot acquire write-lock.");
 
-	wnd->base = RUDP_NXTSEQN(wnd->base, offset);
+	wnd->base = RUSP_NXTSEQN(wnd->base, offset);
 
-	wnd->end = RUDP_NXTSEQN(wnd->end, offset);
+	wnd->end = RUSP_NXTSEQN(wnd->end, offset);
 
 	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
 		ERREXIT("Cannot release read-write lock.");
@@ -108,7 +108,7 @@ void slideWindowNext(Window *wnd, const uint32_t offset) {
 	if (pthread_rwlock_wrlock(&(wnd->rwlock)) > 0)
 		ERREXIT("Cannot acquire write-lock.");
 
-	wnd->next = RUDP_NXTSEQN(wnd->next, offset);
+	wnd->next = RUSP_NXTSEQN(wnd->next, offset);
 
 	if (pthread_rwlock_unlock(&(wnd->rwlock)) > 0)
 		ERREXIT("Cannot release read-write lock.");

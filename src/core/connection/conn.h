@@ -21,36 +21,36 @@
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
-#define RUDP_CON_CLOSED 0
-#define RUDP_CON_LISTEN 1
-#define RUDP_CON_SYNSND 2
-#define RUDP_CON_SYNRCV 3
-#define RUDP_CON_ESTABL 4
-#define RUDP_CON_FINWT1 5
-#define RUDP_CON_FINWT2 6
-#define RUDP_CON_CLOSIN 7
-#define RUDP_CON_CLOSWT 8
-#define RUDP_CON_TIMEWT 9
-#define RUDP_CON_LSTACK 10
+#define RUSP_CON_CLOSED 0
+#define RUSP_CON_LISTEN 1
+#define RUSP_CON_SYNSND 2
+#define RUSP_CON_SYNRCV 3
+#define RUSP_CON_ESTABL 4
+#define RUSP_CON_FINWT1 5
+#define RUSP_CON_FINWT2 6
+#define RUSP_CON_CLOSIN 7
+#define RUSP_CON_CLOSWT 8
+#define RUSP_CON_TIMEWT 9
+#define RUSP_CON_LSTACK 10
 
-#define RUDP_SYN_RETR 5
+#define RUSP_SYN_RETR 5
 
-#define RUDP_CON_RETR 3
+#define RUSP_CON_RETR 3
 
-#define RUDP_CON_WNDS 5//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
+#define RUSP_CON_WNDS 5//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
 
-#define RUDP_SAMPLRTT 1000
-#define RUDP_MSLTIMEO 60000
-#define RUDP_TIMEWTTM 2 * RUDP_MSLTIMEO
+#define RUSP_SAMPLRTT 1000
+#define RUSP_MSLTIMEO 60000
+#define RUSP_TIMEWTTM 2 * RUSP_MSLTIMEO
 
-#define RUDP_SGM_NACK 0
-#define RUDP_SGM_YACK 1
+#define RUSP_SGM_NACK 0
+#define RUSP_SGM_YACK 1
 
 /* GLOBAL VARIABLES */
 
-extern int RUDP_DEBUG;
+extern int RUSP_DEBUG;
 
-extern double RUDP_DROP;
+extern double RUSP_DROP;
 
 /* CONNECTION STRUCTURE */
 
