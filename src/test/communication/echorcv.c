@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 	DBG = atoi(argv[2]);
 
 	if (DBG & DBG_OPEN)
-		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
+		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
 	startListen();
 
@@ -58,19 +58,19 @@ int main(int argc, char **argv) {
 
 	stopListen();
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &DBGOFF);
 
 	connectionDetails();
 
 	if (DBG & DBG_TRAN)
-		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
+		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
 	echo();	
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &DBGOFF);
 
 	if (DBG & DBG_CLOS)
-		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
+		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
 	closeConnection();
 

@@ -55,23 +55,23 @@ int main(int argc, char **argv) {
 	ruspSetAttr(RUSP_ATTR_DROPR, &DROP);
 
 	if (DBG & DBG_OPEN)
-		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
+		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
 	establishConnection();
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &DBGOFF);
 
 	connectionDetails();
 
 	if (DBG & DBG_TRAN)
-		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
+		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
 	echo();
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &DBGOFF);
 
 	if (DBG & DBG_CLOS)
-		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
+		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
 	closeConnection();
 

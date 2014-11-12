@@ -8,7 +8,6 @@
 
 #define RUSP_ATTR_DEBUG 1
 #define RUSP_ATTR_DROPR 2
-#define RUSP_ATTR_WSIZE 3
 
 /* CONNECTION */
 

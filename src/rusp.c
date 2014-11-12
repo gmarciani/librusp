@@ -232,11 +232,11 @@ int ruspGetAttr(const int attr, void *value) {
 	switch (attr) {
 
 	case RUSP_ATTR_DEBUG:
-		value = (void *) &RUSP_DEBUG;
+		memcpy(value, &RUSP_DEBUG, sizeof(int));
 		break;
 
 	case RUSP_ATTR_DROPR:
-		value = (void *) &RUSP_DROP;
+		memcpy(value, &RUSP_DROP, sizeof(double));
 		break;
 
 	default:
@@ -250,11 +250,11 @@ int ruspSetAttr(const int attr, void *value) {
 	switch (attr) {
 
 	case RUSP_ATTR_DEBUG:
-		RUSP_DEBUG = *((int *) value);
+		memcpy(&RUSP_DEBUG, value, sizeof(int));
 		break;
 
 	case RUSP_ATTR_DROPR:
-		RUSP_DROP = *((double *) value);
+		memcpy(&RUSP_DROP, value, sizeof(double));
 		break;
 
 	default:
