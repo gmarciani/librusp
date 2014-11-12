@@ -55,7 +55,7 @@ Connection *createConnection(void) {
 
 	pthread_mutex_init(&(conn->sock.mtx), NULL);
 
-	conn->state.value = RUSP_CON_CLOSED;
+	conn->state.value = RUSP_CLOSED;
 
 	conn->sock.fd = -1;
 
@@ -63,7 +63,7 @@ Connection *createConnection(void) {
 
 	while (elem) {
 
-		if (getConnectionState((Connection *) elem->value) == RUSP_CON_TIMEWT) {
+		if (getConnectionState((Connection *) elem->value) == RUSP_TIMEWT) {
 
 			usleep(RUSP_TIMEWTTM);
 
@@ -115,9 +115,9 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 
 	initializeTimeout(&(conn->timeout), sampleRTT);
 
-	initializeWindow(&(conn->sndwnd),sndwndb, sndwndb + (RUSP_PLDS * RUSP_CON_WNDS));
+	initializeWindow(&(conn->sndwnd),sndwndb, sndwndb + (RUSP_PLDS * RUSP_WNDS));
 
-	initializeWindow(&(conn->rcvwnd), rcvwndb, rcvwndb + (RUSP_PLDS * RUSP_CON_WNDS));
+	initializeWindow(&(conn->rcvwnd), rcvwndb, rcvwndb + (RUSP_PLDS * RUSP_WNDS));
 
 	initializeStrBuff(&(conn->sndusrbuff));
 
@@ -127,7 +127,7 @@ void setupConnection(Connection *conn, const int sock, const struct sockaddr_in 
 
 	initializeSgmBuff(&(conn->rcvsgmbuff));
 
-	setConnectionState(conn, RUSP_CON_ESTABL);
+	setConnectionState(conn, RUSP_ESTABL);
 
 	conn->sender = createThread(senderLoop, conn, THREAD_JOINABLE);
 
@@ -165,7 +165,7 @@ void setConnectionState(Connection *conn, const int state) {
 
 void setListeningConnection(Connection *conn, const struct sockaddr_in laddr) {
 
-	if (getConnectionState(conn) != RUSP_CON_CLOSED)
+	if (getConnectionState(conn) != RUSP_CLOSED)
 		ERREXIT("Cannot setup listening connection: connection not closed.");
 
 	conn->sock.fd = openSocket();
@@ -174,7 +174,7 @@ void setListeningConnection(Connection *conn, const struct sockaddr_in laddr) {
 
 	bindSocket(conn->sock.fd, &laddr);
 
-	setConnectionState(conn, RUSP_CON_LISTEN);
+	setConnectionState(conn, RUSP_LISTEN);
 }
 
 /* SYNCHRONIZATION */
@@ -187,7 +187,7 @@ int activeOpen(Connection *conn, const struct sockaddr_in laddr) {
 	struct timespec start, end;
 	long double sampleRTT;
 
-	if (getConnectionState(conn) != RUSP_CON_CLOSED)
+	if (getConnectionState(conn) != RUSP_CLOSED)
 		ERREXIT("Cannot synchronize connection: connection not closed.");
 
 	asock = openSocket();
@@ -204,7 +204,7 @@ int activeOpen(Connection *conn, const struct sockaddr_in laddr) {
 
 		DBGFUNC(RUSP_DEBUG, printOutSegment(laddr, syn));
 
-		setConnectionState(conn, RUSP_CON_SYNSND);
+		setConnectionState(conn, RUSP_SYNSND);
 
 		if (!selectSocket(asock, RUSP_SAMPLRTT))
 			continue;
@@ -222,7 +222,7 @@ int activeOpen(Connection *conn, const struct sockaddr_in laddr) {
 		if ((synack.hdr.ctrl == (RUSP_SYN | RUSP_SACK)) &
 			(synack.hdr.ackn == RUSP_NXTSEQN(syn.hdr.seqn, 1))) {
 
-			setConnectionState(conn, RUSP_CON_SYNRCV);
+			setConnectionState(conn, RUSP_SYNRCV);
 
 			acksynack = createSegment(RUSP_SACK, 0, RUSP_NXTSEQN(syn.hdr.seqn, 1), RUSP_NXTSEQN(synack.hdr.seqn, 1), NULL);
 
@@ -240,7 +240,7 @@ int activeOpen(Connection *conn, const struct sockaddr_in laddr) {
 
 	closeSocket(asock);
 
-	setConnectionState(conn, RUSP_CON_CLOSED);
+	setConnectionState(conn, RUSP_CLOSED);
 
 	return -1;
 }
@@ -254,7 +254,7 @@ ConnectionId passiveOpen(Connection *lconn) {
 	struct timespec start, end;
 	long double sampleRTT;
 
-	while (getConnectionState(lconn) == RUSP_CON_LISTEN) {
+	while (getConnectionState(lconn) == RUSP_LISTEN) {
 
 		readUSocket(lconn->sock.fd, &caddr, ssyn, RUSP_SGMS);
 
@@ -265,7 +265,7 @@ ConnectionId passiveOpen(Connection *lconn) {
 		if (syn.hdr.ctrl != RUSP_SYN)
 			continue;
 
-		setConnectionState(lconn, RUSP_CON_SYNRCV);
+		setConnectionState(lconn, RUSP_SYNRCV);
 
 		asock = openSocket();
 
@@ -273,7 +273,7 @@ ConnectionId passiveOpen(Connection *lconn) {
 
 		serializeSegment(synack, ssynack);
 
-		for (synackretrans = 0; synackretrans < RUSP_CON_RETR; synackretrans++) {
+		for (synackretrans = 0; synackretrans < RUSP_RETR; synackretrans++) {
 
 			clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -281,7 +281,7 @@ ConnectionId passiveOpen(Connection *lconn) {
 
 			DBGFUNC(RUSP_DEBUG, printOutSegment(caddr, synack));
 
-			setConnectionState(lconn, RUSP_CON_SYNSND);
+			setConnectionState(lconn, RUSP_SYNSND);
 
 			if (!selectSocket(asock, RUSP_SAMPLRTT))
 				continue;
@@ -302,11 +302,11 @@ ConnectionId passiveOpen(Connection *lconn) {
 
 				aconn = createConnection();
 
-				setConnectionState(aconn, RUSP_CON_SYNSND);
+				setConnectionState(aconn, RUSP_SYNSND);
 
 				setupConnection(aconn, asock, caddr, acksynack.hdr.ackn, acksynack.hdr.seqn, sampleRTT);
 
-				setConnectionState(lconn, RUSP_CON_LISTEN);
+				setConnectionState(lconn, RUSP_LISTEN);
 
 				return aconn->connid;
 			}
@@ -314,7 +314,7 @@ ConnectionId passiveOpen(Connection *lconn) {
 
 		closeSocket(asock);
 
-		setConnectionState(lconn, RUSP_CON_LISTEN);
+		setConnectionState(lconn, RUSP_LISTEN);
 	}
 
 	return -1;
@@ -331,9 +331,9 @@ void activeClose(Connection *conn) {
 
 	fin = createSegment(RUSP_FIN, 0, getWindowNext(&(conn->sndwnd)), 0, NULL);
 
-	addSgmBuff(&(conn->sndsgmbuff), fin, RUSP_SGM_NACK);
+	addSgmBuff(&(conn->sndsgmbuff), fin, RUSP_NACK);
 
-	setConnectionState(conn, RUSP_CON_FINWT1);
+	setConnectionState(conn, RUSP_FINWT1);
 
 	sendSegment(conn, fin);
 
@@ -353,9 +353,9 @@ void passiveClose(Connection *conn) {
 
 	fin = createSegment(RUSP_FIN, 0, getWindowNext(&(conn->sndwnd)), 0, NULL);
 
-	addSgmBuff(&(conn->sndsgmbuff), fin, RUSP_SGM_NACK);
+	addSgmBuff(&(conn->sndsgmbuff), fin, RUSP_NACK);
 
-	setConnectionState(conn, RUSP_CON_LSTACK);
+	setConnectionState(conn, RUSP_LSTACK);
 
 	sendSegment(conn, fin);
 
@@ -385,7 +385,7 @@ static void *senderLoop(void *arg) {
 
 		waitWindowSpace(&(conn->sndwnd), plds);
 
-		addSgmBuff(&(conn->sndsgmbuff), sgm, RUSP_SGM_NACK);
+		addSgmBuff(&(conn->sndsgmbuff), sgm, RUSP_NACK);
 
 		sendSegment(conn, sgm);
 
@@ -416,7 +416,7 @@ static void *receiverLoop(void *arg) {
 				timeoutFunction(conn);
 			continue;
 		} else if (rcvd == -1) {
-			setConnectionState(conn, RUSP_CON_CLOSED);
+			setConnectionState(conn, RUSP_CLOSED);
 			pthread_exit(NULL);
 		}
 
@@ -500,7 +500,7 @@ static void *timeWaitFunction(void *arg) {
 			sendSACK(conn, RUSP_NXTSEQN(rcvsgm.hdr.seqn, 1));
 	}
 
-	setConnectionState(conn, RUSP_CON_CLOSED);
+	setConnectionState(conn, RUSP_CLOSED);
 
 	destroyConnection(conn);
 
@@ -521,7 +521,7 @@ static void timeoutFunction(Connection *conn) {
 
 	while (curr) {
 
-		if (testSgmBuffElemAttributes(curr, RUSP_SGM_NACK, getTimeoutValue(&(conn->timeout)))) {
+		if (testSgmBuffElemAttributes(curr, RUSP_NACK, getTimeoutValue(&(conn->timeout)))) {
 
 			updateSgmBuffElemAttributes(curr, 1, getTimeoutValue(&(conn->timeout)));
 
@@ -541,7 +541,7 @@ static void processRcvWndBase(Connection *conn, const Segment sgm) {
 
 	switch (getConnectionState(conn)) {
 
-		case RUSP_CON_ESTABL:
+		case RUSP_ESTABL:
 			if (sgm.hdr.plds != 0) {
 				writeStrBuff(&(conn->rcvusrbuff), sgm.pld, sgm.hdr.plds);
 				slideWindow(&(conn->rcvwnd), sgm.hdr.plds);
@@ -553,28 +553,28 @@ static void processRcvWndBase(Connection *conn, const Segment sgm) {
 
 			if (sgm.hdr.ctrl & RUSP_FIN) {
 				allignStrBuffSizeUsr(&(conn->rcvusrbuff));
-				setConnectionState(conn, RUSP_CON_CLOSWT);
+				setConnectionState(conn, RUSP_CLOSWT);
 				slideWindow(&(conn->rcvwnd), 1);
 				DBGPRINT(RUSP_DEBUG, "RCV (WND): base:%u end:%u RCVUSRBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 			}
 			break;
 
-		case RUSP_CON_LSTACK:
+		case RUSP_LSTACK:
 			if ((sgm.hdr.ctrl & RUSP_SACK) && (sgm.hdr.ackn == getWindowNext(&(conn->sndwnd)))) {
-				setConnectionState(conn, RUSP_CON_CLOSED);
+				setConnectionState(conn, RUSP_CLOSED);
 				pthread_exit(NULL);
 			}
 			break;
 
-		case RUSP_CON_FINWT1:
+		case RUSP_FINWT1:
 			if ((sgm.hdr.ctrl & RUSP_SACK) && (sgm.hdr.ackn == getWindowNext(&(conn->sndwnd)))) {
-				setConnectionState(conn, RUSP_CON_FINWT2);
+				setConnectionState(conn, RUSP_FINWT2);
 			} else if ((sgm.hdr.ctrl & (RUSP_FIN | RUSP_SACK)) && (sgm.hdr.ackn != getWindowNext(&(conn->sndwnd)))) {
-				setConnectionState(conn, RUSP_CON_CLOSIN);
+				setConnectionState(conn, RUSP_CLOSIN);
 				slideWindow(&(conn->rcvwnd), 1);
 				DBGPRINT(RUSP_DEBUG, "RCV (WND): base:%u end:%u RCVUSRBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 			} else if ((sgm.hdr.ctrl & (RUSP_FIN | RUSP_SACK)) && (sgm.hdr.ackn == getWindowNext(&(conn->sndwnd)))) {
-				setConnectionState(conn, RUSP_CON_TIMEWT);
+				setConnectionState(conn, RUSP_TIMEWT);
 				slideWindow(&(conn->rcvwnd), 1);
 				DBGPRINT(RUSP_DEBUG, "RCV (WND): base:%u end:%u RCVUSRBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 				createThread(timeWaitFunction, conn, THREAD_DETACHED);
@@ -582,9 +582,9 @@ static void processRcvWndBase(Connection *conn, const Segment sgm) {
 			}
 			break;
 
-		case RUSP_CON_FINWT2:
+		case RUSP_FINWT2:
 			if (sgm.hdr.ctrl & RUSP_FIN) {
-				setConnectionState(conn, RUSP_CON_TIMEWT);
+				setConnectionState(conn, RUSP_TIMEWT);
 				slideWindow(&(conn->rcvwnd), 1);
 				DBGPRINT(RUSP_DEBUG, "RCV (WND): base:%u end:%u RCVUSRBUFF:%zu RCVSGMBUFF:%ld", getWindowBase(&(conn->rcvwnd)), getWindowEnd(&(conn->rcvwnd)), getStrBuffSize(&(conn->rcvusrbuff)), getSgmBuffSize(&(conn->rcvsgmbuff)));
 				createThread(timeWaitFunction, conn, THREAD_DETACHED);
@@ -592,9 +592,9 @@ static void processRcvWndBase(Connection *conn, const Segment sgm) {
 			}
 			break;
 
-		case RUSP_CON_CLOSIN:
+		case RUSP_CLOSIN:
 			if ((sgm.hdr.ctrl & RUSP_SACK) && (sgm.hdr.ackn == getWindowNext(&(conn->sndwnd)))) {
-				setConnectionState(conn, RUSP_CON_TIMEWT);
+				setConnectionState(conn, RUSP_TIMEWT);
 				createThread(timeWaitFunction, conn, THREAD_DETACHED);
 				pthread_exit(NULL);
 			}
@@ -612,7 +612,7 @@ static void submitSACK(Connection *conn, const uint32_t ackn) {
 
 	if ((ackedelem = findSgmBuffAckn(&(conn->sndsgmbuff), ackn))) {
 
-		setSgmBuffElemStatus(ackedelem, RUSP_SGM_YACK);
+		setSgmBuffElemStatus(ackedelem, RUSP_YACK);
 
 		sgm = ackedelem->segment;
 
@@ -624,7 +624,7 @@ static void submitSACK(Connection *conn, const uint32_t ackn) {
 
 			while (conn->sndsgmbuff.head) {
 
-				if (getSgmBuffElemStatus(conn->sndsgmbuff.head) != RUSP_SGM_YACK)
+				if (getSgmBuffElemStatus(conn->sndsgmbuff.head) != RUSP_YACK)
 					break;
 
 				sgm = conn->sndsgmbuff.head->segment;
@@ -650,7 +650,7 @@ static void submitCACK(Connection *conn, const uint32_t ackn) {
 		if (!RUSP_LTSEQN(sgm.hdr.seqn, ackn))
 			break;
 
-		setSgmBuffElemStatus(conn->sndsgmbuff.head, RUSP_SGM_YACK);
+		setSgmBuffElemStatus(conn->sndsgmbuff.head, RUSP_YACK);
 
 		DBGPRINT(RUSP_DEBUG, "CACKED: %u", sgm.hdr.seqn);
 

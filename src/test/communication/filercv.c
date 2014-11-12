@@ -12,6 +12,8 @@
 #define DBG_TRAN 0b010
 #define DBG_CLOS 0b100
 
+#define BSIZE RUSP_WNDS * RUSP_PLDS
+
 static int PORT;
 
 static char *FILERCV;
@@ -153,7 +155,7 @@ static void connectionDetails(void) {
 }
 
 static void receiveFile(void) {
-	char rcvdata[500];
+	char rcvdata[BSIZE];
 	ssize_t rcvd;
 	int fdrcv;
 
@@ -161,13 +163,13 @@ static void receiveFile(void) {
 
 	printf("# Receiving file on established connection...");
 
-	while ((rcvd = ruspReceive(CONN, rcvdata, 500)) > 0) {
+	while ((rcvd = ruspReceive(CONN, rcvdata, BSIZE)) > 0) {
 
 		errno = 0;
 		if (write(fdrcv, rcvdata, rcvd) == -1)
 			ERREXIT("Cannot write to file: %s.", strerror(errno));
 
-		memset(rcvdata, 0, sizeof(char) * 500);
+		memset(rcvdata, 0, sizeof(char) * BSIZE);
 	}
 
 	printf("OK\n");

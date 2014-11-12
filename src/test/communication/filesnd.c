@@ -15,6 +15,8 @@
 #define DBG_TRAN 0b010
 #define DBG_CLOS 0b100
 
+#define BSIZE RUSP_WNDS * RUSP_PLDS
+
 static char *ADDRESS;
 
 static int PORT;
@@ -109,7 +111,7 @@ static void connectionDetails(void) {
 }
 
 static void sendFile() {
-	char snddata[500];
+	char snddata[BSIZE];
 	int fd;
 	long long size, sent;
 	ssize_t rd;
@@ -131,7 +133,7 @@ static void sendFile() {
 
 	errno = 0;
 
-	while ((rd = read(fd, snddata, 500)) > 0) {
+	while ((rd = read(fd, snddata, BSIZE)) > 0) {
 		
 		start = getTimestamp();
 
@@ -141,7 +143,7 @@ static void sendFile() {
 
 		milliselaps += getElapsed(start, end);
 
-		memset(snddata, 0, sizeof(char) * 500);
+		memset(snddata, 0, sizeof(char) * BSIZE);
 
 		sent += rd;
 

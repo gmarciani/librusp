@@ -21,30 +21,30 @@
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
-#define RUSP_CON_CLOSED 0
-#define RUSP_CON_LISTEN 1
-#define RUSP_CON_SYNSND 2
-#define RUSP_CON_SYNRCV 3
-#define RUSP_CON_ESTABL 4
-#define RUSP_CON_FINWT1 5
-#define RUSP_CON_FINWT2 6
-#define RUSP_CON_CLOSIN 7
-#define RUSP_CON_CLOSWT 8
-#define RUSP_CON_TIMEWT 9
-#define RUSP_CON_LSTACK 10
+#define RUSP_CLOSED 0
+#define RUSP_LISTEN 1
+#define RUSP_SYNSND 2
+#define RUSP_SYNRCV 3
+#define RUSP_ESTABL 4
+#define RUSP_FINWT1 5
+#define RUSP_FINWT2 6
+#define RUSP_CLOSIN 7
+#define RUSP_CLOSWT 8
+#define RUSP_TIMEWT 9
+#define RUSP_LSTACK 10
 
 #define RUSP_SYN_RETR 5
 
-#define RUSP_CON_RETR 3
+#define RUSP_RETR 3
 
-#define RUSP_CON_WNDS 64//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
+#define RUSP_WNDS 64//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
 
 #define RUSP_SAMPLRTT 1000
 #define RUSP_MSLTIMEO 60000
 #define RUSP_TIMEWTTM 2 * RUSP_MSLTIMEO
 
-#define RUSP_SGM_NACK 0
-#define RUSP_SGM_YACK 1
+#define RUSP_NACK 0
+#define RUSP_YACK 1
 
 /* GLOBAL VARIABLES */
 

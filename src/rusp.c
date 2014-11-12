@@ -62,20 +62,20 @@ void ruspClose(const ConnectionId connid) {
 
 	switch (getConnectionState(conn)) {
 
-	case RUSP_CON_LISTEN:
-		setConnectionState(conn, RUSP_CON_CLOSED);
+	case RUSP_LISTEN:
+		setConnectionState(conn, RUSP_CLOSED);
 		destroyConnection(conn);
 		break;
 
-	case RUSP_CON_ESTABL:
+	case RUSP_ESTABL:
 		activeClose(conn);
 		break;
 
-	case RUSP_CON_CLOSWT:
+	case RUSP_CLOSWT:
 		passiveClose(conn);
 		break;
 
-	case RUSP_CON_CLOSED:
+	case RUSP_CLOSED:
 		destroyConnection(conn);
 		break;
 
@@ -96,7 +96,7 @@ ssize_t ruspSend(const ConnectionId connid, const char *msg, const size_t msgs) 
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	if (getConnectionState(conn) != RUSP_CON_ESTABL)
+	if (getConnectionState(conn) != RUSP_ESTABL)
 		return 0;
 
 	timeout = getTimespec(conn->timeout.value);
@@ -106,7 +106,7 @@ ssize_t ruspSend(const ConnectionId connid, const char *msg, const size_t msgs) 
 
 	while (BUFFSIZE - getStrBuffSize(&(conn->sndusrbuff)) < msgs) {
 
-		if (getConnectionState(conn) != RUSP_CON_ESTABL) {
+		if (getConnectionState(conn) != RUSP_ESTABL) {
 
 			if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 				ERREXIT("Cannot unlock mutex.");
@@ -129,7 +129,7 @@ ssize_t ruspSend(const ConnectionId connid, const char *msg, const size_t msgs) 
 
 	while (getStrBuffSize(&(conn->sndusrbuff)) > 0 || getSgmBuffSize(&(conn->sndsgmbuff)) > 0) {
 
-		if (getConnectionState(conn) != RUSP_CON_ESTABL) {
+		if (getConnectionState(conn) != RUSP_ESTABL) {
 
 			if (pthread_mutex_unlock(&(conn->sndusrbuff.mtx)) > 0)
 				ERREXIT("Cannot unlock mutex.");
@@ -157,7 +157,7 @@ ssize_t ruspReceive(const ConnectionId connid, char *msg, const size_t msgs) {
 	if (!(conn = getConnectionById(connid)))
 		ERREXIT("Cannot retrieve connection: %lld.", connid);
 
-	if (getConnectionState(conn) != RUSP_CON_ESTABL) {
+	if (getConnectionState(conn) != RUSP_ESTABL) {
 
 		memset(msg, 0, sizeof(char) * msgs);
 
@@ -171,7 +171,7 @@ ssize_t ruspReceive(const ConnectionId connid, char *msg, const size_t msgs) {
 
 	while (getStrBuffSizeUsr(&(conn->rcvusrbuff)) == 0) {
 
-		if (getConnectionState(conn) != RUSP_CON_ESTABL) {
+		if (getConnectionState(conn) != RUSP_ESTABL) {
 
 			if (pthread_mutex_unlock(&(conn->rcvusrbuff.mtx)) > 0)
 				ERREXIT("Cannot unlock mutex.");
