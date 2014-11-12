@@ -33,6 +33,8 @@ static void receiveInput(void);
 static void closeConnection(void);
 
 int main(int argc, char **argv) {
+	int DBGON = 1;
+	int DBGOFF = 0;
 
 	if (argc < 3)
 		ERREXIT("usage: %s [port] [debug]", argv[0]);
@@ -42,7 +44,7 @@ int main(int argc, char **argv) {
 	DBG = atoi(argv[2]);
 
 	if (DBG & DBG_OPEN)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	startListen();
 
@@ -52,19 +54,19 @@ int main(int argc, char **argv) {
 
 	stopListen();
 
-	rudpSetDebug(0);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
 
 	connectionDetails();
 
 	if (DBG & DBG_TRAN)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	receiveInput();
 
-	rudpSetDebug(0);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
 
 	if (DBG & DBG_CLOS)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	closeConnection();
 
@@ -72,7 +74,11 @@ int main(int argc, char **argv) {
 }
 
 static void startListen(void) {
-	printf("# Opening listening connection on port: %d...%s", PORT, (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Opening listening connection on port: %d...%s", PORT, dbg?"\n":"");
 
 	LCONN = ruspListen(PORT);
 
@@ -94,7 +100,11 @@ static void listenDetails(void) {
 }
 
 static void acceptConnection(void) {
-	printf("# Accepting incoming connection...%s", (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Accepting incoming connection...%s", dbg?"\n":"");
 
 	CONN = ruspAccept(LCONN);
 
@@ -102,7 +112,11 @@ static void acceptConnection(void) {
 }
 
 static void stopListen(void) {
-	printf("# Closing listening connection...%s", (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Closing listening connection...%s", dbg?"\n":"");
 
 	ruspClose(LCONN);
 
@@ -141,7 +155,11 @@ static void receiveInput(void) {
 }
 
 static void closeConnection(void) {
-	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Closing established connection...%s", dbg?"\n":"");
 
 	ruspClose(CONN);
 

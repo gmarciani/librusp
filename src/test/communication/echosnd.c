@@ -36,6 +36,8 @@ static void echo();
 static void closeConnection(void);
 
 int main(int argc, char **argv) {	
+	int DBGON = 1;
+	int DBGOFF = 0;
 	
 	if (argc < 6)
 		ERREXIT("usage: %s [address] [port] [drop] [iterations] [debug]", argv[0]);
@@ -50,26 +52,26 @@ int main(int argc, char **argv) {
 
 	DBG = atoi(argv[5]);
 
-	rudpSetDrop(DROP);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DROP);
 
 	if (DBG & DBG_OPEN)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	establishConnection();
 
-	rudpSetDebug(0);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
 
 	connectionDetails();
 
 	if (DBG & DBG_TRAN)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	echo();
 
-	rudpSetDebug(0);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
 
 	if (DBG & DBG_CLOS)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	closeConnection();
 
@@ -77,7 +79,11 @@ int main(int argc, char **argv) {
 }
 
 static void establishConnection(void) {
-	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, dbg?"\n":"");
 
 	CONN = ruspConnect(ADDRESS, PORT);
 
@@ -106,8 +112,11 @@ static void echo() {
 	char rcvdata[MSGS];
 	ssize_t rcvd;
 	long long iteration;
+	double drop;
 
-	printf("# Sending for echo on established connection (drop %F%%): %lld iterations on %zu bytes...\n", rudpGetDrop() * 100.0, ITER, MSGS);
+	ruspGetAttr(RUSP_ATTR_DROPR, &drop);
+
+	printf("# Sending for echo on established connection (drop %F%%): %lld iterations on %zu bytes...\n", drop * 100.0, ITER, MSGS);
 
 	for (iteration = 1; iteration <= ITER; iteration++) {
 
@@ -132,7 +141,11 @@ static void echo() {
 }
 
 static void closeConnection(void) {
-	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Closing established connection...%s", dbg?"\n":"");
 
 	ruspClose(CONN);
 

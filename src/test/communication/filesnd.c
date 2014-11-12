@@ -36,6 +36,8 @@ static void sendFile();
 static void closeConnection(void);
 
 int main(int argc, char **argv) {	
+	int DBGON = 1;
+	int DBGOFF = 0;
 	
 	if (argc < 6)
 		ERREXIT("usage: %s [address] [port] [drop] [file] [debug]", argv[0]);
@@ -50,24 +52,26 @@ int main(int argc, char **argv) {
 
 	DBG = atoi(argv[5]);
 
+	ruspSetAttr(RUSP_ATTR_DROPR, &DROP);
+
 	if (DBG & DBG_OPEN)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	establishConnection();
 
-	rudpSetDebug(0);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
 
 	connectionDetails();
 
 	if (DBG & DBG_TRAN)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	sendFile();
 
-	rudpSetDebug(0);
+	ruspSetAttr(RUSP_ATTR_DROPR, &DBGOFF);
 
 	if (DBG & DBG_CLOS)
-		rudpSetDebug(1);
+		ruspSetAttr(RUSP_ATTR_DROPR, &DBGON);
 
 	closeConnection();
 
@@ -75,7 +79,11 @@ int main(int argc, char **argv) {
 }
 
 static void establishConnection(void) {
-	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Connecting to %s:%d...%s", ADDRESS, PORT, dbg?"\n":"");
 
 	CONN = ruspConnect(ADDRESS, PORT);
 
@@ -107,12 +115,15 @@ static void sendFile() {
 	ssize_t rd;
 	struct timespec start, end;
 	long double milliselaps, Kbps, KB;
+	double drop;
+
+	ruspGetAttr(RUSP_ATTR_DROPR, &drop);
 
 	fd = openFile(FILESND, O_RDONLY);
 
 	size = getFileSize(fd);
 
-	printf("# Profiling file send on established connection (drop: %F%%): %s (%lld bytes)...\n", rudpGetDrop() * 100.0, FILESND, size);
+	printf("# Profiling file send on established connection (drop: %F%%): %s (%lld bytes)...\n", drop * 100.0, FILESND, size);
 
 	sent = 0;
 
@@ -152,11 +163,15 @@ static void sendFile() {
 
 	Kbps = KB * 8.0 / (milliselaps / 1000.0);
 
-	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, rudpGetDrop() * 100.0, milliselaps / 1000.0, Kbps);
+	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, drop * 100.0, milliselaps / 1000.0, Kbps);
 }
 
 static void closeConnection(void) {
-	printf("# Closing established connection...%s", (rudpGetDebug())?"\n":"");
+	int dbg;
+
+	ruspGetAttr(RUSP_ATTR_DEBUG, &dbg);
+
+	printf("# Closing established connection...%s", dbg?"\n":"");
 
 	ruspClose(CONN);
 

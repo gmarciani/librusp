@@ -6,6 +6,10 @@
 #include "util/sockutil.h"
 #include "util/macroutil.h"
 
+#define RUSP_ATTR_DEBUG 1
+#define RUSP_ATTR_DROPR 2
+#define RUSP_ATTR_WSIZE 3
+
 /* CONNECTION */
 
 ConnectionId ruspListen(const int lport);
@@ -30,12 +34,8 @@ int ruspPeer(const ConnectionId connid, struct sockaddr_in *addr);
 
 /* DEV UTILITY */
 
-double rudpGetDrop(void);
+int ruspGetAttr(const int attr, void *value);
 
-void rudpSetDrop(const double drop);
-
-int rudpGetDebug(void);
-
-void rudpSetDebug(const int dbg);
+int ruspSetAttr(const int attr, void *value);
 
 #endif /* RUSP_H_ */

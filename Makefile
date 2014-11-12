@@ -64,7 +64,7 @@ testdir:
 	mkdir -pv $(BINDIR)
 	mkdir -pv $(SAMPLEDIR)
 	
-communication: snd rcv echosnd echorcv filesnd filercv
+communication: snd rcv echosnd echorcv filesnd filercv filesnd_tcp filercv_tcp
 
 snd: $(COMMUNICATION_TESTDIR)/snd.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
@@ -82,6 +82,12 @@ filesnd: $(COMMUNICATION_TESTDIR)/filesnd.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 
 filercv: $(COMMUNICATION_TESTDIR)/filercv.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+	
+filesnd_tcp: $(COMMUNICATION_TESTDIR)/filesnd_tcp.c
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+
+filercv_tcp: $(COMMUNICATION_TESTDIR)/filercv_tcp.c
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
 	
 filegen: $(BASE_TESTDIR)/filegen.c

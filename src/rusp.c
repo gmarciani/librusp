@@ -228,18 +228,38 @@ int ruspPeer(const ConnectionId connid, struct sockaddr_in *addr) {
 
 /* DEV UTILITY */
 
-double rudpGetDrop(void) {
-	return RUSP_DROP;
+int ruspGetAttr(const int attr, void *value) {
+	switch (attr) {
+
+	case RUSP_ATTR_DEBUG:
+		value = (void *) &RUSP_DEBUG;
+		break;
+
+	case RUSP_ATTR_DROPR:
+		value = (void *) &RUSP_DROP;
+		break;
+
+	default:
+		return -1;
+	}
+
+	return 0;
 }
 
-void rudpSetDrop(const double drop) {
-	RUSP_DROP = drop;
-}
+int ruspSetAttr(const int attr, void *value) {
+	switch (attr) {
 
-int rudpGetDebug(void) {
-	return RUSP_DEBUG;
-}
+	case RUSP_ATTR_DEBUG:
+		RUSP_DEBUG = *((int *) value);
+		break;
 
-void rudpSetDebug(const int debug) {
-	RUSP_DEBUG = debug;
+	case RUSP_ATTR_DROPR:
+		RUSP_DROP = *((double *) value);
+		break;
+
+	default:
+		return -1;
+	}
+
+	return 0;
 }
