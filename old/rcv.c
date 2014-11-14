@@ -1,9 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "../../rusp.h"
-#include "../../util/sockutil.h"
-#include "../../util/macroutil.h"
+#include "rusp.h"
 
 #define DBG_NONE 0b000
 #define DBG_OPEN 0b001

@@ -6,128 +6,70 @@ CC = gcc
 
 CFLAGS = -g -Wall -O3
 
-PFLAGS = -pg
-
-# Bin Directories
-
-BINDIR = bin
-
-SAMPLEDIR = $(BINDIR)/sample
-
-# Source Directories
+# Directories
 
 SRCDIR = src
 
-COREDIR = $(SRCDIR)/core
+SAMPLEDIR = samples
 
-BUFFERDIR = $(COREDIR)/buffer
+BINDIR = bin
 
-CONNECTIONDIR = $(COREDIR)/connection
-
-SEGMENTDIR = $(COREDIR)/segment
-
-UTILDIR = $(SRCDIR)/util
-
-# Tests Directory
-
-TESTDIR = src/test
-
-BASE_TESTDIR = $(TESTDIR)/base
-
-BUFFER_TESTDIR = $(TESTDIR)/buffer
-
-COMMUNICATION_TESTDIR = $(TESTDIR)/communication
-
-SEGMENT_TESTDIR = $(TESTDIR)/segment
-
-PERFORMANCE_TESTDIR = $(TESTDIR)/performance
+REPODIR = repo
 
 # Dependencies
 
 LIBS = -pthread -lrt -lm -lcrypto -lssl
 
-UTILS = $(addprefix $(UTILDIR)/, cliutil.h cliutil.c sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c fileutil.h fileutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
+UTILS = $(addprefix $(SRCDIR)/util/, cliutil.h cliutil.c sockutil.h sockutil.c addrutil.h addrutil.c timeutil.h timeutil.c threadutil.h threadutil.c listutil.h listutil.c mathutil.h mathutil.c fileutil.h fileutil.c stringutil.h stringutil.c macroutil.h) $(LIBS)
 
-SEGMENTS = $(addprefix $(SEGMENTDIR)/, sgm.h sgm.c seqn.h seqn.c) $(UTILS)
+SEGMENTS = $(addprefix $(SRCDIR)/core/segment/, sgm.h sgm.c seqn.h seqn.c) $(UTILS)
 
-BUFFERS = $(addprefix $(BUFFERDIR)/, sgmbuff.h sgmbuff.c strbuff.h strbuff.c) $(SEGMENTS)
+BUFFERS = $(addprefix $(SRCDIR)/core/buffer/, sgmbuff.h sgmbuff.c strbuff.h strbuff.c) $(SEGMENTS)
 
-CONNECTION = $(addprefix $(CONNECTIONDIR)/, conn.h conn.c timeo.h timeo.c wnd.h wnd.c) $(BUFFERS)
+CONNECTION = $(addprefix $(SRCDIR)/core/connection/, conn.h conn.c timeo.h timeo.c wnd.h wnd.c) $(BUFFERS)
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rusp.h rusp.c) $(CONNECTION)
 
 # Targets
 
-all: testdir communication filegen buffer segment base performance
+.PHONY: all clean
 
-testdir: 
-	mkdir -pv $(BINDIR)
-	mkdir -pv $(SAMPLEDIR)
+all: createdir samples
+
+createdir: 
+	@echo "@ Creating Binaries Directory"
+	@mkdir -pv $(BINDIR)
 	
-communication: snd rcv echosnd echorcv filesnd filercv filesnd_tcp filercv_tcp
+samples: echos echoc fstores fstorec samplegen
 
-snd: $(COMMUNICATION_TESTDIR)/snd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+echos: $(SAMPLEDIR)/echos.c
+	@echo "@ Compiling ECHO Server"
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 
-rcv: $(COMMUNICATION_TESTDIR)/rcv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
-
-echosnd: $(COMMUNICATION_TESTDIR)/echosnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
-
-echorcv: $(COMMUNICATION_TESTDIR)/echorcv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+echoc: $(SAMPLEDIR)/echoc.c
+	@echo "@ Compiling ECHO Client"
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 	
-filesnd: $(COMMUNICATION_TESTDIR)/filesnd.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+fstores: $(SAMPLEDIR)/fstores.c
+	@echo "@ Compiling FILE STORE Server"
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 
-filercv: $(COMMUNICATION_TESTDIR)/filercv.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+fstorec: $(SAMPLEDIR)/fstorec.c
+	@echo "@ Compiling FILE STORE Client"
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 	
-filesnd_tcp: $(COMMUNICATION_TESTDIR)/filesnd_tcp.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+ftps: $(SAMPLEDIR)/ftp/ftps.c
+	@echo "@ Compiling FTP Server"
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 
-filercv_tcp: $(COMMUNICATION_TESTDIR)/filercv_tcp.c
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -o $(BINDIR)/$@
+ftpc: $(SAMPLEDIR)/ftp/ftpc.c
+	@echo "@ Compiling FTP Client"
+	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 	
-filegen: $(BASE_TESTDIR)/filegen.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(SAMPLEDIR)/$@
-	
-buffer: sgmbuffer strbuffer
-
-sgmbuffer: $(BUFFER_TESTDIR)/sgmbuffer.c
-	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
-	
-strbuffer: $(BUFFER_TESTDIR)/strbuffer.c
-	$(CC) $(CFLAGS) $< $(BUFFERS) -o $(BINDIR)/$@
-
-segment: $(SEGMENT_TESTDIR)/segment.c
-	$(CC) $(CFLAGS) $< $(SEGMENTS) -o $(BINDIR)/$@
-	
-base: sync timer str rnd macro
-
-sync: $(BASE_TESTDIR)/sync.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
-
-timer: $(BASE_TESTDIR)/timer.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
-
-str: $(BASE_TESTDIR)/str.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
-
-rnd: $(BASE_TESTDIR)/rnd.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
-
-macro: $(BASE_TESTDIR)/macro.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
-	
-performance: syncperf baseperf
-	
-baseperf: $(PERFORMANCE_TESTDIR)/baseperf.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
-
-syncperf: $(PERFORMANCE_TESTDIR)/syncperf.c
-	$(CC) $(CFLAGS) $< $(UTILS) -o $(BINDIR)/$@
+samplegen: $(SAMPLEDIR)/samplegen.c
+	@echo "@ Compiling Sample File Generator"
+	$(CC) $(CFLAGS) $< $(UTILS) -Isrc/util -o $(BINDIR)/$@
 	
 clean: 
-	rm -frv $(BINDIR)/*
+	@echo "@ Removing Binaries"
+	@rm -frv $(BINDIR)/*

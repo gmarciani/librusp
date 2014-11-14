@@ -5,6 +5,13 @@
 #include "util/addrutil.h"
 #include "util/sockutil.h"
 #include "util/macroutil.h"
+#include "util/cliutil.h"
+#include "util/fileutil.h"
+#include "util/listutil.h"
+#include "util/mathutil.h"
+#include "util/stringutil.h"
+#include "util/threadutil.h"
+#include "util/timeutil.h"
 
 #define RUSP_ATTR_DEBUG 1
 #define RUSP_ATTR_DROPR 2

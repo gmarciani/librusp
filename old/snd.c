@@ -1,27 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <time.h>
-#include "../../rusp.h"
-#include "../../util/timeutil.h"
-#include "../../util/sockutil.h"
-#include "../../util/macroutil.h"
+#include "rusp.h"
 
 #define DBG_NONE 0b000
 #define DBG_OPEN 0b001
 #define DBG_TRAN 0b010
 #define DBG_CLOS 0b100
 
-#define MSG "aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiiijjjjjkkkkklllllmmmmmnnnnnooooopppppqqqqqrrrrrssssstttttuuuuuvvvvvwwwwwxxxxxyyyyyzz"
-
-#define MSGS strlen(MSG)
-
 static char *ADDRESS;
 
 static int PORT;
 
 static double DROP;
-
-static long long ITER;
 
 static int DBG;
 
@@ -31,16 +23,16 @@ static void establishConnection(void);
 
 static void connectionDetails(void);
 
-static void echo();
+static void sendInput(void);
 
 static void closeConnection(void);
 
-int main(int argc, char **argv) {	
+int main(int argc, char **argv) {
 	int DBGON = 1;
 	int DBGOFF = 0;
 	
-	if (argc < 6)
-		ERREXIT("usage: %s [address] [port] [drop] [iterations] [debug]", argv[0]);
+	if (argc < 5)
+		ERREXIT("usage: %s [address] [port] [drop] [debug]", argv[0]);
 
 	ADDRESS = argv[1];
 
@@ -48,9 +40,7 @@ int main(int argc, char **argv) {
 
 	DROP = strtod(argv[3], NULL);
 
-	ITER = strtoll(argv[4], NULL, 10);
-
-	DBG = atoi(argv[5]);
+	DBG = atoi(argv[4]);
 
 	ruspSetAttr(RUSP_ATTR_DROPR, &DROP);
 
@@ -66,7 +56,7 @@ int main(int argc, char **argv) {
 	if (DBG & DBG_TRAN)
 		ruspSetAttr(RUSP_ATTR_DEBUG, &DBGON);
 
-	echo();
+	sendInput();
 
 	ruspSetAttr(RUSP_ATTR_DEBUG, &DBGOFF);
 
@@ -105,36 +95,30 @@ static void connectionDetails(void) {
 
 	addressToString(saddr, strsaddr);
 
-	printf("Connection (%lld) established on: %s with: %s.\n", CONN, strcaddr, strsaddr);
+	printf("# Connection (%lld) established on: %s with: %s.\n", CONN, strcaddr, strsaddr);
 }
 
-static void echo() {
-	char rcvdata[MSGS];
-	ssize_t rcvd;
-	long long iteration;
+static void sendInput(void) {
+	char *input = NULL;
+	ssize_t snd;
 	double drop;
 
 	ruspGetAttr(RUSP_ATTR_DROPR, &drop);
 
-	printf("# Sending for echo on established connection (drop %F%%): %lld iterations on %zu bytes...\n", drop * 100.0, ITER, MSGS);
+	printf("# Sending on established connection (drop %F%%)...\n", drop * 100.0);
 
-	for (iteration = 1; iteration <= ITER; iteration++) {
+	while (1) {
 
-		printf("\n%lld\n", iteration);
+		input = getUserInput("[INPUT (empty to disconnect)]>");
 
-		ruspSend(CONN, MSG, MSGS);
+		if ((snd = strlen(input)) == 0) {
+			free(input);
+			break;
+		}
 
-		printf("[SND]>%.*s\n", (int) MSGS, MSG);
+		ruspSend(CONN, input, snd);
 
-		rcvd = ruspReceive(CONN, rcvdata, MSGS);
-
-		printf("[RCV]>%.*s\n", (int) MSGS, rcvdata);
-
-		assert(rcvd == MSGS);
-
-		assert(strncmp(rcvdata, MSG, MSGS) == 0);
-
-		memset(rcvdata, 0, sizeof(char) * MSGS);
+		free(input);
 	}
 
 	printf("# Stop sending on established connection...OK\n");

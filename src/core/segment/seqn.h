@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
+#include <time.h>
 #include <sys/times.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
