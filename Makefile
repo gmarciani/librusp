@@ -30,6 +30,8 @@ CONNECTION = $(addprefix $(SRCDIR)/core/connection/, conn.h conn.c timeo.h timeo
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rusp.h rusp.c) $(CONNECTION)
 
+FTP = $(addprefix $(SAMPLEDIR)/ftp/, ftpcore.h ftpcore.c) $(PROTOCOL)
+
 # Targets
 
 .PHONY: all clean
@@ -40,7 +42,7 @@ createdir:
 	@echo "@ Creating Binaries Directory"
 	@mkdir -pv $(BINDIR)
 	
-samples: echos echoc fstores fstorec samplegen
+samples: echos echoc fstores fstorec ftps ftpc samplegen 
 
 echos: $(SAMPLEDIR)/echos.c
 	@echo "@ Compiling ECHO Server"
@@ -60,11 +62,11 @@ fstorec: $(SAMPLEDIR)/fstorec.c
 	
 ftps: $(SAMPLEDIR)/ftp/ftps.c
 	@echo "@ Compiling FTP Server"
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(FTP) -Isrc -o $(BINDIR)/$@
 
 ftpc: $(SAMPLEDIR)/ftp/ftpc.c
 	@echo "@ Compiling FTP Client"
-	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
+	$(CC) $(CFLAGS) $< $(FTP) -Isrc -o $(BINDIR)/$@
 	
 samplegen: $(SAMPLEDIR)/samplegen.c
 	@echo "@ Compiling Sample File Generator"

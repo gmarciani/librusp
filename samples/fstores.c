@@ -6,18 +6,18 @@
 #include <errno.h>
 #include "rusp.h"
 
-#define PORT 55000
-#define MTCH 0
-#define DBG 0
+#define PORT  55000
+#define MATCH 0
+#define DEBUG 0
 #define BSIZE RUSP_WNDS * RUSP_PLDS
 
 static int port = PORT;
 
-static int mtch = MTCH;
+static int match = MATCH;
 
 static char *filemtx;
 
-static int dbg = DBG;
+static int debug = DEBUG;
 
 static void parseArguments(int argc, char **argv);
 
@@ -80,7 +80,7 @@ static void *service(void *arg) {
 
 	closeFile(fdrcv);
 
-	if (mtch) {
+	if (match) {
 
 		fdrcv = openFile(fname, O_RDONLY);
 
@@ -116,19 +116,19 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Website:   http://gmarciani.com\n");
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
 				printf("@Usage:     %s (-p port) (-d)\n", argv[0]);
-				printf("@Opts:      -p port: ECHO server port number. Default (%d) if not specified.\n", PORT);
-				printf("            -m file: Match all received files to file. Default does not match any received files.\n");
-				printf("            -d:      Enable debug mode. Default (%d) if not specified.\n\n", DBG);
+				printf("@Opts:      -p port: FILE STORE server port number. Default (%d) if not specified.\n", PORT);
+				printf("            -m file: Equality match for all received files. Default (%d) if not specified.\n", MATCH);
+				printf("            -d:      Debug mode. Default (%d) if not specified.\n\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
 				break;
 			case 'm':
-				mtch = 1;
+				match = 1;
 				memcpy(filemtx, optarg, strlen(optarg));
 				break;
 			case 'd':
-				dbg = 1;
+				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -139,5 +139,5 @@ static void parseArguments(int argc, char **argv) {
 		}
 	}
 
-	ruspSetAttr(RUSP_ATTR_DEBUG, &dbg);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &debug);
 }

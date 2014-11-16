@@ -4,11 +4,11 @@
 #include "rusp.h"
 
 #define PORT 55000
-#define DBG 0
+#define DEBUG 0
 
 static int port = PORT;
 
-static int dbg = DBG;
+static int debug = DEBUG;
 
 static void parseArguments(int argc, char **argv);
 
@@ -84,13 +84,13 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
 				printf("@Usage:     %s (-p port) (-d)\n", argv[0]);
 				printf("@Opts:      -p port: ECHO server port number. Default (%d) if not specified.\n", PORT);
-				printf("            -d:      Enable debug mode. Default (%d) if not specified.\n\n", DBG);
+				printf("            -d:      Debug mode. Default (%d) if not specified.\n\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
 				break;
 			case 'd':
-				dbg = 1;
+				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -101,5 +101,5 @@ static void parseArguments(int argc, char **argv) {
 		}
 	}
 
-	ruspSetAttr(RUSP_ATTR_DEBUG, &dbg);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &debug);
 }

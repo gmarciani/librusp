@@ -25,15 +25,16 @@
 // Payload
 #define RUSP_PLDS 1000
 
-//Segment Serialization
+// Segment Serialization
 #define RUSP_HDRF 4
 #define RUSP_HDRS 28
 #define RUSP_SGMS (RUSP_HDRS + RUSP_PLDS)
 
-//Segment String
+// Segment String
 #define RUSP_HDR_STR (RUSP_HDRS + 24 + 1)
 #define RUSP_SGM_STR (RUSP_HDR_STR + RUSP_PLDS)
 
+// Segment Header
 typedef struct Header {
 	uint8_t ctrl;
 	uint16_t plds;
@@ -41,6 +42,7 @@ typedef struct Header {
 	uint32_t ackn;
 } Header;
 
+// Segment Structure
 typedef struct Segment {
 	Header hdr;
 	char pld[RUSP_PLDS];

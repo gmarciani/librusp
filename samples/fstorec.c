@@ -6,20 +6,20 @@
 #include <time.h>
 #include "rusp.h"
 
-#define PORT 55000
-#define DROP 0.0
-#define DBG 0
+#define PORT  55000
+#define LOSS  0.0
+#define DEBUG 0
 #define BSIZE RUSP_WNDS * RUSP_PLDS
 
 static char *address;
 
 static int port = PORT;
 
-static double drop = DROP;
+static double loss = LOSS;
 
 static char *filesnd;
 
-static int dbg = DBG;
+static int debug = DEBUG;
 
 static void parseArguments(int argc, char **argv);
 
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
 	Kbps = KB * 8.0 / (milliselaps / 1000.0);
 
-	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, drop * 100.0, milliselaps / 1000.0, Kbps);
+	printf("Sent: %LFKB Droprate: %F%% Time: %LFs Speed: %LFKbps\n", KB, loss * 100.0, milliselaps / 1000.0, Kbps);
 
 	ruspClose(conn);
 
@@ -119,17 +119,17 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
 				printf("@Usage:     %s [address] [file] (-p port) (-l loss) (-d)\n", argv[0]);
 				printf("@Opts:      -p port: FILE STORE server port number. Default (%d) if not specified.\n", PORT);
-				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", DROP);
-				printf("            -d:      Enable debug mode. Default (%d) if not specified\n\n", DBG);
+				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", LOSS);
+				printf("            -d:      Enable debug mode. Default (%d) if not specified\n\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
 				break;
 			case 'l':
-				drop = strtod(optarg, NULL);
+				loss = strtod(optarg, NULL);
 				break;
 			case 'd':
-				dbg = 1;
+				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -143,12 +143,12 @@ static void parseArguments(int argc, char **argv) {
 	if (optind + 2 != argc)
 		ERREXIT("@Usage: %s [address] [file] (-p port) (-l loss) (-d)\n", argv[0]);
 
-	address = argv[optind];
+	memcpy(address, argv[optind], strlen(argv[optind]));
 
-	filesnd = argv[optind + 1];
+	memcpy(filesnd, argv[optind + 1], strlen(argv[optind + 1]));
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &drop);
+	ruspSetAttr(RUSP_ATTR_DROPR, &loss);
 
-	ruspSetAttr(RUSP_ATTR_DEBUG, &dbg);
+	ruspSetAttr(RUSP_ATTR_DEBUG, &debug);
 }
 

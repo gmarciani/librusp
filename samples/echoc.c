@@ -2,17 +2,17 @@
 #include <stdio.h>
 #include "rusp.h"
 
-#define PORT 55000
-#define DROP 0.0
-#define DBG 0
+#define PORT  55000
+#define LOSS  0.0
+#define DEBUG 0
 
 static char *address;
 
 static int port = PORT;
 
-static double drop = DROP;
+static double loss = LOSS;
 
-static int dbg = DBG;
+static int debug = DEBUG;
 
 static void parseArguments(int argc, char **argv);
 
@@ -68,11 +68,6 @@ int main(int argc, char **argv) {
 static void parseArguments(int argc, char **argv) {
 	int opt;
 
-	if (argc < 2)
-		ERREXIT("@Usage: %s [address] (-p port) (-l loss) (-d)\n", argv[0]);
-
-	address = argv[1];
-
 	while ((opt = getopt(argc, argv, "vhp:l:d")) != -1) {
 		switch (opt) {
 			case 'v':
@@ -90,17 +85,17 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
 				printf("@Usage:     %s [address] (-p port) (-l loss) (-d)\n", argv[0]);
 				printf("@Opts:      -p port: ECHO server port number. Default (%d) if not specified.\n", PORT);
-				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", DROP);
-				printf("            -d:      Enable debug mode. Default (%d) if not specified\n\n", DBG);
+				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", LOSS);
+				printf("            -d:      Debug mode. Default (%d) if not specified\n\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
 				break;
 			case 'l':
-				drop = strtod(optarg, NULL);
+				loss = strtod(optarg, NULL);
 				break;
 			case 'd':
-				dbg = 1;
+				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -111,7 +106,12 @@ static void parseArguments(int argc, char **argv) {
 		}
 	}
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &drop);
+	if (optind + 1 != argc)
+		ERREXIT("@Usage: %s [address] (-p port) (-l loss) (-d)\n", argv[0]);
 
-	ruspSetAttr(RUSP_ATTR_DEBUG, &dbg);
+	memcpy(address, argv[optind], strlen(argv[optind]));
+
+	ruspSetAttr(RUSP_ATTR_DROPR, &loss);
+
+	ruspSetAttr(RUSP_ATTR_DEBUG, &debug);
 }
