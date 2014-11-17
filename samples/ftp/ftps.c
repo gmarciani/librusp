@@ -9,14 +9,11 @@
 
 #define PORT 55000
 #define REPO "."
-#define DEBUG 0
 #define BSIZE RUSP_WNDS * RUSP_PLDS
 
 static int port;
 
 static char repo[PATH_MAX];
-
-static int debug;
 
 static void *service(void *arg);
 
@@ -55,6 +52,8 @@ int main(int argc, char **argv) {
 
 	ruspClose(lconn);
 
+	printf("Shutdown\n");
+
 	return(EXIT_SUCCESS);
 }
 
@@ -74,12 +73,13 @@ static void handleMessage(Session *session, const Message request) {
 	Message response;
 	char paths[2][PATH_MAX];
 	char **list;
+	char *param;
 	int items, i;
 	size_t size;
 	struct sockaddr_in paddr;
 	char strpaddr[ADDRIPV4_STR];
-	DataTransfer upload, download;
-	pthread_t upltid, dwltid;
+	DataTransfer *transfer;
+	pthread_t tid;
 
 	switch (request.header.type) {
 		case MSG_REQUEST:
@@ -216,23 +216,25 @@ static void handleMessage(Session *session, const Message request) {
 					response.header.action = MSG_RETRF;
 					sprintf(response.body, "%s", paths[0]);
 					sendMessage(session->ctrlconn, response);
+					transfer = malloc(sizeof(DataTransfer));
 					ruspPeer(session->ctrlconn, &paddr);
 					inet_ntop(AF_INET, &(paddr.sin_addr), strpaddr, INET_ADDRSTRLEN);
-					upload.conn = ruspConnect(strpaddr, port + 1);
-					sprintf(upload.path, "%s", paths[0]);
-					pthread_create(&upltid, NULL, sndFile, &upload);
+					transfer->conn = ruspConnect(strpaddr, port + 1);
+					sprintf(transfer->path, "%s", paths[0]);
+					pthread_create(&tid, NULL, sndFile, &transfer);
 					break;
 				case MSG_STORF:
-					sprintf(paths[0], "%s/%s", session->cwd, request.body);
 					response.header.type = MSG_SUCCESS;
 					response.header.action = MSG_STORF;
-					sprintf(response.body, "%s", paths[0]);
+					sprintf(response.body, "%s", request.body);
 					sendMessage(session->ctrlconn, response);
+					param = getFilename(request.body);
+					transfer = malloc(sizeof(DataTransfer));
 					ruspPeer(session->ctrlconn, &paddr);
 					inet_ntop(AF_INET, &(paddr.sin_addr), strpaddr, INET_ADDRSTRLEN);
-					download.conn = ruspConnect(strpaddr, port + 1);
-					sprintf(download.path, "%s", paths[0]);
-					pthread_create(&dwltid, NULL, rcvFile, &download);
+					transfer->conn = ruspConnect(strpaddr, port + 1);
+					sprintf(transfer->path, "%s/%s", session->cwd, param);
+					pthread_create(&tid, NULL, rcvFile, &transfer);
 					break;
 				case MSG_RMFIL:
 					sprintf(paths[0], "%s/%s", session->cwd, request.body);
@@ -331,6 +333,8 @@ static void *sndFile(void *arg) {
 
 	close(fd);
 
+	free(upload);
+
 	return NULL;
 }
 
@@ -352,13 +356,18 @@ static void *rcvFile(void *arg) {
 
 	close(fd);
 
+	free(download);
+
 	return NULL;
 }
 
 static void parseArguments(int argc, char **argv) {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "vhp:m:d")) != -1) {
+	port = PORT;
+	sprintf(repo, "%s", REPO);
+
+	while ((opt = getopt(argc, argv, "vhp:r:")) != -1) {
 		switch (opt) {
 			case 'v':
 				printf("@App:       FTP server based on RUSP1.0.\n");
@@ -373,19 +382,15 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Author:    Giacomo Marciani\n");
 				printf("@Website:   http://gmarciani.com\n");
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
-				printf("@Usage:     %s (-p port) (-r repo) (-d)\n", argv[0]);
+				printf("@Usage:     %s (-p port) (-r repo)\n", argv[0]);
 				printf("@Opts:      -p port: FTP server port number. Default (%d) if not specified.\n", PORT);
 				printf("            -r repo: FTP server repository. Default (%s) if not specified.\n", REPO);
-				printf("            -d:      Debug mode. Default (%d) if not specified.\n\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
 				break;
 			case 'r':
 				memcpy(repo, optarg, strlen(optarg));
-				break;
-			case 'd':
-				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -395,6 +400,4 @@ static void parseArguments(int argc, char **argv) {
 				break;
 		}
 	}
-
-	ruspSetAttr(RUSP_ATTR_DEBUG, &debug);
 }

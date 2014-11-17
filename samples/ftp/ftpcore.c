@@ -53,6 +53,8 @@ ssize_t sendMessage(const ConnectionId conn, const Message msg) {
 	ssize_t snd;
 	size_t msgsize;
 
+	printf("Sending: %d %d %s\n", msg.header.type, msg.header.action, msg.body);
+
 	msgsize = serializeMessage(msg, smsg);
 
 	snd = ruspSend(conn, smsg, msgsize);
@@ -70,6 +72,8 @@ ssize_t receiveMessage(const ConnectionId conn, Message *msg) {
 
 	deserializeMessage(smsg, msg);
 
+	printf("Receiving: %d %d %s\n", msg->header.type, msg->header.action, msg->body);
+
 	return rcvd;
 }
 
@@ -86,12 +90,12 @@ int runMenu(Session *session, Message *msg) {
 
 	do {
 		printf("\n-------\nMENU\n-------\n");
-		for (i = 0; i < MENU_CHOICES; i++)
-			printf("%d\t%s\n", i, MENU[i]);
+		for (i = 1; i <= MENU_CHOICES; i++)
+			printf("%d\t%s\n", i, MENU[i - 1]);
 		input = getUserInput("[Your Action]>");
 		choice = atoi(input);
 		free(input);
-	} while ((choice < 0) | (choice >= MENU_CHOICES));
+	} while ((choice < 1) | (choice > MENU_CHOICES));
 
 	msg->header.type = MSG_REQUEST;
 

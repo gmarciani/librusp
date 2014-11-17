@@ -13,15 +13,13 @@
 #define DEBUG 0
 #define BSIZE RUSP_WNDS * RUSP_PLDS
 
-static char *address;
+static char address[ADDRIPV4_STR];
 
-static int port = PORT;
+static int port;
 
-static char repo[PATH_MAX] = REPO;
+static char repo[PATH_MAX];
 
-static double drop = LOSS;
-
-static int dbg = DEBUG;
+static double loss;
 
 static void handleMessage(Session *session, const Message response);
 
@@ -33,9 +31,9 @@ static void parseArguments(int argc, char **argv);
 
 int main(int argc, char **argv) {
 	Session session;
-	Message outmsg, inmsg;
-	struct sockaddr_in addr, saddr;
-	char straddr[ADDRIPV4_STR], strsaddr[ADDRIPV4_STR];
+	Message request, response;
+	struct sockaddr_in addr, paddr;
+	char straddr[ADDRIPV4_STR], strpaddr[ADDRIPV4_STR];
 	int choice;
 
 	parseArguments(argc, argv);
@@ -44,49 +42,47 @@ int main(int argc, char **argv) {
 
 	session.dataconn = ruspListen(port + 1);
 
-	memcpy(session.cwd, repo, strlen(repo));
-
 	ruspLocal(session.ctrlconn, &addr);
 
-	ruspPeer(session.ctrlconn, &saddr);
+	ruspPeer(session.ctrlconn, &paddr);
 
 	addressToString(addr, straddr);
 
-	addressToString(saddr, strsaddr);
+	addressToString(paddr, strpaddr);
 
 	printf("WELCOME TO FTP CLIENT\n\n");
 
 	printf("Running on %s\n", straddr);
 
-	printf("Connected to %s\n", strsaddr);
+	printf("Connected to %s\n", strpaddr);
 
-	while ((choice = runMenu(&session, &outmsg)) != MENU_EXIT) {
+	while ((choice = runMenu(&session, &request)) != MENU_EXIT) {
 
 		if (choice == MENU_ERROR)
 			continue;
 
-		sendMessage(session.ctrlconn, outmsg);
+		sendMessage(session.ctrlconn, request);
 
-		receiveMessage(session.ctrlconn, &inmsg);
+		receiveMessage(session.ctrlconn, &response);
 
-		handleMessage(&session, inmsg);
+		handleMessage(&session, response);
 	}
 
 	ruspClose(session.dataconn);
 
 	ruspClose(session.ctrlconn);
 
-	printf("Disconnected");
+	printf("Disconnected\n");
 
 	return(EXIT_SUCCESS);
 }
 
 static void handleMessage(Session *session, const Message response) {
-	char paths[2][PATH_MAX];
+	char *path;
 	char **params;
 	int nparams, i;
-	DataTransfer download, upload;
-	pthread_t upltid, dwltid;
+	DataTransfer *transfer;
+	pthread_t tid;
 
 	switch (response.header.type) {
 		case MSG_SUCCESS:
@@ -99,8 +95,8 @@ static void handleMessage(Session *session, const Message response) {
 					break;
 				case MSG_LSDIR:
 					params = arrayDeserialization(response.body, OBJECT_FIELDS_DELIMITER, &nparams);
-					printf("[SUCCESS]>Listing %s\n", response.body);
-					for (i = 0; i < nparams; i++)
+					printf("[SUCCESS]>Listing %s\n", params[0]);
+					for (i = 1; i < nparams; i++)
 						printf("%s\n", params[i]);
 					for (i = 0; i < nparams; i++)
 						free(params[i]);
@@ -127,16 +123,20 @@ static void handleMessage(Session *session, const Message response) {
 					free(params);
 					break;
 				case MSG_RETRF:
+					transfer = malloc(sizeof(DataTransfer));
+					transfer->conn = ruspAccept(session->dataconn);
+					path = getFilename(response.body);
+					sprintf(transfer->path, "%s/%s", session->cwd, path);
+					pthread_create(&tid, NULL, rcvFile, &transfer);
 					printf("[SUCCESS]>Downloading %s\n", response.body);
-					download.conn = ruspAccept(session->dataconn);;
-					sprintf(download.path, "%s/%s", session->cwd, response.body);
-					pthread_create(&dwltid, NULL, rcvFile, &download);
+					free(path);
 					break;
 				case MSG_STORF:
+					transfer = malloc(sizeof(DataTransfer));
+					transfer->conn = ruspAccept(session->dataconn);
+					sprintf(transfer->path, "%s", response.body);
+					pthread_create(&tid, NULL, sndFile, &transfer);
 					printf("[SUCCESS]>Uploading %s\n", response.body);
-					upload.conn = ruspAccept(session->dataconn);
-					sprintf(upload.path, "%s", response.body);
-					pthread_create(&upltid, NULL, sndFile, &upload);
 					break;
 				case MSG_RMFIL:
 					printf("[SUCCESS]>File removed %s\n", response.body);
@@ -182,6 +182,8 @@ static void *sndFile(void *arg) {
 
 	close(fd);
 
+	free(upload);
+
 	return NULL;
 }
 
@@ -203,13 +205,19 @@ static void *rcvFile(void *arg) {
 
 	close(fd);
 
+	free(download);
+
 	return NULL;
 }
 
 static void parseArguments(int argc, char **argv) {
 	int opt;
 
-	while ((opt = getopt(argc, argv, "vhp:l:d")) != -1) {
+	port = PORT;
+	sprintf(repo, "%s", REPO);
+	loss = LOSS;
+
+	while ((opt = getopt(argc, argv, "vhp:r:l:")) != -1) {
 		switch (opt) {
 			case 'v':
 				printf("@App:       FTP client based on RUSP1.0.\n");
@@ -224,11 +232,10 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Author:    Giacomo Marciani\n");
 				printf("@Website:   http://gmarciani.com\n");
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
-				printf("@Usage:     %s [address] (-p port) (-r repo) (-l loss) (-d)\n", argv[0]);
+				printf("@Usage:     %s [address] (-p port) (-r repo) (-l loss)\n", argv[0]);
 				printf("@Opts:      -p port: FTP server port number. Default (%d) if not specified.\n", PORT);
 				printf("            -r repo: FTP client repository. Default (%s) if not specified.\n", REPO);
 				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", LOSS);
-				printf("            -d:      Debug mode. Default (%d) if not specified\n\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
@@ -237,10 +244,7 @@ static void parseArguments(int argc, char **argv) {
 				memcpy(repo, optarg, strlen(optarg));
 				break;
 			case 'l':
-				drop = strtod(optarg, NULL);
-				break;
-			case 'd':
-				dbg = 1;
+				loss = strtod(optarg, NULL);
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -252,11 +256,9 @@ static void parseArguments(int argc, char **argv) {
 	}
 
 	if (optind + 1 != argc)
-		ERREXIT("@Usage: %s [address] (-p port) (-r repo) (-l loss) (-d)\n", argv[0]);
+		ERREXIT("@Usage: %s [address] (-p port) (-r repo) (-l loss)\n", argv[0]);
 
 	memcpy(address, argv[optind], strlen(argv[optind]));
 
-	ruspSetAttr(RUSP_ATTR_DROPR, &drop);
-
-	ruspSetAttr(RUSP_ATTR_DEBUG, &dbg);
+	ruspSetAttr(RUSP_ATTR_DROPR, &loss);
 }
