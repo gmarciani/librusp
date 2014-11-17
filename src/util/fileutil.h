@@ -29,36 +29,30 @@ int isEqualFile(const int fdone, const int fdtwo);
 
 int exploreDirectory(const char *dirpath, char ***list, int *numItems);
 
-int isFile(const char *filepath);
+int isFile(const char *path);
 
-int mkFile(const char *filepath, const char *data);
+int rmFile(const char *path);
 
-int rmFile(const char *filepath);
+int cpFile(const char *srcpath, const char *dstpath);
 
-int cpFile(const char *srcFilepath, const char *dstFilepath);
+int mvFile(const char *srcpath, const char *dstpath);
 
-int mvFile(const char *srcFilepath, const char *dstFilepath);
+int isDirectory(const char *path);
 
-int fileSerialization(const char *filepath, char **serializedFile);
+int mkDirectory(const char *path);
 
-int isDirectory(const char *dirpath);
+int rmDirectory(const char *path);
 
-int mkDirectory(const char *dirpath);
+int cpDirectory(const char *srcpath, const char *dstpath);
 
-int rmDirectory(const char *dirpath);
+int mvDirectory(const char *srcpath, const char *dstpath);
 
-int cpDirectory(const char *srcDirpath, const char *dstDirpath);
+int changeRoot(const char *path);
 
-int mvDirectory(const char *srcDirpath, const char *dstDirpath);
+int getCwd(char *path);
 
-int changeRoot(const char *rootpath);
+int changeDir(char *path, const char *change);
 
-char *getCwd(void);
-
-int changeCwd(const char *newpath);
-
-char *getFilename(const char *path);
-
-char *concatPath(const char *path, const char *subpath);
+int getFilename(const char *path, char *filename);
 
 #endif /* FILEUTIL_H_ */

@@ -21,6 +21,8 @@
 #include "../../util/sockutil.h"
 #include "../../util/macroutil.h"
 
+/* CONNECTION STATES */
+
 #define RUSP_CLOSED 0
 #define RUSP_LISTEN 1
 #define RUSP_SYNSND 2
@@ -33,15 +35,22 @@
 #define RUSP_TIMEWT 9
 #define RUSP_LSTACK 10
 
-#define RUSP_SYN_RETR 5
+/* RETRANSMISSIONS */
 
+#define RUSP_SYN_RETR 5
 #define RUSP_RETR 3
 
+/* SLIDING WINDOW */
+
 #define RUSP_WNDS 4//((RUDP_MAXSEQN / RUDP_PLDS) / 3)
+
+/* TIMING */
 
 #define RUSP_SAMPLRTT 1000
 #define RUSP_MSLTIMEO 60000
 #define RUSP_TIMEWTTM 2 * RUSP_MSLTIMEO
+
+/* SEGMENT STATES */
 
 #define RUSP_NACK 0
 #define RUSP_YACK 1
@@ -52,7 +61,7 @@ extern int RUSP_DEBUG;
 
 extern double RUSP_DROP;
 
-/* CONNECTION STRUCTURE */
+/* CONNECTION STRUCTURES */
 
 typedef long long ConnectionId;
 

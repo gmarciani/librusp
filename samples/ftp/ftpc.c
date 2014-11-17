@@ -21,6 +21,8 @@ static char repo[PATH_MAX];
 
 static double loss;
 
+static int debug;
+
 static void handleMessage(Session *session, const Message response);
 
 static void *sndFile(void *arg);
@@ -37,6 +39,8 @@ int main(int argc, char **argv) {
 	int choice;
 
 	parseArguments(argc, argv);
+
+	sprintf(session.cwd, "%s", repo);
 
 	session.ctrlconn = ruspConnect(address, port);
 
@@ -78,7 +82,7 @@ int main(int argc, char **argv) {
 }
 
 static void handleMessage(Session *session, const Message response) {
-	char *path;
+	char path[PATH_MAX];
 	char **params;
 	int nparams, i;
 	DataTransfer *transfer;
@@ -94,7 +98,7 @@ static void handleMessage(Session *session, const Message response) {
 					printf("[SUCCESS]>CWD: %s\n", response.body);
 					break;
 				case MSG_LSDIR:
-					params = arrayDeserialization(response.body, OBJECT_FIELDS_DELIMITER, &nparams);
+					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
 					printf("[SUCCESS]>Listing %s\n", params[0]);
 					for (i = 1; i < nparams; i++)
 						printf("%s\n", params[i]);
@@ -109,14 +113,14 @@ static void handleMessage(Session *session, const Message response) {
 					printf("[SUCCESS]>Directory removed %s\n", response.body);
 					break;
 				case MSG_CPDIR:
-					params = arrayDeserialization(response.body, OBJECT_FIELDS_DELIMITER, &nparams);
+					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
 					printf("[SUCCESS]>Directory %s copied to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
 					free(params);
 					break;
 				case MSG_MVDIR:
-					params = arrayDeserialization(response.body, OBJECT_FIELDS_DELIMITER, &nparams);
+					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
 					printf("[SUCCESS]>Directory %s moved to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
@@ -125,31 +129,30 @@ static void handleMessage(Session *session, const Message response) {
 				case MSG_RETRF:
 					transfer = malloc(sizeof(DataTransfer));
 					transfer->conn = ruspAccept(session->dataconn);
-					path = getFilename(response.body);
+					getFilename(response.body, path);
 					sprintf(transfer->path, "%s/%s", session->cwd, path);
-					pthread_create(&tid, NULL, rcvFile, &transfer);
+					pthread_create(&tid, NULL, rcvFile, transfer);
 					printf("[SUCCESS]>Downloading %s\n", response.body);
-					free(path);
 					break;
 				case MSG_STORF:
 					transfer = malloc(sizeof(DataTransfer));
 					transfer->conn = ruspAccept(session->dataconn);
 					sprintf(transfer->path, "%s", response.body);
-					pthread_create(&tid, NULL, sndFile, &transfer);
+					pthread_create(&tid, NULL, sndFile, transfer);
 					printf("[SUCCESS]>Uploading %s\n", response.body);
 					break;
 				case MSG_RMFIL:
 					printf("[SUCCESS]>File removed %s\n", response.body);
 					break;
 				case MSG_CPFIL:
-					params = arrayDeserialization(response.body, OBJECT_FIELDS_DELIMITER, &nparams);
+					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
 					printf("[SUCCESS]>File %s copied to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
 					free(params);
 					break;
 				case MSG_MVFIL:
-					params = arrayDeserialization(response.body, OBJECT_FIELDS_DELIMITER, &nparams);
+					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
 					printf("[SUCCESS]>File %s moved to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
@@ -173,7 +176,7 @@ static void *sndFile(void *arg) {
 	ssize_t rd;
 	int fd;
 
-	fd = open(upload->path, O_RDONLY);
+	fd = open(upload->path, O_RDONLY, S_IRWXU);
 
 	while ((rd = read(fd, data, BSIZE)) > 0)
 		ruspSend(upload->conn, data, rd);
@@ -193,7 +196,7 @@ static void *rcvFile(void *arg) {
 	ssize_t rcvd, wr;
 	int fd;
 
-	fd = open(download->path, O_RDWR, O_CREAT|O_TRUNC);
+	fd = open(download->path, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU);
 
 	while ((rcvd = ruspReceive(download->conn, data, BSIZE)) > 0) {
 		errno = 0;
@@ -216,8 +219,9 @@ static void parseArguments(int argc, char **argv) {
 	port = PORT;
 	sprintf(repo, "%s", REPO);
 	loss = LOSS;
+	debug = DEBUG;
 
-	while ((opt = getopt(argc, argv, "vhp:r:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "vhp:r:l:d")) != -1) {
 		switch (opt) {
 			case 'v':
 				printf("@App:       FTP client based on RUSP1.0.\n");
@@ -232,10 +236,11 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Author:    Giacomo Marciani\n");
 				printf("@Website:   http://gmarciani.com\n");
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
-				printf("@Usage:     %s [address] (-p port) (-r repo) (-l loss)\n", argv[0]);
+				printf("@Usage:     %s [address] (-p port) (-r repo) (-l loss) (-d)\n", argv[0]);
 				printf("@Opts:      -p port: FTP server port number. Default (%d) if not specified.\n", PORT);
 				printf("            -r repo: FTP client repository. Default (%s) if not specified.\n", REPO);
 				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", LOSS);
+				printf("            -d     : Debug mode. Default (%d) if not specified.\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
@@ -245,6 +250,9 @@ static void parseArguments(int argc, char **argv) {
 				break;
 			case 'l':
 				loss = strtod(optarg, NULL);
+				break;
+			case 'd':
+				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -256,9 +264,11 @@ static void parseArguments(int argc, char **argv) {
 	}
 
 	if (optind + 1 != argc)
-		ERREXIT("@Usage: %s [address] (-p port) (-r repo) (-l loss)\n", argv[0]);
+		ERREXIT("@Usage: %s [address] (-p port) (-r repo) (-l loss) (-d)\n", argv[0]);
 
-	memcpy(address, argv[optind], strlen(argv[optind]));
+	sprintf(address, "%s", argv[optind]);
 
 	ruspSetAttr(RUSP_ATTR_DROPR, &loss);
+
+	FTP_DEBUG = debug;
 }

@@ -34,7 +34,7 @@ FTP = $(addprefix $(SAMPLEDIR)/ftp/, ftpcore.h ftpcore.c) $(PROTOCOL)
 
 # Targets
 
-.PHONY: all clean
+.PHONY: all echo store ftp clean
 
 all: createdir samples
 
@@ -42,7 +42,13 @@ createdir:
 	@echo "@ Creating Binaries Directory"
 	@mkdir -pv $(BINDIR)
 	
-samples: echos echoc fstores fstorec ftps ftpc samplegen 
+samples: echo store ftp samplegen 
+
+echo: echos echoc
+
+store: stores storec
+
+ftp: ftps ftpc
 
 echos: $(SAMPLEDIR)/echos.c
 	@echo "@ Compiling ECHO Server"

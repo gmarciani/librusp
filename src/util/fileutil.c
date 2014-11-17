@@ -94,44 +94,40 @@ int isEqualFile(const int fdone, const int fdtwo) {
 
 // CONTENT EXPLORATION
 
-int exploreDirectory(const char *dirpath, char ***list, int *numItems) {
+int exploreDirectory(const char *path, char ***list, int *items) {
 	struct dirent **direntList;
-	char *path;
 	int i;
 
 	errno = 0;
-    if ((*numItems = scandir(dirpath, &direntList, NULL, alphasort)) == -1)
+    if ((*items = scandir(path, &direntList, NULL, alphasort)) == -1)
 		return errno;
 
-	if (!((*list) = malloc(sizeof(char *) * (*numItems)))) {
-		fprintf(stderr, "Error in list allocation for directory exploration: %s.\n", dirpath);
-		exit(EXIT_FAILURE);
+	if (!((*list) = malloc(sizeof(char *) * (*items))))
+		ERREXIT("Error in list allocation for directory exploration: %s.\n", path);
+
+	for (i = 0; i < *items; i++) {
+		if (!((*list)[i] = malloc(sizeof(char) * PATH_MAX)))
+			ERREXIT("Cannot allocate string for directory exploration.");
+		if (isFile(path))
+			sprintf((*list)[i], "%s", direntList[i]->d_name);
+		else if (isDirectory(path))
+			sprintf((*list)[i], "%s/", direntList[i]->d_name);
 	}
 
-	for (i = 0; i < *numItems; i++) {
-		path = concatPath(dirpath, direntList[i]->d_name);
-		if (isDirectory(path))
-			(*list)[i] = stringConcatenation(direntList[i]->d_name, "/");
-		else
-			(*list)[i] = stringDuplication(direntList[i]->d_name);
-		free(path);
-	}
-
-	for (i = 0; i < *numItems; i++)
+	for (i = 0; i < *items; i++)
 		free(direntList[i]);
 	free(direntList);
 
 	return 0;
 }
 
-
 // FILES
 
-int isFile(const char *filepath) {
+int isFile(const char *path) {
 	struct stat info;
 
 	errno = 0;
-	if (stat(filepath, &info) == -1) {
+	if (stat(path, &info) == -1) {
 		if (errno == ENOENT)
 			return 0;
 		fprintf(stderr, "Error in stat for file existence check: %s\n", strerror(errno));
@@ -141,110 +137,79 @@ int isFile(const char *filepath) {
 	return S_ISREG(info.st_mode);
 }
 
-int mkFile(const char *filepath, const char *data) {
-	int fd;
-
+int rmFile(const char *path) {
 	errno = 0;
-	if ((fd = open(filepath, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, FILE_PERM)) == -1)
-		return errno;
-
-	errno = 0;
-	if (write(fd, data, strlen(data)) == -1)
-		return errno;
-
-	errno = 0;
-	if (close(fd) == -1)
+	if (unlink(path) == -1)
 		return errno;
 
 	return 0;
 }
 
-int rmFile(const char *filepath) {
-	errno = 0;
-	if (unlink(filepath) == -1)
-		return errno;
-
-	return 0;
-}
-
-int cpFile(const char *srcFilepath, const char *dstFilepath) {
-	int srcFd, dstFd;
-	ssize_t numRead;
-	size_t buffSize = 1024;
-	char buffer[buffSize];
+int cpFile(const char *srcpath, const char *dstpath) {
+	int srcfd, dstfd;
+	ssize_t rd;
+	size_t bsize = 1024;
+	char buffer[bsize];
 
 	errno = 0;
-	if ((srcFd = open(srcFilepath, O_RDONLY)) == -1)
+	if ((srcfd = open(srcpath, O_RDONLY)) == -1)
 		return errno;
 
 	errno = 0;
-	if ((dstFd = open(dstFilepath, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, FILE_PERM)) == -1)
+	if ((dstfd = open(dstpath, O_WRONLY|O_CREAT|O_EXCL|O_TRUNC, FILE_PERM)) == -1)
 		return errno;
 
-	while ((numRead = read(srcFd, buffer, buffSize)) > 0) {
-		if (write(dstFd, buffer, numRead) != numRead) {
+	while ((rd = read(srcfd, buffer, bsize)) > 0) {
+		if (write(dstfd, buffer, rd) != rd) {
 			fprintf(stderr, "Error in writing buffer for file copy.\n");
 			break;
 		}
 	}
 
-	if (numRead == -1)
+	if (rd == -1)
 		fprintf(stderr, "Error in reading buffer for file copy.\n");
 
 	errno = 0;
-	if (close(srcFd) == -1)
+	if (close(srcfd) == -1)
 		return errno;
 
 	errno = 0;
-	if (close(dstFd) == -1)
+	if (close(dstfd) == -1)
 		return errno;
 
 	return 0;
 }
 
-int mvFile(const char *srcFilepath, const char *dstFilepath) {
+int mvFile(const char *srcpath, const char *dstpath) {
 	int error;
 
-	if ((error = cpFile(srcFilepath, dstFilepath)) != 0)
+	if ((error = cpFile(srcpath, dstpath)) != 0)
 		return error;
 
-	if ((error = rmFile(srcFilepath)) != 0)
+	if ((error = rmFile(srcpath)) != 0)
 		return error;
 
 	return 0;
 }
 
-int fileSerialization(const char *filepath, char **serializedFile) {
-	int fd;
-	struct stat info;
-	size_t toRead;
-	ssize_t numRead;
+int getFilename(const char *path, char *filename) {
+	size_t pathsize;
+	int i;
 
-	errno = 0;
-	if ((fd = open(filepath, O_RDONLY)) == -1)
-		return errno;
+	pathsize = strlen(path);
 
-	if (fstat(fd, &info) == -1) {
-		fprintf(stderr, "Error in fstat for file serialization.\n");
-		exit(EXIT_FAILURE);
+	if (pathsize == 0 || path[pathsize] == '/' || strcmp(path, ".") == 0 || strcmp(path, "..") == 0)
+		return -1;
+
+	for (i = pathsize; i >= 0; i--) {
+		if (path[i] == '/')
+			break;
 	}
 
-	toRead = (size_t) info.st_size;
-
-	if (!(*serializedFile = malloc(sizeof(char) * (toRead + 1)))) {
-		fprintf(stderr, "Error in string allocation for file serialization.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	errno = 0;
-	if ((numRead = read(fd, (*serializedFile), toRead)) == -1)
-		return errno;
-
-	(*serializedFile)[numRead] = '\0';
-
-	errno = 0;
-	if (close(fd) == -1)
-		return errno;
+	if (i == 0)
+		sprintf(filename, "%s", path);
+	else
+		sprintf(filename, "%s", path + i + 1);
 
 	return 0;
 }
@@ -252,127 +217,131 @@ int fileSerialization(const char *filepath, char **serializedFile) {
 
 // DIRECTORIES
 
-int isDirectory(const char *dirpath) {
+int isDirectory(const char *path) {
 	struct stat info;
 
 	errno = 0;
-	if (stat(dirpath, &info) == -1) {
+	if (stat(path, &info) == -1) {
 		if (errno == ENOENT)
 			return 0;
-		fprintf(stderr, "Error in stat for directory existence check: %s %s.\n", dirpath, strerror(errno));
-		exit(EXIT_FAILURE);
+		ERREXIT("Error in stat for directory existence check: %s %s.\n", path, strerror(errno));
 	}
 
 	return S_ISDIR(info.st_mode);
 }
 
-int mkDirectory(const char *dirname) {
+int mkDirectory(const char *path) {
 	errno = 0;
-	if (mkdir(dirname, DIR_PERM) == -1)
+	if (mkdir(path, DIR_PERM) == -1)
 		return errno;
 
 	return 0;
 }
 
-int rmDirectory(const char *dirpath) {
-	char **items = NULL;
-	char *path = NULL;
-	int numItems;
-	int error;
-	int i;
+int rmDirectory(const char *path) {
+	struct dirent **direntList;
+	char tmppath[PATH_MAX];
+	int items , error, i;
 
-	if ((error = exploreDirectory(dirpath, &items, &numItems)) != 0)
-		return error;
+	errno = 0;
+	if ((items = scandir(path, &direntList, NULL, alphasort)) == -1)
+		return errno;
 
-	for (i = 0; i < numItems; i++) {
-		if ((strcmp(items[i], "./") == 0) | (strcmp(items[i], "../") == 0))
+	for (i = 0; i < items; i++) {
+		if (strcmp(direntList[i]->d_name, ".") == 0 || strcmp(direntList[i]->d_name, "..") == 0)
 			continue;
-		path = concatPath(dirpath, items[i]);
-		if (isFile(path)) {
-			if ((error = rmFile(path)) != 0) {
-				free(path);
+		sprintf(tmppath, "%s/%s", path, direntList[i]->d_name);
+		errno = 0;
+		if (isDirectory(tmppath)) {
+			if ((error = rmDirectory(tmppath)) != 0) {
+				for (i = 0; i < items; i++)
+					free(direntList[i]);
+				free(direntList);
 				return error;
 			}
-		} else if (isDirectory(path)) {
-			if ((error = rmDirectory(path)) != 0) {
-				free(path);
+		} else if (isFile(tmppath)) {
+			if ((error = rmFile(tmppath)) != 0) {
+				for (i = 0; i < items; i++)
+					free(direntList[i]);
+				free(direntList);
 				return error;
 			}
 		}
-		free(path);
 	}
 
-	for (i = 0; i < numItems; i++)
-		free(items[i]);
-
-	free(items);
+	for (i = 0; i < items; i++)
+		free(direntList[i]);
+	free(direntList);
 
 	errno = 0;
-	if (rmdir(dirpath) == -1)
+	if (rmdir(path) == -1)
 		return errno;
 
 	return 0;
 }
 
-int cpDirectory(const char *srcDirpath, const char *dstDirpath) {
-	char **items = NULL;
-	char *srcPath = NULL;
-	char *dstPath = NULL;
-	int numItems;
-	int error;
-	int i;
+int cpDirectory(const char *srcpath, const char *dstpath) {
+	struct dirent **direntList;
+	char srctmppath[PATH_MAX];
+	char dsttmppath[PATH_MAX];
+	int items, error, i;
 
-	if ((error = exploreDirectory(srcDirpath, &items, &numItems)) != 0)
-		return error;
+	errno = 0;
+	if (mkdir(dstpath, DIR_PERM) != 0)
+		return errno;
 
-	if ((error = mkDirectory(dstDirpath)) != 0)
-		return error;
+	errno = 0;
+	if ((items = scandir(srcpath, &direntList, NULL, alphasort)) == -1) {
+		printf("Error in scandir(%s)\n", srcpath);
+		return errno;
+	}
 
-	for (i = 0; i < numItems; i++) {
-		if ((strcmp(items[i], "./") == 0) | (strcmp(items[i], "../") == 0))
+	for (i = 0; i < items; i++) {
+		if (strcmp(direntList[i]->d_name, ".") == 0 || strcmp(direntList[i]->d_name, "..") == 0)
 			continue;
-		srcPath = concatPath(srcDirpath, items[i]);
-		dstPath = concatPath(dstDirpath, items[i]);
-		if (isDirectory(srcPath)) {
-			if ((error = cpDirectory(srcPath, dstPath)) != 0) {
-				free(srcPath);
-				free(dstPath);
+		sprintf(srctmppath, "%s/%s", srcpath, direntList[i]->d_name);
+		sprintf(dsttmppath, "%s/%s", dstpath, direntList[i]->d_name);
+		if (isDirectory(srctmppath)) {
+			if ((error = cpDirectory(srctmppath, dsttmppath)) != 0) {
+				for (i = 0; i < items; i++)
+					free(direntList[i]);
+				free(direntList);
+				printf("Error in cpDirectory(%s, %s)\n", srctmppath, dsttmppath);
 				return error;
 			}
-		} else if (isFile(srcPath)) {
-			if ((error = cpFile(srcPath, dstPath)) != 0) {
-				free(srcPath);
-				free(dstPath);
+		} else if (isFile(srctmppath)) {
+			if ((error = cpFile(srctmppath, dsttmppath)) != 0) {
+				for (i = 0; i < items; i++)
+					free(direntList[i]);
+				free(direntList);
+				printf("Error in cpFile(%s, %s)\n", srctmppath, dsttmppath);
 				return error;
 			}
 		}
-		free(srcPath);
-		free(dstPath);
 	}
 
-	for (i = 0; i < numItems; i++)
-		free(items[i]);
-
-	free(items);
+	for (i = 0; i < items; i++)
+		free(direntList[i]);
+	free(direntList);
 
 	return 0;
 }
 
-int mvDirectory(const char *dirpath, const char *newDirpath) {
+int mvDirectory(const char *srcpath, const char *dstpath) {
 	int error;
 
-	if ((error = cpDirectory(dirpath, newDirpath)) != 0)
+	if ((error = cpDirectory(srcpath, dstpath)) != 0)
 		return error;
 
-	if ((error = rmDirectory(dirpath)) != 0)
+	if ((error = rmDirectory(srcpath)) != 0)
 		return error;
 
 	return 0;
 }
 
-int changeRoot(const char *rootpath) {
+int changeRoot(const char *path) {
 	errno = 0;
-	if (chroot(rootpath) == -1)
+	if (chroot(path) == -1)
 		return errno;
 
 	errno = 0;
@@ -382,62 +351,39 @@ int changeRoot(const char *rootpath) {
 	return 0;
 }
 
-char *getCwd(void) {
-	char *cwdpath;
+int getCwd(char *path) {
+	errno = 0;
+	if (!getcwd(path, PATH_MAX))
+		return errno;
 
-	if (!(cwdpath = malloc(sizeof(char) * PATH_MAX))) {
-		fprintf(stderr, "Error in string allocation in getCwd.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (getcwd(cwdpath, PATH_MAX) == NULL)	{
-		fprintf(stderr, "Error in getcwd.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	return cwdpath;
+	return 0;
 }
 
-int changeCwd(const char *newpath) {
-	return chdir(newpath);
-}
+int changeDir(char *path, const char *change) {
+	int result, i;
+	char tmp[PATH_MAX];
 
-
-// UTILS
-
-char *getFilename(const char *path) {
-	char *filename = NULL;
-	size_t pathsize = strlen(path);
-	int i;
-
-	if (pathsize == 0)
-		return "";
-
-	for (i = pathsize - 1; i >= 0; i--) {
-		if (path[i] == '/')
-			break;
+	if ((strlen(change) == 0) ||
+		(strcmp(change, ".") == 0) ||
+		((strcmp(path, "/") == 0 || strcmp(path, ".") == 0) && strcmp(change, "..") == 0)) {
+		result = 0;
+	} else if (strcmp(change, "..") == 0) {
+		for (i = strlen(path); i > 0; i--)
+			if (path[i] == '/')
+				break;
+		path[i] = '\0';
+		result = 0;
+	} else if (change[0] != '/' && change[strlen(change)] != '/') {
+		sprintf(tmp, "%s/%s", path, change);
+		if (!isDirectory(tmp)) {
+			result = -1;
+		} else {
+			sprintf(path, "%s", tmp);
+			result = 0;
+		}
+	} else {
+		result = -1;
 	}
 
-	if (i == 0)
-		filename = stringDuplication(path);
-	else if (i == pathsize - 1)
-		filename = stringDuplication("");
-	else
-		filename = stringDuplication(path + i + 1);
-
-	return filename;
-}
-
-char *concatPath(const char *path, const char *subpath) {
-	char *resultPath = NULL;
-	size_t pathSize = strlen(path) + strlen(subpath) + 1;
-
-	if (!(resultPath = malloc(sizeof(char) * (pathSize + 1)))) {
-		fprintf(stderr, "Error in string allocation for path creation.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	sprintf(resultPath, "%s/%s", path, subpath);
-
-	return resultPath;
+	return result;
 }

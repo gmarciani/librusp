@@ -1,10 +1,8 @@
 #include "conn.h"
 
-/* DEBUG */
+/* GLOBAL VARIABLES */
 
 int RUSP_DEBUG = 0;
-
-/* RUDP_DROP */
 
 double RUSP_DROP = 0.0;
 

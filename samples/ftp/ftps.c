@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -9,11 +10,14 @@
 
 #define PORT 55000
 #define REPO "."
+#define DEBUG 0
 #define BSIZE RUSP_WNDS * RUSP_PLDS
 
 static int port;
 
 static char repo[PATH_MAX];
+
+static int debug;
 
 static void *service(void *arg);
 
@@ -46,7 +50,7 @@ int main(int argc, char **argv) {
 		Session session;
 		pthread_t tid;
 		session.ctrlconn = ctrlconn;
-		memcpy(session.cwd, repo, strlen(repo));
+		sprintf(session.cwd, "%s", repo);
 		pthread_create(&tid, NULL, service, &session);
 	}
 
@@ -73,8 +77,7 @@ static void handleMessage(Session *session, const Message request) {
 	Message response;
 	char paths[2][PATH_MAX];
 	char **list;
-	char *param;
-	int items, i;
+	int items, i, res;
 	size_t size;
 	struct sockaddr_in paddr;
 	char strpaddr[ADDRIPV4_STR];
@@ -91,13 +94,11 @@ static void handleMessage(Session *session, const Message request) {
 					sendMessage(session->ctrlconn, response);
 					break;
 				case MSG_CHDIR:
-					sprintf(paths[0], "%s/%s", session->cwd, request.body);
-					if (!isDirectory(paths[0])) {
+					if ((res = changeDir(session->cwd, request.body)) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_CHDIR;
-						sprintf(response.body, "Cannot change to directory %s", paths[0]);
+						sprintf(response.body, "Cannot change to directory %s/%s: %s", session->cwd, request.body, strerror(res));
 					} else {
-						sprintf(session->cwd, "%s", paths[0]);
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_CHDIR;
 						sprintf(response.body, "%s", session->cwd);
@@ -107,17 +108,17 @@ static void handleMessage(Session *session, const Message request) {
 				case MSG_LSDIR:
 					list = NULL;
 					sprintf(paths[0], "%s/%s", session->cwd, request.body);
-					if (exploreDirectory(paths[0], &list, &items) != 0) {
+					if ((res = exploreDirectory(paths[0], &list, &items)) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_LSDIR;
-						sprintf(response.body, "Cannot list directory %s", paths[0]);
+						sprintf(response.body, "Cannot list directory %s: %s", paths[0], strerror(res));
 					} else {
-						char *body;
+						char *content;
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_LSDIR;
-						body = arraySerialization(list, items, OBJECT_FIELDS_DELIMITER);
-						sprintf(response.body, "%s", body);
-						free(body);
+						content = arraySerialization(list, items, MSG_PDELIM);
+						sprintf(response.body, "%s;%s", session->cwd, content);
+						free(content);
 					}
 					sendMessage(session->ctrlconn, response);
 					for (i = 0; i < items; i++)
@@ -127,10 +128,10 @@ static void handleMessage(Session *session, const Message request) {
 					break;
 				case MSG_MKDIR:
 					sprintf(paths[0], "%s/%s", session->cwd, request.body);
-					if (mkDirectory(paths[0]) != 0) {
+					if ((res = mkDirectory(paths[0])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_MKDIR;
-						sprintf(response.body, "Cannot create directory %s", paths[0]);
+						sprintf(response.body, "Cannot create directory %s: %s", paths[0], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_MKDIR;
@@ -140,10 +141,10 @@ static void handleMessage(Session *session, const Message request) {
 					break;
 				case MSG_RMDIR:
 					sprintf(paths[0], "%s/%s", session->cwd, request.body);
-					if (rmDirectory(paths[0]) != 0) {
+					if ((res = rmDirectory(paths[0])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_RMDIR;
-						sprintf(response.body, "Cannot remove directory %s", paths[0]);
+						sprintf(response.body, "Cannot remove directory %s: %s", paths[0], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_RMDIR;
@@ -164,12 +165,12 @@ static void handleMessage(Session *session, const Message request) {
 						sendMessage(session->ctrlconn, response);
 						break;
 					}
-					sprintf(paths[0], "%s/%.*s", session->cwd, (int) i - 1, request.body);
+					sprintf(paths[0], "%s/%.*s", session->cwd, i, request.body);
 					sprintf(paths[1], "%s/%s", session->cwd, request.body + i + 1);
-					if (cpDirectory(paths[0], paths[1]) != 0) {
+					if ((res = cpDirectory(paths[0], paths[1])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_CPDIR;
-						sprintf(response.body, "Cannot copy directory %s to %s", paths[0], paths[1]);
+						sprintf(response.body, "Cannot copy directory %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_CPDIR;
@@ -190,12 +191,12 @@ static void handleMessage(Session *session, const Message request) {
 						sendMessage(session->ctrlconn, response);
 						break;
 					}
-					sprintf(paths[0], "%s/%.*s", session->cwd, (int) i - 1, request.body);
+					sprintf(paths[0], "%s/%.*s", session->cwd, i, request.body);
 					sprintf(paths[1], "%s/%s", session->cwd, request.body + i + 1);
-					if (cpDirectory(paths[0], paths[1]) != 0) {
+					if ((res = mvDirectory(paths[0], paths[1])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_MVDIR;
-						sprintf(response.body, "Cannot move directory %s to %s", paths[0], paths[1]);
+						sprintf(response.body, "Cannot move directory %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_MVDIR;
@@ -221,27 +222,27 @@ static void handleMessage(Session *session, const Message request) {
 					inet_ntop(AF_INET, &(paddr.sin_addr), strpaddr, INET_ADDRSTRLEN);
 					transfer->conn = ruspConnect(strpaddr, port + 1);
 					sprintf(transfer->path, "%s", paths[0]);
-					pthread_create(&tid, NULL, sndFile, &transfer);
+					pthread_create(&tid, NULL, sndFile, transfer);
 					break;
 				case MSG_STORF:
 					response.header.type = MSG_SUCCESS;
 					response.header.action = MSG_STORF;
 					sprintf(response.body, "%s", request.body);
 					sendMessage(session->ctrlconn, response);
-					param = getFilename(request.body);
+					getFilename(request.body, paths[0]);
 					transfer = malloc(sizeof(DataTransfer));
 					ruspPeer(session->ctrlconn, &paddr);
 					inet_ntop(AF_INET, &(paddr.sin_addr), strpaddr, INET_ADDRSTRLEN);
 					transfer->conn = ruspConnect(strpaddr, port + 1);
-					sprintf(transfer->path, "%s/%s", session->cwd, param);
-					pthread_create(&tid, NULL, rcvFile, &transfer);
+					sprintf(transfer->path, "%s/%s", session->cwd, paths[0]);
+					pthread_create(&tid, NULL, rcvFile, transfer);
 					break;
 				case MSG_RMFIL:
 					sprintf(paths[0], "%s/%s", session->cwd, request.body);
-					if (rmFile(paths[0]) != 0) {
+					if ((res = rmFile(paths[0])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_RMFIL;
-						sprintf(response.body, "Cannot remove file %s", paths[0]);
+						sprintf(response.body, "Cannot remove file %s: %s", paths[0], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_RMFIL;
@@ -262,12 +263,12 @@ static void handleMessage(Session *session, const Message request) {
 						sendMessage(session->ctrlconn, response);
 						break;
 					}
-					sprintf(paths[0], "%s/%.*s", session->cwd, (int) i - 1, request.body);
+					sprintf(paths[0], "%s/%.*s", session->cwd, i, request.body);
 					sprintf(paths[1], "%s/%s", session->cwd, request.body + i + 1);
-					if (cpFile(paths[0], paths[1]) != 0) {
+					if ((res = cpFile(paths[0], paths[1])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_CPFIL;
-						sprintf(response.body, "Cannot copy file %s to %s", paths[0], paths[1]);
+						sprintf(response.body, "Cannot copy file %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_CPFIL;
@@ -288,12 +289,12 @@ static void handleMessage(Session *session, const Message request) {
 						sendMessage(session->ctrlconn, response);
 						break;
 					}
-					sprintf(paths[0], "%s/%.*s", session->cwd, (int) i - 1, request.body);
+					sprintf(paths[0], "%s/%.*s", session->cwd, i, request.body);
 					sprintf(paths[1], "%s/%s", session->cwd, request.body + i + 1);
-					if (mvFile(paths[0], paths[1]) != 0) {
+					if ((res = mvFile(paths[0], paths[1])) != 0) {
 						response.header.type = MSG_BADRQST;
 						response.header.action = MSG_MVFIL;
-						sprintf(response.body, "Cannot move file %s to %s", paths[0], paths[1]);
+						sprintf(response.body, "Cannot move file %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
 						response.header.type = MSG_SUCCESS;
 						response.header.action = MSG_MVFIL;
@@ -344,7 +345,7 @@ static void *rcvFile(void *arg) {
 	ssize_t rcvd, wr;
 	int fd;
 
-	fd = open(download->path, O_RDWR, O_CREAT|O_TRUNC);
+	fd = open(download->path, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU);
 
 	while ((rcvd = ruspReceive(download->conn, data, BSIZE)) > 0) {
 		errno = 0;
@@ -366,8 +367,9 @@ static void parseArguments(int argc, char **argv) {
 
 	port = PORT;
 	sprintf(repo, "%s", REPO);
+	debug = DEBUG;
 
-	while ((opt = getopt(argc, argv, "vhp:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "vhp:r:d")) != -1) {
 		switch (opt) {
 			case 'v':
 				printf("@App:       FTP server based on RUSP1.0.\n");
@@ -382,15 +384,19 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Author:    Giacomo Marciani\n");
 				printf("@Website:   http://gmarciani.com\n");
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
-				printf("@Usage:     %s (-p port) (-r repo)\n", argv[0]);
+				printf("@Usage:     %s (-p port) (-r repo) (-d)\n", argv[0]);
 				printf("@Opts:      -p port: FTP server port number. Default (%d) if not specified.\n", PORT);
 				printf("            -r repo: FTP server repository. Default (%s) if not specified.\n", REPO);
+				printf("            -d     : Debug mode. Default (%d) if not specified.\n", DEBUG);
 				exit(EXIT_SUCCESS);
 			case 'p':
 				port = atoi(optarg);
 				break;
 			case 'r':
 				memcpy(repo, optarg, strlen(optarg));
+				break;
+			case 'd':
+				debug = 1;
 				break;
 			case '?':
 				printf("Bad option %c.\n", optopt);
@@ -400,4 +406,6 @@ static void parseArguments(int argc, char **argv) {
 				break;
 		}
 	}
+
+	FTP_DEBUG = debug;
 }
