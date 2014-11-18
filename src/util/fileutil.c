@@ -339,6 +339,13 @@ int mvDirectory(const char *srcpath, const char *dstpath) {
 	return 0;
 }
 
+int chDirectory(const char *path) {
+	errno = 0;
+	if (chdir(path) != 0)
+		return errno;
+	return 0;
+}
+
 int changeRoot(const char *path) {
 	errno = 0;
 	if (chroot(path) == -1)

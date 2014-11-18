@@ -80,7 +80,6 @@ typedef struct Message {
 typedef struct Session {
 	ConnectionId ctrlconn;
 	ConnectionId dataconn;
-	char cwd[PATH_MAX];
 } Session;
 
 typedef struct DataTransfer {

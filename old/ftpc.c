@@ -8,7 +8,6 @@
 #include "ftpcore.h"
 
 #define PORT 55000
-#define REPO "."
 #define LOSS 0.0
 #define DEBUG 0
 #define BSIZE RUSP_WNDS * RUSP_PLDS
@@ -16,8 +15,6 @@
 static char address[ADDRIPV4_STR];
 
 static int port;
-
-static char repo[PATH_MAX];
 
 static double loss;
 
@@ -39,8 +36,6 @@ int main(int argc, char **argv) {
 	int choice;
 
 	parseArguments(argc, argv);
-
-	sprintf(session.cwd, "%s", repo);
 
 	session.ctrlconn = ruspConnect(address, port);
 
@@ -82,7 +77,7 @@ int main(int argc, char **argv) {
 }
 
 static void handleMessage(Session *session, const Message response) {
-	char paths[2][PATH_MAX];
+	char path[PATH_MAX];
 	char **params;
 	int nparams, i;
 	DataTransfer *transfer;
@@ -129,16 +124,15 @@ static void handleMessage(Session *session, const Message response) {
 				case MSG_RETRF:
 					transfer = malloc(sizeof(DataTransfer));
 					transfer->conn = ruspAccept(session->dataconn);
-					getFilename(response.body, paths[0]);
-					sprintf(paths[1], "%s/%s", session->cwd, paths[0]);
-					transfer->fd = open(paths[1], O_RDWR|O_CREAT|O_TRUNC, S_IRWXU);
+					getFilename(response.body, path);
+					transfer->fd = open(path, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU);
 					pthread_create(&tid, NULL, rcvFile, transfer);
 					printf("[SUCCESS]>Downloading %s\n", response.body);
 					break;
 				case MSG_STORF:
 					transfer = malloc(sizeof(DataTransfer));
 					transfer->conn = ruspAccept(session->dataconn);
-					transfer->fd = open(response.body, O_RDONLY);
+					transfer->fd = open(response.body, O_RDONLY, S_IRWXU);
 					pthread_create(&tid, NULL, sndFile, transfer);
 					printf("[SUCCESS]>Uploading %s\n", response.body);
 					break;
@@ -212,7 +206,6 @@ static void parseArguments(int argc, char **argv) {
 	int opt;
 
 	port = PORT;
-	sprintf(repo, "%s", REPO);
 	loss = LOSS;
 	debug = DEBUG;
 
@@ -233,7 +226,7 @@ static void parseArguments(int argc, char **argv) {
 				printf("@Email:     giacomo.marciani@gmail.com\n\n");
 				printf("@Usage:     %s [address] (-p port) (-r repo) (-l loss) (-d)\n", argv[0]);
 				printf("@Opts:      -p port: FTP server port number. Default (%d) if not specified.\n", PORT);
-				printf("            -r repo: FTP client repository. Default (%s) if not specified.\n", REPO);
+				printf("            -r repo: FTP client repository. Default CWD if not specified.\n");
 				printf("            -l loss: Uniform probability of segments loss. Default (%F) if not specified.\n", LOSS);
 				printf("            -d     : Debug mode. Default (%d) if not specified.\n", DEBUG);
 				exit(EXIT_SUCCESS);
@@ -241,7 +234,9 @@ static void parseArguments(int argc, char **argv) {
 				port = atoi(optarg);
 				break;
 			case 'r':
-				memcpy(repo, optarg, strlen(optarg));
+				errno = 0;
+				if (chdir(optarg) != 0)
+					ERREXIT("Bad repository %s: %s", optarg, strerror(errno));
 				break;
 			case 'l':
 				loss = strtod(optarg, NULL);

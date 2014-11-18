@@ -47,6 +47,8 @@ int cpDirectory(const char *srcpath, const char *dstpath);
 
 int mvDirectory(const char *srcpath, const char *dstpath);
 
+int chDirectory(const char *path);
+
 int changeRoot(const char *path);
 
 int getCwd(char *path);
