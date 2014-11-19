@@ -30,11 +30,11 @@ CONNECTION = $(addprefix $(SRCDIR)/core/connection/, conn.h conn.c timeo.h timeo
 
 PROTOCOL =  $(addprefix $(SRCDIR)/, rusp.h rusp.c) $(CONNECTION)
 
-FTP = $(addprefix $(SAMPLEDIR)/ftp/, ftpcore.h ftpcore.c) $(PROTOCOL)
+LFTP = $(addprefix $(SAMPLEDIR)/lftp/, lftpcore.h lftpcore.c) $(PROTOCOL)
 
 # Targets
 
-.PHONY: all echo store ftp clean
+.PHONY: all echo upload lftp clean
 
 all: createdir samples
 
@@ -42,37 +42,37 @@ createdir:
 	@echo "@ Creating Binaries Directory"
 	@mkdir -pv $(BINDIR)
 	
-samples: echo store ftp samplegen 
+samples: echo upload lftp samplegen 
 
 echo: echos echoc
 
-store: stores storec
+upload: ups upc
 
-ftp: ftps ftpc
+lftp: lftps lftpc
 
-echos: $(SAMPLEDIR)/echos.c
+echos: $(SAMPLEDIR)/echo/echos.c
 	@echo "@ Compiling ECHO Server"
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 
-echoc: $(SAMPLEDIR)/echoc.c
+echoc: $(SAMPLEDIR)/echo/echoc.c
 	@echo "@ Compiling ECHO Client"
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 	
-fstores: $(SAMPLEDIR)/fstores.c
-	@echo "@ Compiling FILE STORE Server"
+ups: $(SAMPLEDIR)/upload/ups.c
+	@echo "@ Compiling UPLOAD Server"
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 
-fstorec: $(SAMPLEDIR)/fstorec.c
-	@echo "@ Compiling FILE STORE Client"
+upc: $(SAMPLEDIR)/upload/upc.c
+	@echo "@ Compiling UPLOAD Client"
 	$(CC) $(CFLAGS) $< $(PROTOCOL) -Isrc -o $(BINDIR)/$@
 	
-ftps: $(SAMPLEDIR)/ftp/ftps.c
-	@echo "@ Compiling FTP Server"
-	$(CC) $(CFLAGS) $< $(FTP) -Isrc -o $(BINDIR)/$@
+lftps: $(SAMPLEDIR)/lftp/lftps.c
+	@echo "@ Compiling LFTP Server"
+	$(CC) $(CFLAGS) $< $(LFTP) -Isrc -o $(BINDIR)/$@
 
-ftpc: $(SAMPLEDIR)/ftp/ftpc.c
-	@echo "@ Compiling FTP Client"
-	$(CC) $(CFLAGS) $< $(FTP) -Isrc -o $(BINDIR)/$@
+lftpc: $(SAMPLEDIR)/lftp/lftpc.c
+	@echo "@ Compiling LFTP Client"
+	$(CC) $(CFLAGS) $< $(LFTP) -Isrc -o $(BINDIR)/$@
 	
 samplegen: $(SAMPLEDIR)/samplegen.c
 	@echo "@ Compiling Sample File Generator"

@@ -22,7 +22,7 @@
 #include "../../util/macroutil.h"
 
 /* CONNECTION STATES */
-
+#define RUSP_STATES 11
 #define RUSP_CLOSED 0
 #define RUSP_LISTEN 1
 #define RUSP_SYNSND 2

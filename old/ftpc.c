@@ -55,9 +55,9 @@ int main(int argc, char **argv) {
 
 	printf("Connected to %s\n", strpaddr);
 
-	while ((choice = runMenu(&session, &request)) != MENU_EXIT) {
+	while ((choice = runMenu(&session, &request)) != LFTP_MENU_EXIT) {
 
-		if (choice == MENU_ERROR)
+		if (choice == LFTP_MENU_ERROR)
 			continue;
 
 		sendMessage(session.ctrlconn, request);
@@ -84,16 +84,16 @@ static void handleMessage(Session *session, const Message response) {
 	pthread_t tid;
 
 	switch (response.header.type) {
-		case MSG_SUCCESS:
+		case LFTP_SUCCESS:
 			switch (response.header.action) {
-				case MSG_GTCWD:
+				case LFTP_GTCWD:
 					printf("[ANSWER]>CWD: %s\n", response.body);
 					break;
-				case MSG_CHDIR:
+				case LFTP_CHDIR:
 					printf("[SUCCESS]>CWD: %s\n", response.body);
 					break;
-				case MSG_LSDIR:
-					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
+				case LFTP_LSDIR:
+					params = arrayDeserialization(response.body, LFTP_PDELIM, &nparams);
 					printf("[SUCCESS]>Listing %s\n", params[0]);
 					for (i = 1; i < nparams; i++)
 						printf("%s\n", params[i]);
@@ -101,27 +101,27 @@ static void handleMessage(Session *session, const Message response) {
 						free(params[i]);
 					free(params);
 					break;
-				case MSG_MKDIR:
+				case LFTP_MKDIR:
 					printf("[SUCCESS]>Directory created %s\n", response.body);
 					break;
-				case MSG_RMDIR:
+				case LFTP_RMDIR:
 					printf("[SUCCESS]>Directory removed %s\n", response.body);
 					break;
-				case MSG_CPDIR:
-					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
+				case LFTP_CPDIR:
+					params = arrayDeserialization(response.body, LFTP_PDELIM, &nparams);
 					printf("[SUCCESS]>Directory %s copied to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
 					free(params);
 					break;
-				case MSG_MVDIR:
-					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
+				case LFTP_MVDIR:
+					params = arrayDeserialization(response.body, LFTP_PDELIM, &nparams);
 					printf("[SUCCESS]>Directory %s moved to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
 					free(params);
 					break;
-				case MSG_RETRF:
+				case LFTP_RETRF:
 					transfer = malloc(sizeof(DataTransfer));
 					transfer->conn = ruspAccept(session->dataconn);
 					getFilename(response.body, path);
@@ -129,25 +129,25 @@ static void handleMessage(Session *session, const Message response) {
 					pthread_create(&tid, NULL, rcvFile, transfer);
 					printf("[SUCCESS]>Downloading %s\n", response.body);
 					break;
-				case MSG_STORF:
+				case LFTP_STORF:
 					transfer = malloc(sizeof(DataTransfer));
 					transfer->conn = ruspAccept(session->dataconn);
 					transfer->fd = open(response.body, O_RDONLY, S_IRWXU);
 					pthread_create(&tid, NULL, sndFile, transfer);
 					printf("[SUCCESS]>Uploading %s\n", response.body);
 					break;
-				case MSG_RMFIL:
+				case LFTP_RMFIL:
 					printf("[SUCCESS]>File removed %s\n", response.body);
 					break;
-				case MSG_CPFIL:
-					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
+				case LFTP_CPFIL:
+					params = arrayDeserialization(response.body, LFTP_PDELIM, &nparams);
 					printf("[SUCCESS]>File %s copied to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
 					free(params);
 					break;
-				case MSG_MVFIL:
-					params = arrayDeserialization(response.body, MSG_PDELIM, &nparams);
+				case LFTP_MVFIL:
+					params = arrayDeserialization(response.body, LFTP_PDELIM, &nparams);
 					printf("[SUCCESS]>File %s moved to %s\n", params[0], params[1]);
 					free(params[0]);
 					free(params[1]);
@@ -157,7 +157,7 @@ static void handleMessage(Session *session, const Message response) {
 					break;
 			}
 			break;
-		case MSG_BADRQST:
+		case LFTP_BADRQST:
 			printf("[BADRQST]>%s\n", response.body);
 			break;
 		default:
@@ -260,5 +260,5 @@ static void parseArguments(int argc, char **argv) {
 
 	ruspSetAttr(RUSP_ATTR_DROPR, &loss);
 
-	FTP_DEBUG = debug;
+	LFTP_DEBUG = debug;
 }

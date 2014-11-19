@@ -2,13 +2,13 @@
 
 /* GLOBAL VARIABLES */
 
-int FTP_DEBUG = 0;
+int LFTP_DEBUG = 0;
 
 /* MESSAGE */
 
-static char STR_TYP[MSG_TYP][10] = {"REQ", "SUC", "ERR"};
+static char STR_TYP[LFTP_TYP][10] = {"REQ", "SUC", "ERR"};
 
-static char STR_ACT[MSG_ACT][6] = {"GTCWD", "CHDIR", "LSDIR", "MKDIR", "RMDIR", "CPDIR", "MVDIR", "RETRF", "STORF", "RMFIL", "CPFIL", "MVFIL"};
+static char STR_ACT[LFTP_ACT][6] = {"GTCWD", "CHDIR", "LSDIR", "MKDIR", "RMDIR", "CPDIR", "MVDIR", "RETRF", "STORF", "RMFIL", "CPFIL", "MVFIL"};
 
 Message createMessage(const int type, const int action, const char *body) {
 	Message msg;
@@ -39,7 +39,7 @@ size_t serializeMessage(const Message msg, char *smsg) {
 }
 
 void deserializeMessage(const char *smsg, Message *msg) {
-	char hdrf[MSG_HDRF][3];
+	char hdrf[LFTP_HDRF][3];
 
 	memcpy(hdrf[0], smsg, sizeof(char) * 2);
 	hdrf[0][2] = '\0';
@@ -51,7 +51,7 @@ void deserializeMessage(const char *smsg, Message *msg) {
 
 	msg->header.action = atoi(hdrf[1]);
 
-	sprintf(msg->body, "%s", smsg + MSG_HEAD);
+	sprintf(msg->body, "%s", smsg + LFTP_HEAD);
 }
 
 void messageToString(const Message msg, char *strmsg) {
@@ -61,7 +61,7 @@ void messageToString(const Message msg, char *strmsg) {
 /* MESSAGE I/O */
 
 ssize_t sendMessage(const ConnectionId conn, const Message msg) {
-	char smsg[MSGSIZE];
+	char smsg[LFTP_MSGS];
 	ssize_t snd;
 	size_t msgsize;
 
@@ -69,29 +69,29 @@ ssize_t sendMessage(const ConnectionId conn, const Message msg) {
 
 	snd = ruspSend(conn, smsg, msgsize);
 
-	DBGFUNC(FTP_DEBUG, printOutMessage(conn, msg));
+	DBGFUNC(LFTP_DEBUG, printOutMessage(conn, msg));
 
 	return snd;
 }
 
 ssize_t receiveMessage(const ConnectionId conn, Message *msg) {
-	char smsg[MSGSIZE];
+	char smsg[LFTP_MSGS];
 	ssize_t rcvd;
 
-	if ((rcvd = ruspReceive(conn, smsg, MSGSIZE)) > 0) {
+	if ((rcvd = ruspReceive(conn, smsg, LFTP_MSGS)) > 0) {
 
 		smsg[rcvd] = '\0';
 
 		deserializeMessage(smsg, msg);
 
-		DBGFUNC(FTP_DEBUG, printInMessage(conn, *msg));
+		DBGFUNC(LFTP_DEBUG, printInMessage(conn, *msg));
 	}
 
 	return rcvd;
 }
 
 void printOutMessage(const ConnectionId conn, const Message msg) {
-	char time[TIME_STR], straddr[ADDRIPV4_STR], strmsg[MSG_STR];
+	char time[TIME_STR], straddr[ADDRIPV4_STR], strmsg[LFTP_STR_MSG];
 	struct sockaddr_in addr;
 
 	getTime(time);
@@ -106,7 +106,7 @@ void printOutMessage(const ConnectionId conn, const Message msg) {
 }
 
 void printInMessage(const ConnectionId conn, const Message msg) {
-	char time[TIME_STR], straddr[ADDRIPV4_STR], strmsg[MSG_STR];
+	char time[TIME_STR], straddr[ADDRIPV4_STR], strmsg[LFTP_STR_MSG];
 	struct sockaddr_in addr;
 
 	getTime(time);
@@ -122,7 +122,7 @@ void printInMessage(const ConnectionId conn, const Message msg) {
 
 /* MENU */
 
-static char *MENU[MENU_CHOICES] = {"Get CWD", "Change CWD", "List Directory", "New Directory", "Remove Directory", "Copy Directory", "Move Directory", "Download File",
+static char *MENU[LFTP_MENU_CHOICES] = {"Get CWD", "Change CWD", "List Directory", "New Directory", "Remove Directory", "Copy Directory", "Move Directory", "Download File",
 								   "Upload File", "Remove File", "Copy File", "Move File", "Exit"};
 
 int runMenu(Session *session, Message *msg) {
@@ -132,113 +132,113 @@ int runMenu(Session *session, Message *msg) {
 
 	do {
 		printf("\n-------\nMENU\n-------\n");
-		for (i = 1; i <= MENU_CHOICES; i++)
+		for (i = 1; i <= LFTP_MENU_CHOICES; i++)
 			printf("%d\t%s\n", i, MENU[i - 1]);
 		inputs[0] = getUserInput("[Your Action]>");
 		choice = atoi(inputs[0]);
 		free(inputs[0]);
-	} while ((choice < 1) | (choice > MENU_CHOICES));
+	} while ((choice < 1) | (choice > LFTP_MENU_CHOICES));
 
-	msg->header.type = MSG_REQUEST;
+	msg->header.type = LFTP_REQUEST;
 
 	switch (choice) {
-		case MENU_EXIT:
-			return MENU_EXIT;
-		case MENU_GTCWD:
-			msg->header.action = MSG_GTCWD;
+		case LFTP_MENU_EXIT:
+			return LFTP_MENU_EXIT;
+		case LFTP_MENU_GTCWD:
+			msg->header.action = LFTP_GTCWD;
 			msg->body[0] = '\0';
 			break;
-		case MENU_CHDIR:
-			msg->header.action = MSG_CHDIR;
+		case LFTP_MENU_CHDIR:
+			msg->header.action = LFTP_CHDIR;
 			inputs[0] = getUserInput("[Directory (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_LSDIR:
-			msg->header.action = MSG_LSDIR;
+		case LFTP_MENU_LSDIR:
+			msg->header.action = LFTP_LSDIR;
 			inputs[0] = getUserInput("[Directory (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_MKDIR:
-			msg->header.action = MSG_MKDIR;
+		case LFTP_MENU_MKDIR:
+			msg->header.action = LFTP_MKDIR;
 			inputs[0] = getUserInput("[Directory (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_RMDIR:
-			msg->header.action = MSG_RMDIR;
+		case LFTP_MENU_RMDIR:
+			msg->header.action = LFTP_RMDIR;
 			inputs[0] = getUserInput("[Directory (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_CPDIR:
-			msg->header.action = MSG_CPDIR;
+		case LFTP_MENU_CPDIR:
+			msg->header.action = LFTP_CPDIR;
 			inputs[0] = getUserInput("[Src Directory (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			inputs[1] = getUserInput("[Dst Directory (empty to abort)]>");
 			if (strlen(inputs[1]) == 0) {
 				free(inputs[0]);
 				free(inputs[1]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
-			sprintf(msg->body, "%s%s%s", inputs[0], MSG_PDELIM, inputs[1]);
+			sprintf(msg->body, "%s%s%s", inputs[0], LFTP_PDELIM, inputs[1]);
 			free(inputs[0]);
 			free(inputs[1]);
 			break;
-		case MENU_MVDIR:
-			msg->header.action = MSG_MVDIR;
+		case LFTP_MENU_MVDIR:
+			msg->header.action = LFTP_MVDIR;
 			inputs[0] = getUserInput("[Src Directory (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			inputs[1] = getUserInput("[Dst Directory (empty to abort)]>");
 			if (strlen(inputs[1]) == 0) {
 				free(inputs[0]);
 				free(inputs[1]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
-			sprintf(msg->body, "%s%s%s", inputs[0], MSG_PDELIM, inputs[1]);
+			sprintf(msg->body, "%s%s%s", inputs[0], LFTP_PDELIM, inputs[1]);
 			free(inputs[0]);
 			free(inputs[1]);
 			break;
-		case MENU_DWFILE:
-			msg->header.action = MSG_RETRF;
+		case LFTP_MENU_DWFILE:
+			msg->header.action = LFTP_RETRF;
 			inputs[0] = getUserInput("[File (empty to abort)>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_UPFILE:
-			msg->header.action = MSG_STORF;
+		case LFTP_MENU_UPFILE:
+			msg->header.action = LFTP_STORF;
 			while(1) {
 				inputs[0] = getUserInput("[File (empty to abort)]>");
 				if (strlen(inputs[0]) == 0) {
 					free(inputs[0]);
-					return MENU_ERROR;
+					return LFTP_MENU_ERROR;
 				}
 				if (!isFile(inputs[0]))
 					free(inputs[0]);
@@ -248,47 +248,47 @@ int runMenu(Session *session, Message *msg) {
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_RMFILE:
-			msg->header.action = MSG_RMFIL;
+		case LFTP_MENU_RMFILE:
+			msg->header.action = LFTP_RMFIL;
 			inputs[0] = getUserInput("[File (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			sprintf(msg->body, "%s", inputs[0]);
 			free(inputs[0]);
 			break;
-		case MENU_CPFILE:
-			msg->header.action = MSG_CPFIL;
+		case LFTP_MENU_CPFILE:
+			msg->header.action = LFTP_CPFIL;
 			inputs[0] = getUserInput("[Src File (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			inputs[1] = getUserInput("[Dst File (empty to abort)]>");
 			if (strlen(inputs[1]) == 0) {
 				free(inputs[0]);
 				free(inputs[1]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
-			sprintf(msg->body, "%s%s%s", inputs[0], MSG_PDELIM, inputs[1]);
+			sprintf(msg->body, "%s%s%s", inputs[0], LFTP_PDELIM, inputs[1]);
 			free(inputs[0]);
 			free(inputs[1]);
 			break;
-		case MENU_MVFILE:
-			msg->header.action = MSG_MVFIL;
+		case LFTP_MENU_MVFILE:
+			msg->header.action = LFTP_MVFIL;
 			inputs[0] = getUserInput("[Src File (empty to abort)]>");
 			if (strlen(inputs[0]) == 0) {
 				free(inputs[0]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
 			inputs[1] = getUserInput("[Dst File (empty to abort)]>");
 			if (strlen(inputs[1]) == 0) {
 				free(inputs[0]);
 				free(inputs[1]);
-				return MENU_ERROR;
+				return LFTP_MENU_ERROR;
 			}
-			sprintf(msg->body, "%s%s%s", inputs[0], MSG_PDELIM, inputs[1]);
+			sprintf(msg->body, "%s%s%s", inputs[0], LFTP_PDELIM, inputs[1]);
 			free(inputs[0]);
 			free(inputs[1]);
 			break;

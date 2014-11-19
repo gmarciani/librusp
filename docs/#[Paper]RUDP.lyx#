@@ -1,0 +1,7593 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass llncs
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_title "RUDP"
+\pdf_author "Giacomo Marciani"
+\pdf_subject "Reliable User Datagram Protocol"
+\pdf_bookmarks true
+\pdf_bookmarksnumbered true
+\pdf_bookmarksopen true
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder false
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle true
+\papersize a4paper
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle plain
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+RUSP
+\end_layout
+
+\begin_layout Subtitle
+Reliable User Segment Protocol
+\end_layout
+
+\begin_layout Author
+Giacomo Marciani
+\end_layout
+
+\begin_layout Institute
+University of Rome Tor Vergata
+\begin_inset Newline newline
+\end_inset
+
+giacomo.marciani@gmail.com
+\end_layout
+
+\begin_layout Abstract
+We present the RUSP reliable transport protocol, and its official implementation
+ 
+\shape slanted
+librusp
+\shape default
+.
+ It is well known that TCP provides a reliable congestion controlled communicati
+on at a cost of overhead, whereas UDP provides efficiency at a cost of unreliabi
+lity and congestion exposure.
+ We would like to fill the TCP/UDP gap, developing an efficient reliable
+ transport protocol for those applications that do not expose the connection
+ end-points to the risk of congestion, thus not requiring neither congestion
+ nor flow control.
+ Still far from being able to aspire to a practice spread, RUSP, together
+ with this paper, are meant to show how to design and realize a reliable
+ transport protocol, alternative, though inspired, to existing transport
+ protocols.
+\end_layout
+
+\begin_layout Section*
+Introduction
+\end_layout
+
+\begin_layout Standard
+In section 1, we introduce the RUSP transport protocol focusing on its reliable
+ service-model and segment structure.
+\end_layout
+
+\begin_layout Standard
+In section 2, we introduce 
+\shape slanted
+librusp
+\shape default
+, the official implementation of the RUSP transport protocol, focusing on
+ its architecture and API.
+\end_layout
+
+\begin_layout Standard
+In section 3, we give some 
+\shape slanted
+librusp
+\shape default
+ sampling network applications, focusing on a simplified implementation
+ of the FTP.
+\end_layout
+
+\begin_layout Standard
+In section 4, we show the experimental results, proving pros/cons and performanc
+es of the protocol design and its implementative model.
+\end_layout
+
+\begin_layout Standard
+In section 5, we state the future improvements of the RUSP protocol and
+ 
+\shape slanted
+librsup
+\shape default
+.
+\end_layout
+
+\begin_layout Section
+The RUSP Protocol
+\end_layout
+
+\begin_layout Standard
+The Reliable User Segment Protocol (RUSP) is a reliable transport protocol
+ that realizes a connection-oriented point-to-point full-duplex unbounded
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+RUSP does not impose any kind of transmission rate constraint, whereas the
+ TCP's congestion control necessarily imposes it.
+\end_layout
+
+\end_inset
+
+ communication.
+ 
+\end_layout
+
+\begin_layout Standard
+Although clearly inspired by both the TCP, defined in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Transmission Control Protocol"
+
+\end_inset
+
+, and the UDP, defined in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "User Datagram Protocol"
+
+\end_inset
+
+, RUSP significantly differs from both of these protocols.
+ Actually, RUSP aims to fill the well-known gap between TCP and UDP, providing
+ an efficient reliable service for those network applications that do not
+ need neither congestion nor flow control.
+\end_layout
+
+\begin_layout Standard
+In this section we will show the main building blocks that realize the RUSP
+ reliable service, the RUSP segment structure and the pseudo-code of both
+ the send and receive side of the RUSP connection.
+\end_layout
+
+\begin_layout Standard
+In particular, we will focus on the RUSP finite state automaton, the connection
+ establishment and shutdown, the SACK/CACKnoledgment discipline, the ISN
+ computation, the sliding-window and the adaptive retransmission timeout.
+ 
+\end_layout
+
+\begin_layout Subsection
+The Reliable Service
+\end_layout
+
+\begin_layout Standard
+A transport protocol is said to be reliable, or it realizes a reliable service,
+ if and only if its service-model guarantees a correct in-order delivery
+ of encapsulated data.
+ To achieve this, the protocol must keep track of some useful communication-stat
+e information, thus implementing a connection-oriented service.
+\end_layout
+
+\begin_layout Subsubsection
+The Finite State Automaton
+\end_layout
+
+\begin_layout Standard
+When designing a connection-oriented protocol, the design of the connection's
+ finite state automaton (FSA) is the first topic to take into account.
+ So, let us now show the RUSP FSA, wich is clearly inspired by the TCP FSA,
+ defined in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Transmission Control Protocol"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+The only difference with respect to the TCP's consists on the absence of
+ the mutual transition between SYNSND and SYNRCV, and the presence of the
+ transition from FINWT1 to TIMEWT, taken from 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "The Linux Programming Interface"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_fsa.png
+	lyxscale 70
+	scale 70
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+RUSP Finite State Automaton
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:RUSP Finite State Automaton"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+The Connection Establishment
+\end_layout
+
+\begin_layout Standard
+The connection establishment allows the two connection end-points to synchronize
+ their sequence number space.
+ RUSP implements the connection establishment in the same way TCP does:
+ thus realizing it by a 
+\shape slanted
+three-way handshake
+\shape default
+ procedure, during wich both the connection end-points exchange their respective
+ 
+\shape slanted
+Initial Sequence Number (ISN)
+\shape default
+.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Connection Establishment Usual"
+
+\end_inset
+
+ shows the usual RUSP three-way handshake.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/open_normal.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Connection Establishment: usual case
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Connection Establishment Usual"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+ISN Computation
+\end_layout
+
+\begin_layout Standard
+The connection establishment imposes to both the end-points to respectively
+ exchange their locally run-time computed ISNs, thus realizing the binding
+ of the sequence spaces.
+ Such a mechanism exposes the connection to an 
+\shape slanted
+ISN-guessing attack
+\shape default
+.
+ The pseudo-random ISN computation should then reduce the exposure to such
+ an attack.
+\end_layout
+
+\begin_layout Standard
+As stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Defending against Sequence Number Attacks"
+
+\end_inset
+
+, we can prevent ISN-guessing attacks by giving each connection a 
+\shape slanted
+separate parametrized sequence space
+\shape default
+.
+ Let us identify each connection with the following tuple
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+Connection=(ip_{local},port_{local},ip_{peer},port_{peer})
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+and give a pseudo-random function 
+\begin_inset Formula $F(C,K)$
+\end_inset
+
+ of the connection 
+\begin_inset Formula $C$
+\end_inset
+
+, parametrized by some secret key 
+\begin_inset Formula $K$
+\end_inset
+
+.
+ Within each space, the ISN is incremented by 
+\begin_inset Formula $M(t)$
+\end_inset
+
+ in a time-based fashion, according to 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Transmission Control Protocol"
+
+\end_inset
+
+.
+ As suggested in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Defending against Sequence Number Attacks"
+
+\end_inset
+
+, the MD5 cryptographic hashing, described in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "The MD5 Message-Digest Algorithm"
+
+\end_inset
+
+, would be a good choice for the implementation of the 
+\begin_inset Formula $F$
+\end_inset
+
+ function.
+\end_layout
+
+\begin_layout Standard
+The RUSP algorithm for the ISN computation implements the following function
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+ISN=M(t)+MD5(C,K)
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Interesting Scenarios
+\end_layout
+
+\begin_layout Standard
+Let us now consider an interesting scenario.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Connection Establishment Loss"
+
+\end_inset
+
+ shows how RUSP recovers from segment loss during the connection establishment.
+ Note that in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Connection Establishment Loss"
+
+\end_inset
+
+ was omitted the FIN SACK's loss: the loss has been deriberately omitted
+ due to the fact that the current version of the protocol does not provides
+ any procedure to recover from this kind of loss.
+ See section 4 for futher details about FIN SACK's loss recovery.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/open_drop.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Connection Establishment: segment loss recovery
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Connection Establishment Loss"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+The Connection Shutdown
+\end_layout
+
+\begin_layout Standard
+The connection shutdown allows the two connection end-points to gently close
+ the connection.
+ RUSP implements the connection shutdown in the same way TCP does: thus
+ realizing it by a 
+\shape slanted
+four-way handshake
+\shape default
+ procedure.
+\end_layout
+
+\begin_layout Standard
+Before going into details about the segments exchange involved in the procedure,
+ we first need to distinguish two kind of connection shutdown: the 
+\shape slanted
+active close
+\shape default
+ and the 
+\shape slanted
+passive close
+\shape default
+.
+ The connection shutdown is initiated by an active close, and terminated
+ by a passive close.
+ Futhermore, RUSP requires an extra-state TIMEWT to reliably complete the
+ connection shutdown on the active close side, as TCP does.
+ 
+\end_layout
+
+\begin_layout Standard
+Notice that, as stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Transmission Control Protocol"
+
+\end_inset
+
+ and shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Connection Shutdown Usual"
+
+\end_inset
+
+, forwarding a connection close request, both the active and the passive
+ one, does not sound as an imposition to shutdown, but a declaration to
+ have no more data to send.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/close_normal.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Connection Shutdown: usual case
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Connection Shutdown Usual"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+TIMEWT State
+\end_layout
+
+\begin_layout Standard
+Let us now give a short clarification about the TIMEWT state.
+ The purpose of the TIMEWT state is to implement reliable connection termination
+ and to allow expiration of old duplicate segments in the network.
+ When opening a new connection, RUSP takes care to avoid new incarnations
+ of connections in TIMEWT state.
+ We notice that there is not an equivalent state for the passive close side
+ of the connection: in fact, it does not require it because it can't be
+ exposed to duplicate segments storm.
+ As stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Transmission Control Protocol"
+
+\end_inset
+
+, the transition from TIMEWT state to the CLOSED state is taken in response
+ of a timeout that is twice the 
+\shape slanted
+Minimum Segment Lifetime (MSL)
+\shape default
+.
+ Although BSD socket implementation assumes a 30 seconds MSL, we decided
+ to mediate this value with the 120 seconds MSL suggested in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Requirements for Internet Hosts Communication Layers"
+
+\end_inset
+
+: thus considering a 75 seconds MSL and 150 seconds TIMEWT timeout.
+\end_layout
+
+\begin_layout Paragraph
+Interesting Scenarios
+\end_layout
+
+\begin_layout Standard
+Let us now consider two interesting scenarios.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Connection Shutdown Simultaneity"
+
+\end_inset
+
+ shows how RUSP recovers from simultaneous active close requests, while
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Connection Shutdown Loss"
+
+\end_inset
+
+ shows how RUSP recovers from segment loss during the connection shutdown.
+ In this latter scenario we may appreciate both the piggy-backed acknowledgement
+ and the RUSP's FSA transition from state FINWT1 to state TIMEWT.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/close_simultaneous.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Connection Shutdown: simultaneity
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Connection Shutdown Simultaneity"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/close_drop.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Connection Shutdown: segment loss recovery
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Connection Shutdown Loss"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+The Acknowledge Discipline
+\end_layout
+
+\begin_layout Standard
+RUSP employs an aknowledgement discipline that takes advantage of both the
+ selective acknowledgement and cumulative acknowledgement.
+\end_layout
+
+\begin_layout Standard
+As stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Computer Networking"
+
+\end_inset
+
+, the selective acknowledgement, provided by Selective-Repeat, minimizes
+ redundant retransmissions with respect to the cumulative acknowledgement
+ provided by the Go-Back-N.
+\end_layout
+
+\begin_layout Standard
+RUSP employs a 
+\shape slanted
+SACK
+\shape default
+ segment (selective acknowledgement) to acknowledge a first-time received
+ segment, while employs a 
+\shape slanted
+CACK
+\shape default
+ segment (cumulative acknowledgement) to acknowledge a redundant retransmission.
+ See the next paragraphs about the sliding-windows, to better understand
+ the power of such a mixed acknowledgement discipline.
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Acknowledge Discipline Usual"
+
+\end_inset
+
+ shows a usual data communication scneario, in wich RUSP employs SACKs to
+ acknowledge first-time received segments.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/communication_normal.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Acknowledge Discipline: usual case
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Acknowledge Discipline Usual"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Interesting Scenarios
+\end_layout
+
+\begin_layout Standard
+Let us now consider an interesting scenario.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Acknowledge Discipline CACK"
+
+\end_inset
+
+ shows a typical scenario in wich RUSP takes advantage of CACK to immediately
+ restore windows allignment after a storm of SACKs loss.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/communication_cack.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Acknowledge Discipline: CACK advantages
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Acknowledge Discipline CACK"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+The Sliding-Window
+\end_layout
+
+\begin_layout Standard
+RUSP is a 
+\shape slanted
+sliding-window protocol
+\shape default
+, in the sense stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Computer Networking"
+
+\end_inset
+
+: each outcoming segment is processed with respect to the outbox window,
+ 
+\shape slanted
+sndwnd
+\shape default
+, while each incoming segment is processed with respect to the inbox window,
+ 
+\shape slanted
+rcvwnd
+\shape default
+.
+ Let us convince you that this mechanism, togheter with the acknowledge
+ discipline, realizes the reliable service.
+\end_layout
+
+\begin_layout Paragraph
+Oubox Window
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+sndwnd
+\shape default
+ partitions the sequence space of the outcoming segments.
+ The sender shall send all those segments that fall within the sndwnd: the
+ window size, 
+\shape slanted
+wnds=wnde-wndb
+\shape default
+, thus imposes an upper bound on the number of unACKed segments in pipeline.
+ The window base, 
+\shape slanted
+wndb
+\shape default
+, is the sequence number of the oldest unACKed segment.
+ The window next, 
+\shape slanted
+wndn
+\shape default
+, is the sequence number of the next segment to send.
+ The window end, 
+\shape slanted
+wnde
+\shape default
+, is the sequence number of the first out-of-window segment, thus the first
+ unsendable segment.
+ Once 
+\shape slanted
+wndb
+\shape default
+ has been ACKed, the 
+\shape slanted
+sndwnd
+\shape default
+ shall slide to the next unACKed sequence number, thus allowing the sender
+ to reliably proceeed its transmissions.
+ 
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Outbox Sequence Space"
+
+\end_inset
+
+ clearifies the above concepts.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_sndwnd.png
+	lyxscale 17
+	scale 17
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Outbox Sequence Space: 
+\shape slanted
+sndwnd
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Outbox Sequence Space"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Inbox Window
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+rcvwnd
+\shape default
+ partitions the sequence space of the incoming segments.
+ The receiver shall receive all those segments that fall within the rcvwnd:
+ the window size, 
+\shape slanted
+wnds=wnde-wndb
+\shape default
+, thus imposes an upper bound on the number of bufferable segments.
+ The window base, 
+\shape slanted
+wndb
+\shape default
+, is the sequence number of the next expected in-order segment.
+ The window end, 
+\shape slanted
+wnde
+\shape default
+, is the sequence number of the first out-of-window segment, thus the first
+ unbufferable segment.
+ Once 
+\shape slanted
+wndb
+\shape default
+ has been received, the 
+\shape slanted
+rcvwnd
+\shape default
+ shall slide to the next not received sequence number, thus allowing the
+ receiver to reliably proceeed its receptions.
+ 
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Inbox Sequence Space"
+
+\end_inset
+
+ clearifies the above concepts.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_rcvwnd.png
+	lyxscale 17
+	scale 17
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Inbox Sequence Space: 
+\shape slanted
+rcvwnd
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Inbox Sequence Space"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Local Window and Peer Perception
+\end_layout
+
+\begin_layout Standard
+Let us now point out a primary key-point in the understanding of a sliding-windo
+w protocol.
+ The local outbox[inbox] window does not only provides an effective mechanism
+ to regulate local transmission[receptions], but also gives a local approximated
+ reflection of the peer's inbox[outbox] window.
+ Clearly, such an approximation is sensitive to segment loss: a single SACK
+ loss is enough to misalign the local 
+\shape slanted
+sndwnd
+\shape default
+ with respect to the peer 
+\shape slanted
+rcvwnd
+\shape default
+.
+ Such a misalignment may cause serious communication lacks: indeed, the
+ sender may waste time and resources congesting the network and peer with
+ redundant retransmissions.
+ The RUSP's CACK acknowledgement allows the sender to restore the window
+ allignment as soon as the first redundant retransmission has been received
+ by the peer.
+\end_layout
+
+\begin_layout Paragraph
+Windows and Buffers
+\end_layout
+
+\begin_layout Standard
+The window size cannot be unlimited.
+ A first upper bound is imposed by the modulo-2 arithmetic of the sequence
+ space.
+ The window size must be less than or equal to 
+\begin_inset Formula $\frac{2^{32}}{2}-1$
+\end_inset
+
+ to guarantee the total ordering of segments.
+ A second upper bound, typically more severe than the previous one, is imposed
+ by the size of the receving buffer.
+ If no flow control is provided, the window size must be strictly less than
+ the size of the receiving buffer, to avoid the possibility of a buffer
+ overflows.
+ As RUSP does not provide any flow control, it thus requires window size
+ less than 65535 bytes, which is the receiving buffer size.
+\end_layout
+
+\begin_layout Subsubsection
+The Retransmission Timeout
+\end_layout
+
+\begin_layout Standard
+RUSP employs an adaptive time-based retransmission mechanism, thus it should
+ pay particular attention to the timeout computation.
+\end_layout
+
+\begin_layout Standard
+Clearly, the timeout should be larger than the connection's Round Trip Time
+ (RTT), but how much larger? Indeed, a too short timeout would induce unnecessar
+y retransmission, while a too large timeout would lead to a serious performance
+ lack in case of network congestion.
+\end_layout
+
+\begin_layout Standard
+Ideally, the timeout must be istantaneously adapted to the expected RTT.
+ Such a predictive model must take into account the current network congestion
+ and the variability trends of its fluctuations.
+\end_layout
+
+\begin_layout Standard
+As stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Computing TCP's Retransmission Timer"
+
+\end_inset
+
+, such a scenario can be effectively approximated by a Exponential Weighted
+ Moving Average (EWMA) statistical model, thus obtaining the following relations
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+extRTT=(1-\alpha)\cdot extRTT+\alpha\cdot samRTT
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+devRTT=(1-\beta)\cdot devRTT+\beta\cdot\mid samRTT-extRTT\mid
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+timeout=extRTT+\gamma\cdot devRTT
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where 
+\shape slanted
+samRTT
+\shape default
+ is the RTT measured for the acknowledgement of a non retransmitted segment,
+ 
+\shape slanted
+extRTT
+\shape default
+ is the weight average of the measured RTTs, 
+\shape slanted
+devRTT
+\shape default
+ is the weight average of the deviations between the expected and measured
+ RTTs, and 
+\shape slanted
+Timeout
+\shape default
+ is the current timeout value.
+ Such an adaptive model let the protocol to compute a new timeout value
+ approximately once every SACKed segment.
+\end_layout
+
+\begin_layout Standard
+As stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Computing TCP's Retransmission Timer"
+
+\end_inset
+
+, the reccomended values of 
+\begin_inset Formula $\alpha$
+\end_inset
+
+, 
+\begin_inset Formula $\beta$
+\end_inset
+
+ and 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ are, respectively, 
+\begin_inset Formula $\alpha=0.125$
+\end_inset
+
+, 
+\begin_inset Formula $\beta=0.25$
+\end_inset
+
+ and 
+\begin_inset Formula $\gamma=4$
+\end_inset
+
+.
+ Such values of 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ and 
+\begin_inset Formula $\beta$
+\end_inset
+
+ induce a greater weight on recent samples and deviations with respect to
+ the old ones, while such a value of 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ induces a timeout margin directly proportional to the weight of fluctuations.
+ As reccomended in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Computing TCP's Retransmission Timer"
+
+\end_inset
+
+, the initial timeout value is set to 1 second.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:Adaptive Timeout Behaviour"
+
+\end_inset
+
+ plots the bahaviour of 
+\shape slanted
+extRTT
+\shape default
+ 
+\shape slanted
+devRTT
+\shape default
+ ad 
+\shape slanted
+Timeout
+\shape default
+, letting us appreciate the advantages of such a predictive model.
+ Indeed, it highlights the initial exploration of the RTT variability space
+ and its subsequent adaptations.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_timeout.png
+	lyxscale 75
+	scale 75
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Adaptive Timeout Behaviour
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:Adaptive Timeout Behaviour"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+The RUSP Segment Structure
+\end_layout
+
+\begin_layout Standard
+RUSP allows two processes to communicate through segments exchange, thus
+ encapsulating upper-layer data and control data into a RUSP segment.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:RUSP Segment Structure"
+
+\end_inset
+
+ shows the general RUSP segment structure.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\size scriptsize
+\begin_inset Tabular
+<lyxtabular version="3" rows="6" columns="32">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="left" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="left" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="left" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="middle" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="center" valignment="top" width="0.3cm">
+<column alignment="right" valignment="top" width="0.3cm">
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+16
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="right" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+31
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "4cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Source port
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "4cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Destination port
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "2cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Checksum
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+ERR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+KLV
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+PSH
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+CACK
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+SACK
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+RST
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+FIN
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rotate="90" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+SYN
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "4cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Payload size
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "8cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Sequence number
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "8cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Acknowledge number
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell multicolumn="1" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "8cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+\begin_inset VSpace 0.75cm
+\end_inset
+
+Payload
+\begin_inset VSpace 0.75cm
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell multicolumn="2" alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+RUSP Segment Structure
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:RUSP Segment Structure"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+source/destination port (16 bits each): used for multiplexing/demultiplexing
+ data from/to the application layer.
+\end_layout
+
+\begin_layout Itemize
+checksum (8 bits): used for segment content error detection.
+ It is computed on the sender side as the 1's complement of the sum of all
+ the 16-bit words in the segment, with the wrapping around of any encountered
+ overflow.
+ As some UDP implementations do, RUSP does not provide any procedure to
+ recover from a detected error, it simply discards every corrupted segments.
+\end_layout
+
+\begin_layout Itemize
+control flags (8 bits): characterizes the segment's purpose.
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+SYN: used for connection establishment.
+\end_layout
+
+\begin_layout Itemize
+FIN: used for connection shutdown.
+\end_layout
+
+\begin_layout Itemize
+RST: used for connection establishment recovery.
+\end_layout
+
+\begin_layout Itemize
+SACK: used for selective acknowledgement.
+\end_layout
+
+\begin_layout Itemize
+CACK: used for cumulative acknowledgement.
+\end_layout
+
+\begin_layout Itemize
+PSH: used to push data to the upper layer.
+\end_layout
+
+\begin_layout Itemize
+KLV: used to keep-alive the peer.
+\end_layout
+
+\begin_layout Itemize
+ERR: used for local error notifications.
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+length (16 bits): indicates the payload size.
+\end_layout
+
+\begin_layout Itemize
+sequence/acknowledgement number (32 bits each): used for the implementation
+ of the reliable data service.
+\end_layout
+
+\begin_layout Paragraph
+Header Overhead
+\end_layout
+
+\begin_layout Standard
+RUSP minimizes the header overhead, with respect to TCP: indeed, it has
+ only 16 bytes of overhead in every segment, whereas the TCP segment has
+ a 40 bytes of overhead.
+\end_layout
+
+\begin_layout Paragraph
+Note about the current implementation
+\end_layout
+
+\begin_layout Standard
+The current RUSP implementation provided by 
+\shape slanted
+librusp
+\shape default
+ builds the protocol on top of UDP, thus imposing, for now, some segment
+ structure modifications.
+ The source/destination port fields and the checksum field are included
+ into the UDP header; moreover, the UDP header provides a 16-bits long length
+ field and a 16-bits long checksum field instead of the above declared 12-bits.
+ Futhermore, the current release of 
+\shape slanted
+librusp
+\shape default
+ does not make use of RST, KLV an ERR flags, See section 4 for futher details
+ about future improvements.
+\end_layout
+
+\begin_layout Subsection
+The Sender/Receiver Pseudo-Code
+\end_layout
+
+\begin_layout Paragraph
+Sender-Side 
+\end_layout
+
+\begin_layout Standard
+The sender waits for data, loaded into the user buffer from the upper layer.
+ As data has been detected, it creates a new segment with the maximum amount
+ of data provided by the protocol, then waits for the necessary send-side
+ sliding window's space.
+ As the sliding window permits it (thus, when send-base has been acked),
+ the sender buffers the new segment and sends it, then slides the send-next
+ pointer.
+ At the end, it pops the sent data from the user buffer.
+ Algorithm 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Algorithm:Sender Pseudo-code"
+
+\end_inset
+
+ shows the pseudo-code of the RUSP sender.
+\end_layout
+
+\begin_layout Paragraph
+Receiver-Side
+\end_layout
+
+\begin_layout Standard
+The receiver performs a timeout listen for incoming segments.
+ If a segment is received, this segment is matched against the receive-side
+ sliding window: an after-window segment is always ignored, a before-window
+ segment is always CACKed, while an inside-window segment is always SACKed
+ and processed.
+ In case of an inside-window segment, its ACK field is always appropriately
+ submitted to the send-side segment buffer (considered as SACK, if the SACK
+ field is flagged, considered as CACK, if the CACK file is flagged).
+ If the segment matches the receive-side window-base, then it is processed
+ as an in-order segment, and the receive-side window is slided.
+ Of corse, in case of a receive-side window-base match, the receive-side
+ segment buffer is opportunely processed, looking for the next base.
+ If the segment does not match the receive-side window-base, then it is
+ buffered.
+ If the timeout expires before receiving a segment, the sender induces the
+ retransmission of the opportune unacknowledged segments.
+ In the case of peer disconnection, the sender induces the connection shutdown.
+ Algorithm 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Algorithm:Receiver Pseudo-code"
+
+\end_inset
+
+, shows the pseudo-code of the RUSP receiver.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+placement h
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+while true:
+\end_layout
+
+\begin_layout Plain Layout
+
+ waitDataFromUserBuff;
+\end_layout
+
+\begin_layout Plain Layout
+
+ createSegment;
+\end_layout
+
+\begin_layout Plain Layout
+
+ waitSndWindowSpace;
+\end_layout
+
+\begin_layout Plain Layout
+
+ addToSndSegmentBuff;
+\end_layout
+
+\begin_layout Plain Layout
+
+ sendSegment;
+\end_layout
+
+\begin_layout Plain Layout
+
+ slideSndWindowNext;
+\end_layout
+
+\begin_layout Plain Layout
+
+ popDataFromUserBuff;
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Sender Pseudo-code
+\begin_inset CommandInset label
+LatexCommand label
+name "Algorithm:Sender Pseudo-code"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+placement h
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+while true:
+\end_layout
+
+\begin_layout Plain Layout
+
+ receiveSegment;
+\end_layout
+
+\begin_layout Plain Layout
+
+ if not received:
+\end_layout
+
+\begin_layout Plain Layout
+
+  timeoutFunc;
+\end_layout
+
+\begin_layout Plain Layout
+
+  continue;
+\end_layout
+
+\begin_layout Plain Layout
+
+ if disconnected:
+\end_layout
+
+\begin_layout Plain Layout
+
+  closeConnection;
+\end_layout
+
+\begin_layout Plain Layout
+
+  break;
+\end_layout
+
+\begin_layout Plain Layout
+
+ if segmentInsideWindow:
+\end_layout
+
+\begin_layout Plain Layout
+
+  sendSAck;
+\end_layout
+
+\begin_layout Plain Layout
+
+  submitAck;
+\end_layout
+
+\begin_layout Plain Layout
+
+  if segmentIsRcvWindowBase:
+\end_layout
+
+\begin_layout Plain Layout
+
+   processBase;
+\end_layout
+
+\begin_layout Plain Layout
+
+   slideRcvWindowBase;
+\end_layout
+
+\begin_layout Plain Layout
+
+   while rcvBaseInSegmentBuff:
+\end_layout
+
+\begin_layout Plain Layout
+
+    processBase;
+\end_layout
+
+\begin_layout Plain Layout
+
+    slideRcvWindowBase;
+\end_layout
+
+\begin_layout Plain Layout
+
+  else:
+\end_layout
+
+\begin_layout Plain Layout
+
+   addSegmentToSegmentBuff;
+\end_layout
+
+\begin_layout Plain Layout
+
+ else if segmentBeforeRcvWindow:
+\end_layout
+
+\begin_layout Plain Layout
+
+   sendCAck;
+\end_layout
+
+\begin_layout Plain Layout
+
+ else:
+\end_layout
+
+\begin_layout Plain Layout
+
+   doNothing;
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Receiver Pseudo-code
+\begin_inset CommandInset label
+LatexCommand label
+name "Algorithm:Receiver Pseudo-code"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The 
+\shape slanted
+librusp
+\shape default
+ Library
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+librusp
+\shape default
+ is the official C static library that implements the RUSP transport protocol.
+ As a free open source project, it can be consulted and downloaded from
+ 
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\shape slanted
+http://github.com/giacomomarciani/rusp
+\shape default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+If you would like to build your own RUSP-based network application, you
+ first need to install 
+\shape slanted
+librusp
+\shape default
+ on your UNIX system running the make utility, as usual, then link it by
+ specifying the linkage directive 
+\shape slanted
+-lrusp
+\shape default
+.
+\end_layout
+
+\begin_layout Standard
+In this section we are going to show the library's architecture and the
+ functions provided by the library's API.
+\end_layout
+
+\begin_layout Subsection
+The Architecture
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+librusp
+\shape default
+ arcitecture builds the RUSP protocol on top of UDP, realized by the BSD
+ API on SOCK_DGRAM socket layer.
+ The architecture consists of an API layer that allows the network application
+ to interface to the Core layer, wich realizes the RUSP reliable service-model.
+\end_layout
+
+\begin_layout Standard
+As RUSP is a connection-oriented protocol, the main architecture's entity
+ is the Connection, wich is references and managed inside a Connections
+ Pool.
+ A Connection is a thread-safe structure that implements the RUSP FSA, employing
+ data buffers, segments buffer and sliding-windows to realize the reliable
+ service.
+ The following Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:RUSP Architecture"
+
+\end_inset
+
+ shows the RUSP architecture model.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_arch.png
+	lyxscale 30
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+RUSP Architecture
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:RUSP Architecture"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+The API
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+librusp
+\shape default
+ API is mainly inspired by the BSD API's system calls used in SOCK_STREAM
+ sockets context.
+ From the application layer perspective, a 
+\shape slanted
+librusp
+\shape default
+ connection is nothing more than a positive integer, thus allowing an easy
+ connection referenciation in every call.
+ Futhermore, the 
+\shape slanted
+librusp
+\shape default
+ API exposes a little set of accessible developer utilities.
+\end_layout
+
+\begin_layout Standard
+Let us now show the 
+\shape slanted
+librusp
+\shape default
+ API calls for the connection establishment 
+\shape slanted
+ruspListen(), ruspAccept(), ruspConnect()
+\shape default
+, connection shutdown 
+\shape slanted
+ruspClose()
+\shape default
+ , connection I/O 
+\shape slanted
+ruspReceive(), ruspSend()
+\shape default
+ and connection end-points identification 
+\shape slanted
+ruspLocal()
+\shape default
+, 
+\shape slanted
+ruspPeer()
+\shape default
+.
+ At the end of this section we will show the 
+\shape slanted
+librusp
+\shape default
+ developer utility calls 
+\shape slanted
+ruspSetAttr()
+\shape default
+, 
+\shape slanted
+ruspGetAttr()
+\shape default
+.
+\end_layout
+
+\begin_layout Subsubsection
+Listening for Incoming Connections
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+listen()
+\shape default
+ function creates a new listening connection, binding it to the specified
+ port number.
+ The connection can be subsequentely used to accept incoming connection.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+ConnectionId 
+\series bold
+ruspListen
+\series default
+(const int port);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns a positive connection id, or -1 on error.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The function takes 
+\shape slanted
+port
+\shape default
+ as the local port number where the new listening connection will be bound
+ to, and returns the connection id of the newly created listening connection.
+ 
+\end_layout
+
+\begin_layout Standard
+The current version of 
+\shape slanted
+librusp
+\shape default
+ does not provide any kind of 
+\shape slanted
+backlog
+\shape default
+ management nor any kind of its optimization, but makes up for this lack
+ by ensuring an expansion of the synchronization timeout and a failure-tolerance
+ mechanism based on automatic resynchronization.
+ See Section 4 for future improvements about listening backlog.
+\end_layout
+
+\begin_layout Subsubsection
+Accepting a Connection
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+accept()
+\shape default
+ function lets a listening connection accept an incoming connection.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+ConnectionId 
+\series bold
+ruspAccept
+\series default
+(ConnectionId connid);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns a positive connection id, or -1 on error.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+connid
+\shape default
+ is the id of a listening connection, through wich we wish to accept the
+ next incoming connection.
+ If there is no pending connection, the function blocks until the synchronizatio
+n handshake has been successfully completed, then returns the id of the
+ newly established connection.
+ Once established, the new connection can be used to perform I/O operations,
+ or can be closed.
+ Any attempt to accept incoming connections on a not listening connection
+ will always fail.
+\end_layout
+
+\begin_layout Subsubsection
+Connecting to a peer 
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+connect()
+\shape default
+ function creates a new established connection with the peer listening on
+ the specified address.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+ConnectionId 
+\series bold
+ruspConnect
+\series default
+(const char *ip, const int port);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns a positive connection id, or -1 on error.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The function takes 
+\shape slanted
+ip
+\shape default
+ and 
+\shape slanted
+port
+\shape default
+, respectively, as the address and port number of the peer we wish to establish
+ the connection to, and return the newly created established connection,
+ or -1 in case of connection failure.
+ In case of connection failure, nothing more than calling 
+\shape slanted
+ruspConnect()
+\shape default
+ once again is needed.
+ Once established, the connection can be used to perform I/O operations,
+ or can be closed.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Closing a Connection
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+close() 
+\shape default
+function closes the specified connection.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+void 
+\series bold
+ruspClose
+\series default
+(ConnectionId connid);
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace medskip
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+connid
+\shape default
+ is the id of the connection to close.
+ The function blocks until the shutdown handshake has been successfully
+ completed.
+\end_layout
+
+\begin_layout Standard
+Once a connection has been closed, any futher attempt to accept or perform
+ an I/O operation will always fail.
+ Futhermore, any attempt to create an incarnation will fail during all the
+ time necessary to its TIMEWT state.
+\end_layout
+
+\begin_layout Standard
+Remember that, every open connection, either a listening or an established
+ one, strictly needs to be closed to release all the associated system resources.
+\end_layout
+
+\begin_layout Subsubsection
+Connection I/O
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+ruspReceive()
+\shape default
+ and 
+\shape slanted
+ruspSend()
+\shape default
+ functions allow the data I/O through an established connection.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+ssize_t 
+\series bold
+ruspReceive
+\series default
+(ConnectionId connid, char *msg, size_t msgs);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns number of bytes received, 0 on EOF, or -1 on error.
+\end_layout
+
+\begin_layout Plain Layout
+ssize_t 
+\series bold
+ruspSend
+\series default
+(ConnectionId connid, char *msg, size_t msgs);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns number of bytes sent, or -1 on error.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For both functions, 
+\shape slanted
+connid
+\shape default
+ is the id of the established connection we want to perform the I/O, 
+\shape slanted
+msg
+\shape default
+ is the message buffer, and 
+\shape slanted
+msgs
+\shape default
+ is the message buffer size, thus the maximum message size allowed for the
+ current I/O.
+ 
+\end_layout
+
+\begin_layout Standard
+For both function, the return value is the factual number of bytes involved
+ in the current I/O, or -1 if an error occurred during the current I/O .
+ Futhermore, the 
+\shape slanted
+ruspReceive()
+\shape default
+ function provides an easy way to detect the peer intention to stop sending
+ data and to close the connection: indeed when the peer actively closes
+ the connection, every local attempt to receive data through the connection
+ will return EOF.
+\end_layout
+
+\begin_layout Standard
+These functions let us perceive the advantage of a connection model built
+ on top of a connected datagram socket.
+ Indeed, we can use a simpler I/O model when trasmitting data on the connection:
+ we don't need to specify neither the destination address nor its size,
+ anymore.
+ This I/O model is primarly useful in an application that needs to send
+ multiple datagrams to a single peer, wich is the typical scenario in a
+ client-server model implementation.
+ Futhermore, as stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "The Linux Programming Interface"
+
+\end_inset
+
+, on some TCP/IP implementations, connecting a datagram socket to a peer
+ yields an I/O sensitive performance improvement.
+\end_layout
+
+\begin_layout Subsubsection
+Addresses
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+ruspLocal()
+\shape default
+ and 
+\shape slanted
+ruspPeer()
+\shape default
+ functions allow to respectively retrieve the address of the specified connectio
+n end-points.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+int 
+\series bold
+ruspLocal
+\series default
+(const ConnectionId connid, struct sockaddr_in *addr);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns 0 on success, -1 on error.
+\end_layout
+
+\begin_layout Plain Layout
+int 
+\series bold
+ruspPeer
+\series default
+(const ConnectionId connid, struct sockaddr_in *addr);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns 0 on success, -1 on error.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For both functions, 
+\shape slanted
+connid
+\shape default
+ is the id of the connection we want to know the end-points addresses, and
+ 
+\shape slanted
+addr
+\shape default
+ is the argument-value address requested.
+ 
+\end_layout
+
+\begin_layout Standard
+Notice that the 
+\shape slanted
+ruspLocal()
+\shape default
+ function will always succeed when called on a not closed connection: indeed,
+ every not closed connection has an underlying open datagram socket, that
+ is, every not closed connection is associated to a local address.
+ On the other hand, the 
+\shape slanted
+ruspPeer()
+\shape default
+ function will always fail when called on a not established connection:
+ indeed, only an established connection has an underlying open and connected
+ datagram socket, that is, only an established connection is associated
+ to a specific peer address.
+\end_layout
+
+\begin_layout Subsubsection
+Developer utilities
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+ruspSetAttr()
+\shape default
+ and 
+\shape slanted
+ruspGetAttr()
+\shape default
+ functions allow to respectively set and retrieve 
+\shape slanted
+librusp
+\shape default
+ attributes, such as segment drop rate and debug mode.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset VSpace medskip
+\end_inset
+
+
+\begin_inset Box Boxed
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+#include <rusp.h>
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+int 
+\series bold
+ruspSetAttr
+\series default
+(const int attr, const void *value);
+\end_layout
+
+\begin_layout Plain Layout
+int 
+\series bold
+ruspGetAttr
+\series default
+(const int attr, const void *value);
+\end_layout
+
+\begin_layout Plain Layout
+\align right
+Returns 0 on success, -1 on error.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For both functions, 
+\shape slanted
+attr
+\shape default
+ is the name of the attribute to set or retrieve and 
+\shape slanted
+value
+\shape default
+ is the argument-value of the attribute value to set or retrieve.
+ Let us now show some get/setable 
+\shape slanted
+librusp
+\shape default
+ attributes.
+\end_layout
+
+\begin_layout Standard
+
+\shape slanted
+RUSP_ATTR_DROPR
+\shape default
+ allows to set the uniform probability of segment drop.
+ As a reliable transport protocol, nothing is more important than valuate
+ its reaction to segments loss and local segment drop.
+ A non-zero drop rate provides an easy way to simulate these transmission
+ lacks.
+ Every RUSP session comes with a 
+\shape slanted
+drop
+\shape default
+ default value of 0.0, that is no segment drop imposition.
+\end_layout
+
+\begin_layout Standard
+
+\shape slanted
+RUDP_ATTR_DEBUG
+\shape default
+ allows to activate or deactivate the debug mode.
+ As a case-study protocol, nothing is more important than exploring what
+ is happening under the hood.
+ The debug mode provides an easy way to visualize the real-time segment
+ exchange.
+ Every RUSP session comes with a deactivated debug mode, that is no segment
+ exchange visualization.
+\end_layout
+
+\begin_layout Section
+Some 
+\shape slanted
+librusp
+\shape default
+ Network Applications
+\end_layout
+
+\begin_layout Standard
+
+\shape slanted
+librusp
+\shape default
+ comes with a little set of sampling client-server network applications,
+ that can be executed from 
+\shape slanted
+/bin
+\shape default
+ and whose source code can can be found in 
+\shape slanted
+/samples
+\shape default
+.
+ Such network applications are meant to demonstrate the easy usage of the
+ library, allowing to evaluate its performances in common real scenarios
+ and giving some general guidelines for the design of simple network application
+s.
+ Moreover, the library provides an utility for sample file generation (
+\shape slanted
+samplegen
+\shape default
+), thus making file transmission tests easy and immediate.
+\end_layout
+
+\begin_layout Standard
+In the following paragraphs, we show these applications, describing their
+ functionalities and giving some sampling output of their execution.
+ Clearly, every application provides both a 
+\shape slanted
+-h
+\shape default
+ option for usage helper, and a very useful 
+\shape slanted
+-d
+\shape default
+ option for debug mode activation, thus showing what is happening under
+ the hood.
+\end_layout
+
+\begin_layout Subsection
+Client-Server Model
+\end_layout
+
+\begin_layout Standard
+We now show an implementative example of a multi-tasking client-server model,
+ based on 
+\shape slanted
+librusp
+\shape default
+.
+ The considered scenario is the typical service provided by a concurrent
+ echo server.
+ The client and the server both employ the header file shown in Algorithm
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Algorithm:common.h"
+
+\end_inset
+
+, wich defines the server's address and port number and the maximum size
+ of exchangeable messages.
+ The server and the client are respectively implemented by the algorithm
+ shown in Algorithm 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Algorithm:server.c"
+
+\end_inset
+
+ and Algorithm 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Algorithm:client.c"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+#include <rusp.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+#define ADDR "192.168.1.121" //The server address
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+#define PORT 55000           //The server port
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+#define MSGS 1024            //The maximum message size
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+common.h
+\begin_inset CommandInset label
+LatexCommand label
+name "Algorithm:common.h"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Server-Side
+\end_layout
+
+\begin_layout Standard
+The server opens a connection (
+\shape slanted
+lconn
+\shape default
+) listening on port 55000, allowing the acceptance of incoming concurrent
+ connections.
+ As a new connection request arrives, the server accepts it by allocating
+ the service process that will communicate with the client through the new
+ connection (
+\shape slanted
+aconn
+\shape default
+).
+ At this point, the listening process no longer needs the active connection,
+ as well the service process will no longer needs the listening connection:
+ so they close these redundant connections in their own process space.
+\end_layout
+
+\begin_layout Standard
+From now on, the listening process will continue its acceptance cycle, whereas
+ the service process will echo the received data, as long as the client
+ does not require the active close of the connection.
+\end_layout
+
+\begin_layout Standard
+When the client requess the active close of the connection, the service
+ process will be notified by an EOF on its reading attempt, and proceeds
+ to the passive close of the connection, thus finishing its service cycle
+ .
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+#include <common.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+int main(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+ ConnectionId lconn, aconn;
+\end_layout
+
+\begin_layout Plain Layout
+
+ char rcvdata[MSGS]
+\end_layout
+
+\begin_layout Plain Layout
+
+ ssize_t rcv;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ lconn = ruspListen(PORT);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ while(aconn = ruspAccept()) {    
+\end_layout
+
+\begin_layout Plain Layout
+
+  switch (fork()) {     
+\end_layout
+
+\begin_layout Plain Layout
+
+  case 0:
+\end_layout
+
+\begin_layout Plain Layout
+
+   ruspClose(lconn);
+\end_layout
+
+\begin_layout Plain Layout
+
+   while ((rcv = ruspReceive(aconn, rcvdata, MSGS)) > 0)
+\end_layout
+
+\begin_layout Plain Layout
+
+    ruspSend(aconn, rcvdata, rcv);
+\end_layout
+
+\begin_layout Plain Layout
+
+   ruspClose(aconn);
+\end_layout
+
+\begin_layout Plain Layout
+
+   break;
+\end_layout
+
+\begin_layout Plain Layout
+
+  dafault:
+\end_layout
+
+\begin_layout Plain Layout
+
+   ruspClose(aconn);
+\end_layout
+
+\begin_layout Plain Layout
+
+   break;
+\end_layout
+
+\begin_layout Plain Layout
+
+  }
+\end_layout
+
+\begin_layout Plain Layout
+
+ }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ exit(EXIT_SUCCESS);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+server.c
+\begin_inset CommandInset label
+LatexCommand label
+name "Algorithm:server.c"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Client-Side 
+\end_layout
+
+\begin_layout Standard
+The client actively opens a connection (
+\shape slanted
+conn
+\shape default
+) with the server, on the known ip and port.
+ Once established, as long as the user types something on stdin, the input
+ (snddata) will be sent to the server, then blocks until receiving the server
+ response (
+\shape slanted
+rcvdata
+\shape default
+).
+ When the client has no more data to send, it proceeds with the active close
+ of the connection, waiting for the passive close from the server side.
+ Once the passive close has been received, the connection will be definetedly
+ closed.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+#include <common.h>
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+int main(void) {
+\end_layout
+
+\begin_layout Plain Layout
+
+ ConnectionId conn;
+\end_layout
+
+\begin_layout Plain Layout
+
+ char snddata[MSGS], rcvdata[MSGS];
+\end_layout
+
+\begin_layout Plain Layout
+
+ ssize_t snd, rcv;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ conn = ruspConnect(ADDRESS, PORT);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ while ((snd = getUserInput("[SND]>", snddata, MSGS)) > 0) {
+\end_layout
+
+\begin_layout Plain Layout
+
+  ruspSend(conn, snddata, snd);
+\end_layout
+
+\begin_layout Plain Layout
+
+  if ((rcv = ruspReceive(conn, rcvdata, MSGS)) > 0)
+\end_layout
+
+\begin_layout Plain Layout
+
+   printf("[RCV] %.*s
+\backslash
+n", (int)rcv, rcvdata);
+\end_layout
+
+\begin_layout Plain Layout
+
+  else
+\end_layout
+
+\begin_layout Plain Layout
+
+   break;
+\end_layout
+
+\begin_layout Plain Layout
+
+ }
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ ruspClose(conn);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ exit(EXIT_SUCCESS);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+client.c
+\begin_inset CommandInset label
+LatexCommand label
+name "Algorithm:client.c"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+RTT and Bitrate
+\end_layout
+
+\begin_layout Standard
+The following applications allow to evaluate the network RTT and the transfer
+ bitrate.
+\end_layout
+
+\begin_layout Paragraph
+ECHO
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+echo
+\shape default
+ application realizes the well-known Echo Protocol, defined in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Echo Protocol"
+
+\end_inset
+
+.
+ Once a connection is established any data received is sent back, until
+ the client terminates the connection.
+ This simple network application is very useful to evaluate the network
+ RTT.
+ Moreover, the activated debug mode let us appreciate the segments exchange,
+ the connection state transitions and buffer management.
+ Let us see an execution example: Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure: echoc"
+
+\end_inset
+
+ shows the client's execution output, while Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure: echos"
+
+\end_inset
+
+ shows the server's.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+
+\series bold
+\size small
+./echoc 192.168.1.121 -p 55000 -d
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:10:187812 dst: 192.168.1.121:55000 ctrl:1 plds:0 seqn:0 ackn:0
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: CLOSED -> SYNSND 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:10:189657 src: 192.168.1.121:50132 ctrl:9 plds:0 seqn:10 ackn:1
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: SYNSND -> SYNRCV 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:10:190763 dst: 192.168.1.121:50132 ctrl:8 plds:0 seqn:1 ackn:11
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: SYNRCV -> ESTABL 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+WELCOME TO ECHO CLIENT
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+Running on 192.168.1.121:51654 Connected to 192.168.1.121:50132
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[INPUT (empty to disconnect)]>Hello World! 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:14:962519 dst: 192.168.1.121:50132 ctrl:40 plds:12 seqn:1 ackn:11
+ Hello World! 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (NXT): base:1 nxt:13 end:4001 SNDUSRBUFF:12 SNDSGMBUFF:1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:14:962986 src: 192.168.1.121:50132 ctrl:8 plds:0 seqn:11 ackn:13
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SACKED: 1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (WND): base:13 nxt:13 end:4013 SNDUSRBUFF:0 SNDSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:11 end:4011 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 11 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:14:963964 src: 192.168.1.121:50132 ctrl:40 plds:12 seqn:11 ackn:13
+ Hello World! 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:11 end:4011 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:14:964133 dst: 192.168.1.121:50132 ctrl:8 plds:0 seqn:13 ackn:23
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 11 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+RCV (WND): base:23 end:4023 RCVUSRBUFF:12 RCVSGMBUFF:0 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[RCV] Hello World!
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[INPUT (empty to disconnect)]> 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: ESTABL -> FINWT1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:16:210205 dst: 192.168.1.121:50132 ctrl:10 plds:0 seqn:13 ackn:23
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (NXT): base:13 nxt:14 end:4013 SNDUSRBUFF:0 SNDSGMBUFF:1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:16:210464 src: 192.168.1.121:50132 ctrl:8 plds:0 seqn:23 ackn:14
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SACKED: 13 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (WND): base:14 nxt:14 end:4014 SNDUSRBUFF:0 SNDSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:23 end:4023 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 23 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: FINWT1 -> FINWT2 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:16:211262 src: 192.168.1.121:50132 ctrl:10 plds:0 seqn:23 ackn:14
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:23 end:4023 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:16:211395 dst: 192.168.1.121:50132 ctrl:8 plds:0 seqn:14 ackn:24
+ 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 23 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+RCV (WND): base:24 end:4024 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: FINWT2 -> TIMEWT
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\shape slanted
+echo
+\shape default
+ Client execution
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure: echoc"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+
+\series bold
+\size small
+./echos -p 55000 -d
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: CLOSED -> LISTEN 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+WELCOME TO ECHO SERVER
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+Running on 0.0.0.0:55000 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:10:186599 src: 192.168.1.121:51654 ctrl:1 plds:0 seqn:0 ackn:0
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: LISTEN -> SYNRCV 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:10:187250 dst: 192.168.1.121:51654 ctrl:9 plds:0 seqn:10 ackn:1
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: SYNRCV -> SYNSND 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:10:190185 src: 192.168.1.121:51654 ctrl:8 plds:0 seqn:1 ackn:11
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: SYNSND -> ESTABL 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:14:962672 src: 192.168.1.121:51654 ctrl:40 plds:12 seqn:1 ackn:11
+ Hello World! 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:1 end:4001 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:14:962894 dst: 192.168.1.121:51654 ctrl:8 plds:0 seqn:11 ackn:13
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+RCV (WND): base:13 end:4013 RCVUSRBUFF:12 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:14:963813 dst: 192.168.1.121:51654 ctrl:40 plds:12 seqn:11 ackn:13
+ Hello World! 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (NXT): base:11 nxt:23 end:4011 SNDUSRBUFF:12 SNDSGMBUFF:1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:14:964208 src: 192.168.1.121:51654 ctrl:8 plds:0 seqn:13 ackn:23
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SACKED: 11 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (WND): base:23 nxt:23 end:4023 SNDUSRBUFF:0 SNDSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:13 end:4013 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 13 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:16:210237 src: 192.168.1.121:51654 ctrl:10 plds:0 seqn:13 ackn:23
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:13 end:4013 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:16:210398 dst: 192.168.1.121:51654 ctrl:8 plds:0 seqn:23 ackn:14
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 13 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: ESTABL -> CLOSWT 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+RCV (WND): base:14 end:4014 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: CLOSWT -> LSTACK 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[SGM ->] 13:25:16:211211 dst: 192.168.1.121:51654 ctrl:10 plds:0 seqn:23 ackn:14
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (NXT): base:23 nxt:24 end:4023 SNDUSRBUFF:0 SNDSGMBUFF:1 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+[<- SGM] 13:25:16:211418 src: 192.168.1.121:51654 ctrl:8 plds:0 seqn:14 ackn:24
+  
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SACKED: 23 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+SND (WND): base:24 nxt:24 end:4024 SNDUSRBUFF:0 SNDSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+INSIDE RCVWND: base:14 end:4014 RCVUSRBUFF:0 RCVSGMBUFF:0 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+IS RCVWNDB: 14 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+STATE: LSTACK -> CLOSED 
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\shape slanted
+echo
+\shape default
+ Server execution
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure: echos"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+UPLOAD
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+up
+\shape default
+ application allows the client to upload a local file to server.
+ The client-side aplication visualizes a short report about file transfer,
+ thus allowing to evaluate the librusp performances in such a common scenario.
+ This simple application is very useful to evaluate the file transmission
+ bitrate.
+ Let us see an execution example: Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure: uploadc"
+
+\end_inset
+
+ shows the client's execution output.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+
+\series bold
+\size small
+./upc 192.168.1.121 -p 55000 100MB
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+WELCOME TO ECHO CLIENT
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+Running on 192.168.1.121:54037 Connected to 192.168.1.121:47800 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+Sending File (size: 104857600): 100MB 
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+100% [====================] OK 
+\series bold
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\size small
+Sent: 104857.600000KB Droprate: 0.000000% Time: 3.587552s Speed: 233825.403680Kbps
+ 
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\shape slanted
+up
+\shape default
+ Client execution
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure: uploadc"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+LFTP
+\end_layout
+
+\begin_layout Standard
+The 
+\shape slanted
+lftp
+\shape default
+ application realizes a lighter and simplified version of the well-know
+ File Transfer Protocol (FTP), defined in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "File Transfer Protocol"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure: FTP Service Architecture"
+
+\end_inset
+
+ shows the LFTP service architecture.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/ftp_service.png
+	lyxscale 20
+	scale 20
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+FTP Service Architecture
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure: FTP Service Architecture"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+LFTP allows two processes to communicate through message exchange, thus
+ encapsulating application-layer data into a LFTP message.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure: LFTP Message Structure"
+
+\end_inset
+
+ shows the LFTP message structure.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="1" columns="3">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "4cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Type
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "4cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Command
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\size scriptsize
+\begin_inset Box Frameless
+position "c"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 1
+use_makebox 0
+width "4cm"
+special "none"
+height "1in"
+height_special "totalheight"
+status collapsed
+
+\begin_layout Plain Layout
+\paragraph_spacing onehalf
+\align center
+
+\size scriptsize
+Body
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+LFTP Message Structure
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure: LFTP Message Structure"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Type: identifies the message typology, thus characterizing it as a request
+ message (RQST), a success response message (SUCC) or a failure response
+ message (BDRQST).
+\end_layout
+
+\begin_layout Itemize
+Command: the command to execute.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:LFTP Commands"
+
+\end_inset
+
+ shows the set of command provided by LFTP.
+\end_layout
+
+\begin_layout Itemize
+Body: specifies the command arguments for request and response, if needed.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="13" columns="2">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="left" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Command
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Description
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+GTCWD
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+retrieve the current working directory
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+CHDIR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+change the current working directory
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+LSDIR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+list the content
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MKDIR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+create a directory
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+RMDIR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+remove a directory
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+CPDIR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+copy a directory
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MVDIR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+move a directory
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+RETRF
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+download a file
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+STORF
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+upload a file
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+RMFIL
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+remove a file
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+CPFIL
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+copy a file
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MVFIL
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="left" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+move a file.
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+LFTP Commands
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:LFTP Commands"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Let us now see an execution example: Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure: ftpc"
+
+\end_inset
+
+ shows the client's execution output.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+./lftpc 192.168.1.121 -p 55000 -r client-repo
+\series default
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+WELCOME TO FTP CLIENT
+\end_layout
+
+\begin_layout Plain Layout
+Running on 192.168.1.121:38820 Connected to 192.168.1.121:37844
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+------- MENU ------- 1 Get CWD 2 Change CWD 3 List Directory 4 New Directory
+ 5 Remove Directory 6 Copy Directory 7 Move Directory 8 Download File 9
+ Upload File 10 Remove File 11 Copy File 12 Move File 13 Exit
+\end_layout
+
+\begin_layout Plain Layout
+[Your Action]>3
+\end_layout
+
+\begin_layout Plain Layout
+[Directory (empty to abort)]>.
+ [SUCCESS]>Listing server-repo ./ ../ 1MB1/ 1MB2/ Folder/
+\end_layout
+
+\begin_layout Plain Layout
+------- MENU ------- 1 Get CWD 2 Change CWD 3 List Directory 4 New Directory
+ 5 Remove Directory 6 Copy Directory 7 Move Directory 8 Download File 9
+ Upload File 10 Remove File 11 Copy File 12 Move File 13 Exit
+\end_layout
+
+\begin_layout Plain Layout
+[Your Action]>9
+\end_layout
+
+\begin_layout Plain Layout
+[File (empty to abort)]>client-repo/1MB3 [SUCCESS]>Uploading client-repo/1MB3
+\end_layout
+
+\begin_layout Plain Layout
+------- MENU ------- 1 Get CWD 2 Change CWD 3 List Directory 4 New Directory
+ 5 Remove Directory 6 Copy Directory 7 Move Directory 8 Download File 9
+ Upload File 10 Remove File 11 Copy File 12 Move File 13 Exit
+\end_layout
+
+\begin_layout Plain Layout
+[Your Action]>3
+\end_layout
+
+\begin_layout Plain Layout
+[Directory (empty to abort)]>.
+ [SUCCESS]>Listing server-repo ./ ../ 1MB1/ 1MB2/ 1MB3/ Folder/
+\end_layout
+
+\begin_layout Plain Layout
+------- MENU ------- 1 Get CWD 2 Change CWD 3 List Directory 4 New Directory
+ 5 Remove Directory 6 Copy Directory 7 Move Directory 8 Download File 9
+ Upload File 10 Remove File 11 Copy File 12 Move File 13 Exit
+\end_layout
+
+\begin_layout Plain Layout
+[Your Action]>8
+\end_layout
+
+\begin_layout Plain Layout
+[File (empty to abort)>1MB1 [SUCCESS]>Downloading server-repo/1MB1
+\end_layout
+
+\begin_layout Plain Layout
+------- MENU ------- 1 Get CWD 2 Change CWD 3 List Directory 4 New Directory
+ 5 Remove Directory 6 Copy Directory 7 Move Directory 8 Download File 9
+ Upload File 10 Remove File 11 Copy File 12 Move File 13 Exit
+\end_layout
+
+\begin_layout Plain Layout
+[Your Action]>13 Disconnected 
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\shape slanted
+lftp 
+\shape default
+Client execution
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure: ftpc"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The Experimental Results
+\end_layout
+
+\begin_layout Standard
+We now show the experimental results of using 
+\shape slanted
+librusp
+\shape default
+ in the typical scenario of a 100MB file transfer.
+ 
+\end_layout
+
+\begin_layout Standard
+The testing environment consists of a server Ubuntu 14.10 Intel Core i5-3317U
+ 1.70GHz 4GB and a client Ubuntu 14.04 Intel Atom N280 1.66GHz 1GB connected
+ to the same WLAN through a router Technicolor TG784Nv3.
+ 
+\end_layout
+
+\begin_layout Standard
+The purpose of the following tests is to verify the protocol robustness
+ in response to segment loss, to optimize the sliding-window size and highlight
+ any thread-balancing lack.
+ Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:RUSP Speed Test"
+
+\end_inset
+
+ and Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:RUSP Speed Test Tabular"
+
+\end_inset
+
+ show the transmission speeds in function of segments loss and sliding-window
+ size, and Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:RUSP and Threads Balance"
+
+\end_inset
+
+ shows the average thread balancing detected by GNUProf.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_speed_test.png
+	lyxscale 75
+	scale 72
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+RUSP Speed Test
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:RUSP Speed Test"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="6" columns="6">
+<features rotate="0" tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Window Size
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.0%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5.0%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10.0%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20.0%
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+30.0%
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7628
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7024
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6744 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6372 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3403
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10126
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8307
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5539
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4673
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3819
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14704
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9187
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4974
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+466623 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4379
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+32
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+24604 
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12906
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+11785
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9191
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8426
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+64
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+27567
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14219
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12837
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10534
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9000
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+RUSP Speed Test (tabular)
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:RUSP Speed Test Tabular"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename img/rusp_threads_balance.png
+	lyxscale 75
+	scale 62
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+RUSP and Threads-Balance
+\begin_inset CommandInset label
+LatexCommand label
+name "Figure:RUSP and Threads Balance"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Conclusions
+\end_layout
+
+\begin_layout Standard
+The recorded transmission rates prove the protocol robustness against segments
+ loss and endorse our theoretical expectations about the sliding window.
+ The protocol is in fact slightly elastic with respect to the segments loss
+ rate, regardless of the window size.
+ As expected, a window size close to the upper bound, imposed by the buffers,
+ guarantees a significantly higher efficiency.
+ However, the library turns out to be less powerful than the solution provided
+ by the BSD's implementation of TCP, as well as suffering from a thread
+ load imbalancing.
+\end_layout
+
+\begin_layout Section
+Future Improvements
+\end_layout
+
+\begin_layout Standard
+We briefly present some planned improvements for future versions of the
+ RUSP protocol and 
+\shape slanted
+librusp
+\shape default
+.
+ The main changes will concern the now unused control flags provided by
+ the segment structure, the connection establishment procedure, the 
+\shape slanted
+librusp
+\shape default
+ architecture layering and the 
+\shape slanted
+librusp
+\shape default
+ thread load-balancing.
+\end_layout
+
+\begin_layout Paragraph
+Control Flags
+\end_layout
+
+\begin_layout Standard
+RUSP will make use of the RST flag to recover from half-open connections,
+ the KLV flag to keep-alive a long-silent peer, and the ERR flag to notify
+ local error conditions.
+\end_layout
+
+\begin_layout Paragraph
+Backlog
+\end_layout
+
+\begin_layout Standard
+RUSP will provide a dynamic backlog upper bound to accept large numbers
+ of concurrent incoming connections.
+ As stated in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "The Linux Programming Interface"
+
+\end_inset
+
+, the original BSD implementation provided a backlog upper bound set to
+ 5, while modern Linux implementations set it to 128.
+ Although these famous implementative decisions, we strongly believe that
+ the backlog upper bound must be dynamically computed to minimize unserviceable
+ incoming connections.
+\end_layout
+
+\begin_layout Paragraph
+RUSP/IP
+\end_layout
+
+\begin_layout Standard
+
+\shape slanted
+librusp
+\shape default
+ will no longer build its reliable service-layer on top of a BSD's SOCK_DGRAM
+ unrealible layer, but directly on the IP's.
+\end_layout
+
+\begin_layout Paragraph
+Thread Balancing
+\end_layout
+
+\begin_layout Standard
+The experimental results shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Figure:RUSP and Threads Balance"
+
+\end_inset
+
+ highlight a severe thread load-imbalancing.
+ Future versions of 
+\shape slanted
+librusp
+\shape default
+ will solve this kind of lack by increasing cooperation between send-side
+ and receive-side threads.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Computer Networking"
+
+\end_inset
+
+J.
+ F.
+ Kurose, K.
+ W.
+ Ross, : 
+\shape slanted
+Computer Networking, a top-down approach
+\shape default
+, 6th Edition, Pearson, October 2010.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "The Linux Programming Interface"
+
+\end_inset
+
+M.
+ Kerrisk: 
+\shape slanted
+The Linux Programming Interface
+\shape default
+, 1st Edition, No Starch Press, October 2010.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Transmission Control Protocol"
+
+\end_inset
+
+J.
+ Postel: 
+\shape slanted
+Transmission Control Protocol
+\shape default
+, RFC 793, September 1981.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "User Datagram Protocol"
+
+\end_inset
+
+J.
+ Postel: 
+\shape slanted
+User Datagram Protocol
+\shape default
+, RFC 768, August 1980.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Reliable User Datagram Protocol"
+
+\end_inset
+
+T.
+ Bova, T.
+ Krivoruchka: 
+\shape slanted
+Reliable UDP Protocol
+\shape default
+, Internet Draft, Feburary 1999.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "TCP Selective acknowledgement Options"
+
+\end_inset
+
+M.
+ Mathis, J.
+ Mahdavi, S.
+ Floyd, A.
+ Romanow: 
+\shape slanted
+TCP Selective Acknowledgment Options
+\shape default
+, RFC 2018, October 1996.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "An Extension to the Selective Acknowledgement (SACK) Option for TCP"
+
+\end_inset
+
+M.
+ Mathis, J.
+ Mahdavi, S.
+ Floyd, M.
+ Podolsky: 
+\shape slanted
+An Extension to the Selective Acknowledgement (SACK) Option for TCP
+\shape default
+, RFC 2883, July 2000.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Computing TCP's Retransmission Timer"
+
+\end_inset
+
+V.
+ Paxson, M.
+ Allman, J.
+ Chu, M.
+ Sargent: 
+\shape slanted
+Computing TCP's Retransmission Timer
+\shape default
+, RFC 6298, June 2011.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Defending against Sequence Number Attacks"
+
+\end_inset
+
+F.
+ Gont, S.
+ Bellovin: 
+\shape slanted
+Defending against Sequence Number Attacks
+\shape default
+, RFC 6528, February 2012.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "The MD5 Message-Digest Algorithm"
+
+\end_inset
+
+R.
+ Rivest: 
+\shape slanted
+The MD5 Message-Digest Algorithm
+\shape default
+, RFC 1321, April 1992.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Requirements for Internet Hosts Communication Layers"
+
+\end_inset
+
+R.
+ Branden: 
+\shape slanted
+Requirements for Internet Hosts Communication Layers
+\shape default
+, RFC 1122, October 1989.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "Echo Protocol"
+
+\end_inset
+
+J.
+ Postel: 
+\shape slanted
+Echo Protocol
+\shape default
+, RFC 862, May 1983.
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "File Transfer Protocol"
+
+\end_inset
+
+J.
+ Postel, J.
+ Reynolds, 
+\shape slanted
+File Transfer Protocol (FTP)
+\shape default
+, RFC 765, October 1985.
+\end_layout
+
+\end_body
+\end_document

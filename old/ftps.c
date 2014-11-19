@@ -78,42 +78,42 @@ static void handleMessage(Session *session, const Message request) {
 	pthread_t tid;
 
 	switch (request.header.type) {
-		case MSG_REQUEST:
+		case LFTP_REQUEST:
 			switch (request.header.action) {
-				case MSG_GTCWD:
+				case LFTP_GTCWD:
 					if ((res = getCwd(response.body)) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_GTCWD;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_GTCWD;
 						sprintf(response.body, "Cannot get CWD: %s", strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_GTCWD;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_GTCWD;
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_CHDIR:
+				case LFTP_CHDIR:
 					if ((res = chDirectory(request.body)) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_CHDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_CHDIR;
 						sprintf(response.body, "Cannot change to directory %s: %s", request.body, strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_CHDIR;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_CHDIR;
 						getCwd(response.body);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_LSDIR:
+				case LFTP_LSDIR:
 					list = NULL;
 					if ((res = exploreDirectory(request.body, &list, &items)) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_LSDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_LSDIR;
 						sprintf(response.body, "Cannot list directory %s: %s", request.body, strerror(res));
 					} else {
 						char *content;
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_LSDIR;
-						content = arraySerialization(list, items, MSG_PDELIM);
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_LSDIR;
+						content = arraySerialization(list, items, LFTP_PDELIM);
 						getCwd(response.body);
 						strcat(response.body, ";");
 						strcat(response.body, content);
@@ -125,39 +125,39 @@ static void handleMessage(Session *session, const Message request) {
 					if (list)
 						free(list);
 					break;
-				case MSG_MKDIR:
+				case LFTP_MKDIR:
 					if ((res = mkDirectory(request.body)) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_MKDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_MKDIR;
 						sprintf(response.body, "Cannot create directory %s: %s", request.body, strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_MKDIR;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_MKDIR;
 						sprintf(response.body, "%s", request.body);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_RMDIR:
+				case LFTP_RMDIR:
 					if ((res = rmDirectory(request.body)) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_RMDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_RMDIR;
 						sprintf(response.body, "Cannot remove directory %s: %s", request.body, strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_RMDIR;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_RMDIR;
 						sprintf(response.body, "%s", request.body);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_CPDIR:
+				case LFTP_CPDIR:
 					size = strlen(request.body);
 					i = 0;
 					for (i = 0; i < size; i++)
 						if (request.body[i] == ';')
 							break;
 					if (i == size) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_CPDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_CPDIR;
 						sprintf(response.body, "Cannot copy directory %s: no destination specified", request.body);
 						sendMessage(session->ctrlconn, response);
 						break;
@@ -165,25 +165,25 @@ static void handleMessage(Session *session, const Message request) {
 					sprintf(paths[0], "%.*s", i, request.body);
 					sprintf(paths[1], "%s", request.body + i + 1);
 					if ((res = cpDirectory(paths[0], paths[1])) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_CPDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_CPDIR;
 						sprintf(response.body, "Cannot copy directory %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_CPDIR;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_CPDIR;
 						sprintf(response.body, "%s;%s", paths[0], paths[1]);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_MVDIR:
+				case LFTP_MVDIR:
 					size = strlen(request.body);
 					i = 0;
 					for (i = 0; i < size; i++)
 						if (request.body[i] == ';')
 							break;
 					if (i == size) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_MVDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_MVDIR;
 						sprintf(response.body, "Cannot move directory %s: no destination specified", request.body);
 						sendMessage(session->ctrlconn, response);
 						break;
@@ -191,26 +191,26 @@ static void handleMessage(Session *session, const Message request) {
 					sprintf(paths[0], "%.*s", i, request.body);
 					sprintf(paths[1], "%s", request.body + i + 1);
 					if ((res = mvDirectory(paths[0], paths[1])) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_MVDIR;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_MVDIR;
 						sprintf(response.body, "Cannot move directory %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_MVDIR;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_MVDIR;
 						sprintf(response.body, "%s;%s", paths[0], paths[1]);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_RETRF:
+				case LFTP_RETRF:
 					if (!isFile(request.body)) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_RETRF;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_RETRF;
 						sprintf(response.body, "Cannot download file %s: file not present", request.body);
 						sendMessage(session->ctrlconn, response);
 						break;
 					}
-					response.header.type = MSG_SUCCESS;
-					response.header.action = MSG_RETRF;
+					response.header.type = LFTP_SUCCESS;
+					response.header.action = LFTP_RETRF;
 					sprintf(response.body, "%s", request.body);
 					sendMessage(session->ctrlconn, response);
 					transfer = malloc(sizeof(DataTransfer));
@@ -220,9 +220,9 @@ static void handleMessage(Session *session, const Message request) {
 					transfer->conn = ruspConnect(strpaddr, port + 1);
 					pthread_create(&tid, NULL, sndFile, transfer);
 					break;
-				case MSG_STORF:
-					response.header.type = MSG_SUCCESS;
-					response.header.action = MSG_STORF;
+				case LFTP_STORF:
+					response.header.type = LFTP_SUCCESS;
+					response.header.action = LFTP_STORF;
 					sprintf(response.body, "%s", request.body);
 					sendMessage(session->ctrlconn, response);
 					getFilename(request.body, paths[0]);
@@ -233,27 +233,27 @@ static void handleMessage(Session *session, const Message request) {
 					transfer->conn = ruspConnect(strpaddr, port + 1);
 					pthread_create(&tid, NULL, rcvFile, transfer);
 					break;
-				case MSG_RMFIL:
+				case LFTP_RMFIL:
 					if ((res = rmFile(request.body)) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_RMFIL;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_RMFIL;
 						sprintf(response.body, "Cannot remove file %s: %s", request.body, strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_RMFIL;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_RMFIL;
 						sprintf(response.body, "%s", request.body);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_CPFIL:
+				case LFTP_CPFIL:
 					size = strlen(request.body);
 					i = 0;
 					for (i = 0; i < size; i++)
 						if (request.body[i] == ';')
 							break;
 					if (i == size) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_CPFIL;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_CPFIL;
 						sprintf(response.body, "Cannot copy file %s: no destination specified", request.body);
 						sendMessage(session->ctrlconn, response);
 						break;
@@ -261,25 +261,25 @@ static void handleMessage(Session *session, const Message request) {
 					sprintf(paths[0], "%.*s", i, request.body);
 					sprintf(paths[1], "%s", request.body + i + 1);
 					if ((res = cpFile(paths[0], paths[1])) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_CPFIL;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_CPFIL;
 						sprintf(response.body, "Cannot copy file %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_CPFIL;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_CPFIL;
 						sprintf(response.body, "%s;%s", paths[0], paths[1]);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
-				case MSG_MVFIL:
+				case LFTP_MVFIL:
 					size = strlen(request.body);
 					i = 0;
 					for (i = 0; i < size; i++)
 						if (request.body[i] == ';')
 							break;
 					if (i == size) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_MVFIL;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_MVFIL;
 						sprintf(response.body, "Cannot move file %s: no destination specified", request.body);
 						sendMessage(session->ctrlconn, response);
 						break;
@@ -287,18 +287,18 @@ static void handleMessage(Session *session, const Message request) {
 					sprintf(paths[0], "%.*s", i, request.body);
 					sprintf(paths[1], "%s", request.body + i + 1);
 					if ((res = mvFile(paths[0], paths[1])) != 0) {
-						response.header.type = MSG_BADRQST;
-						response.header.action = MSG_MVFIL;
+						response.header.type = LFTP_BADRQST;
+						response.header.action = LFTP_MVFIL;
 						sprintf(response.body, "Cannot move file %s to %s: %s", paths[0], paths[1], strerror(res));
 					} else {
-						response.header.type = MSG_SUCCESS;
-						response.header.action = MSG_MVFIL;
+						response.header.type = LFTP_SUCCESS;
+						response.header.action = LFTP_MVFIL;
 						sprintf(response.body, "%s;%s", paths[0], paths[1]);
 					}
 					sendMessage(session->ctrlconn, response);
 					break;
 				default:
-					response.header.type = MSG_BADRQST;
+					response.header.type = LFTP_BADRQST;
 					response.header.action = request.header.action;
 					sprintf(response.body, "Communication error: no valid request received (%d).", request.header.action);
 					sendMessage(session->ctrlconn, response);
@@ -306,7 +306,7 @@ static void handleMessage(Session *session, const Message request) {
 			}
 			break;
 		default:
-			response.header.type = MSG_BADRQST;
+			response.header.type = LFTP_BADRQST;
 			response.header.action = request.header.action;
 			sprintf(response.body, "Communication error: no request received.");
 			sendMessage(session->ctrlconn, response);
@@ -397,5 +397,5 @@ static void parseArguments(int argc, char **argv) {
 		}
 	}
 
-	FTP_DEBUG = debug;
+	LFTP_DEBUG = debug;
 }

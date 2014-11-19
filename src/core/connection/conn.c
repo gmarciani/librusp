@@ -6,6 +6,8 @@ int RUSP_DEBUG = 0;
 
 double RUSP_DROP = 0.0;
 
+static char RUSP_STR_STATES[RUSP_STATES][7] = {"CLOSED", "LISTEN", "SYNSND", "SYNRCV", "ESTABL", "FINWT1", "FINWT2", "CLOSIN", "CLOSWT", "TIMEWT", "LSTACK"};
+
 /* CONNECTIONS POOL */
 
 static List CONPOOL = LIST_INITIALIZER;
@@ -151,7 +153,7 @@ void setConnectionState(Connection *conn, const int state) {
 	if (pthread_rwlock_wrlock(&(conn->state.rwlock)) > 0)
 		ERREXIT("Cannot acquire write-lock.");
 
-	DBGPRINT(RUSP_DEBUG, "STATE: %d -> %d", conn->state.value, state);
+	DBGPRINT(RUSP_DEBUG, "STATE: %s -> %s", RUSP_STR_STATES[conn->state.value], RUSP_STR_STATES[state]);
 
 	conn->state.value = state;
 

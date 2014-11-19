@@ -14,23 +14,17 @@ RUSP is a Realiable User Segment Protocol library.
 
 ## Documentation
 
-The documentation about librusp and the RUSP protocol is available in folder docs/.
+The documentation about RUSP protocol, librusp and all sampling network applications is available in folder docs/.
 
-## How to install
+## How to compile
 
-`sudo make install`
+The following command will compile librusp and all the sampling network applications
 
-## How to uninstall
+`make all`
 
-`sudo make uninstall`
+## How to clean
 
-## How to compile test suite
-
-`make test`
-
-## How to clean test suite
-
-`make clean-test`
+`make clean`
 
 ## Report a bug
 
