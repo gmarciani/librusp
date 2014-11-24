@@ -9,6 +9,12 @@ bin/
 # Old
 old/
 
+# Docs source
+docs/data/
+docs/img/
+docs/slide/
+
+
 # Object
 *.o
 *.ko
