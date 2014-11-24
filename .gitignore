@@ -10,10 +10,9 @@ bin/
 old/
 
 # Docs source
-docs/data/
-docs/img/
-docs/slide/
-
+docs/img
+docs/data
+docs/slide
 
 # Object
 *.o
