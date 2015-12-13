@@ -1,32 +1,42 @@
-# Eclipse
-.project
-.cproject
-.settings
+#==============================================================================#
+# RUSP GITIGNORE
+#
+# This file specifies intentionally untracked files that git should ignore.
+# See: http://www.kernel.org/pub/software/scm/git/docs/gitignore.html
+#==============================================================================#
 
-# Bin
-bin/
+#==============================================================================#
+# OS files
+#==============================================================================#
+# Linux
+*~
+# Apple
+.DS_Store
+.AppleDouble
+.LSOverride
+.svn
+.Spotlight-V100
+.Trashes
+# Windows
+Thumbs.db
+Desktop.ini
 
-# Old
-old/
+#==============================================================================#
+# Folder for temp contents
+#==============================================================================#
+_ignore
 
-# Docs source
-docs/img
-docs/data
-docs/slide
+#==============================================================================#
+# C/C++ compilation files and folders
+#==============================================================================#
 
-# Object
+# Object files
 *.o
 *.ko
 *.obj
 *.elf
 
-# Temp
-*~
-
-# Lyx
-*.lyx
-
-# Precompiled
+# Precompiled Headers
 *.gch
 *.pch
 
@@ -36,7 +46,7 @@ docs/slide
 *.la
 *.lo
 
-# Shared objects
+# Shared objects (inc. Windows DLLs)
 *.dll
 *.so
 *.so.*
@@ -49,3 +59,6 @@ docs/slide
 *.i*86
 *.x86_64
 *.hex
+
+# Debug files
+*.dSYM/
